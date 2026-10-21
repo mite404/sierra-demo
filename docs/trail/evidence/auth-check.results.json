@@ -1,0 +1,27 @@
+[
+  {
+    "step": "a signed-out visit leaves for WorkOS",
+    "ok": true,
+    "detail": "https://api.workos.com/user_management/authorize?client_id=<id>&code_challenge=h"
+  },
+  {
+    "step": "the redirect names our callback",
+    "ok": true,
+    "detail": "http://localhost:5173/callback"
+  },
+  {
+    "step": "the state carries the wanted path",
+    "ok": true,
+    "detail": "{\"returnTo\":\"/\"}"
+  },
+  {
+    "step": "share.html stays public",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "step": "the callback route renders",
+    "ok": true,
+    "detail": ""
+  }
+]

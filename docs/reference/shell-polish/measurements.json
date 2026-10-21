@@ -1,0 +1,103 @@
+{
+  "_note": "All pixel figures below are measured directly off Ethan's mock PNG/WEBP files with a Playwright/Chromium OffscreenCanvas pixel probe (not from the live app). All hex colours are sampled from a mock, not a declared token - per ADR-051 (docs/adr/adr.md) brand colours come only from declared CSS, so treat every colour here as a starting point for the next thread to map onto Kay's real tokens, never as a value to hardcode.",
+  "scaleNote": "No CSS/app pixel scale is available to infer a mock's zoom relative to a 1440px-wide window - these mocks are renders of an app shell at an unknown zoom, not screenshots of a known viewport. Ratios between elements (e.g. title bar height / window width) are more reliable than absolute px-to-app-px conversions.",
+
+  "9.png": {
+    "naturalSize": { "w": 1522, "h": 817 },
+    "description": "Solid dark green title bar; canvas splash with a faint Atlas line drawing; Kay mascot bottom-right of canvas; avatar top-right.",
+    "windowMargin": {
+      "top_px": 17,
+      "left_px": 15,
+      "note": "Right/bottom margins measured equal to left/top within +-1px (symmetric window inset from the page ground)."
+    },
+    "windowCornerRadius_px": 12,
+    "titleBar": {
+      "height_px": 50,
+      "medianColor": "#3b423d",
+      "medianColorNote": "sampled from a mock, not a declared token - median of points across the bar avoiding the traffic lights and the bell/avatar"
+    },
+    "trafficLights": {
+      "diameter_px": { "red": 14, "yellow": 15, "green": 14 },
+      "gapBetweenCircles_px": 5,
+      "centerToCenterPitch_px": 19,
+      "colors": { "red": "#ff5f57", "yellow": "#febc2e", "green": "#28c840" },
+      "colorsNote": "these read as the standard macOS traffic-light hex values, not custom brand colours"
+    },
+    "avatarBox": {
+      "width_px": 44,
+      "height_px": 36,
+      "rightOffsetFromImageEdge_px": 16,
+      "topOffsetFromImageEdge_px": 17,
+      "note": "top-right circular avatar showing the mascot's face; sits inside the title bar, vertically centered"
+    },
+    "mascotBox": {
+      "width_px": 176,
+      "height_px": 166,
+      "rightOffsetFromCanvasRightEdge_px": 1,
+      "bottomOffsetFromCanvasBottomEdge_px": 4,
+      "note": "canvas right/bottom edges taken as image edge minus the 15px/17px window margin (1507, 800). The mascot sits essentially flush into the canvas's bottom-right corner, not floating with visible padding."
+    },
+    "canvasPaperColor": "#f6f6f3",
+    "pageGroundColor": "#ced2d4"
+  },
+
+  "10.webp": {
+    "naturalSize": { "w": 1527, "h": 830 },
+    "description": "Same layout as 9.png but with an oil-painting title bar (dark green trees), and a thin coloured trim around the app content area.",
+    "windowMargin": {
+      "top_px": 31,
+      "left_px": 11,
+      "right_px": 18,
+      "note": "left/right margins are not symmetric in this mock (11px vs ~18px) - re-check against the source composition before treating as intentional."
+    },
+    "windowCornerRadius_px": 14,
+    "titleBar": {
+      "height_px": 47,
+      "darkestGreen": "#49514c",
+      "lightestGreen": "#abb0b1",
+      "colorNote": "the painting has no single fill colour; these are the darkest and lightest green-hued pixels sampled across many points in the bar, not an average - sampled from a mock, not a declared token"
+    },
+    "trafficLights": {
+      "diameter_px": { "red": 13, "yellow": 12, "green": 12 },
+      "gapBetweenCircles_px": 5,
+      "centerToCenterPitch_px": 16,
+      "colors": { "red": "#ff605b", "yellow": "#fdbd2f", "green": "#27c63c" }
+    },
+    "trimLine": {
+      "color": "#2b85c0",
+      "colorNote": "sampled from a mock, not a declared token - reads as a plain blue, not a Kay green; likely a placeholder/selection-style accent rather than a finished brand colour",
+      "thickness_px": 4,
+      "runsWhere": "under the title bar, and around the app content area only - NOT around the title bar itself. Confirmed present as a horizontal band directly under the title bar (full width), continuing down both side edges of the content pane, and along the bottom edge of the window. Verified absent along the top of the title bar and at the window's outer top corners."
+    },
+    "canvasPaperColor": "#f6f6f4",
+    "pageGroundColor": "#ced2d6"
+  },
+
+  "11.webp": {
+    "naturalSize": { "w": 1552, "h": 789 },
+    "description": "Oil-painting landscape wash filling the canvas (right pane) behind the dotted grid.",
+    "windowMargin": {
+      "top_px": 18,
+      "left_px": 13
+    },
+    "windowCornerRadius_px": 2,
+    "windowCornerRadiusNote": "measured near-zero / almost square corner in this mock, in contrast to 9.png (12px) and 10.webp (14px) - flag for the design thread rather than assume it is deliberate; the diagonal-scan method used here is also less reliable when the trim line sits right at the corner, so treat this figure as low-confidence.",
+    "titleBarNote": "This mock does NOT show a normal ~47-50px title bar with traffic lights like 9.png/10.webp. Below the trim there is only a ~7-9px off-white sliver before the sidebar/canvas content starts, and no traffic-light dots were found in it by pixel scan. Flag this as a likely cropped/simplified mock rather than a proposed real title-bar height.",
+    "trimLine": {
+      "color": "#2686c8",
+      "colorNote": "sampled from a mock, not a declared token - same blue family as 10.webp's trim",
+      "thickness_px": 4,
+      "runsWhere": "around the whole window, including the title bar - the trim sits immediately inside the page-ground boundary, before the title-bar sliver even begins (top and left edges both confirmed by pixel scan). This is a different position than 10.webp, where the trim sits below the title bar rather than around it."
+    },
+    "canvasWashMedianColor": "#969e95",
+    "canvasWashMedianColorNote": "sampled from a mock, not a declared token - median over ~120 points across the right pane's landscape wash; the wash IS the canvas fill in this mock, so there is no separate 'paper' colour underneath it to report",
+    "pageGroundColor": "#ced2d6"
+  },
+
+  "crossMockComparison": {
+    "pageGroundColor": "#ced2d4 - #ced2d6 across all three mocks (effectively one neutral blue-gray, sampled from a mock, not a declared token)",
+    "titleBarHeightNote": "9.png (50px) and 10.webp (47px) roughly agree; 11.webp's ~7-9px sliver is an outlier - see its note above.",
+    "cornerRadiusNote": "9.png 12px and 10.webp 14px roughly agree; 11.webp's ~2px is an outlier - see its note above.",
+    "trimLinePositionNote": "10.webp's trim wraps the content area below the title bar; 11.webp's trim wraps the whole window including the title bar. These are two different placements for what may be the same design idea - worth reconciling with Ethan before picking one."
+  }
+}

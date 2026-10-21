@@ -1,0 +1,24 @@
+node_modules/
+dist/
+coverage/
+build/
+storybook-static/
+.react-router/
+.turbo/
+.wrangler/
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+.env
+.env.*
+!.env.example
+*.tsbuildinfo
+.amp/*
+!.amp/services.yaml
+.rumdl_cache
+.fallow/
+.claude/worktrees/
+.artifacts/
+__screenshots__/
+# Vitest browser mode saves a failed test's screenshot beside the package.
+.vitest-attachments/

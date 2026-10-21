@@ -1,0 +1,36 @@
+# Staged files only (ADR-086): every agent commit runs this, so it stays cheap.
+# Type checks, tests and the audits run in CI, where --no-verify cannot skip them.
+# The jobs run in order: oxlint's fixes must land before oxfmt formats the same files.
+pre-commit:
+  jobs:
+    - name: oxlint
+      glob: "*.{ts,tsx,js,mjs,cjs}"
+      exclude: [".agents/**", ".claude/**"] # vendored skills: oxlint and oxfmt ignore them, and "no files" exits 1
+      run: pnpm oxlint --fix {staged_files}
+      stage_fixed: true
+    - name: oxfmt
+      glob: "*.{ts,tsx,js,mjs,cjs,json,jsonc,css,yml,yaml}"
+      exclude: [".agents/**", ".claude/**"] # vendored skills: oxlint and oxfmt ignore them, and "no files" exits 1
+      run: pnpm oxfmt --write {staged_files}
+      stage_fixed: true
+    # A fix can leave a new finding behind (an import it made unused), so the fixed files are
+    # linted once more, with no fixing, before the commit lands.
+    - name: oxlint-check
+      glob: "*.{ts,tsx,js,mjs,cjs}"
+      exclude: [".agents/**", ".claude/**"] # vendored skills: oxlint and oxfmt ignore them, and "no files" exits 1
+      run: pnpm oxlint {staged_files}
+    - name: wrap-md
+      glob: "*.md"
+      run: node scripts/wrap-md.js {staged_files}
+      stage_fixed: true
+
+# A pull or a branch switch that changes the lockfile installs what it added, so the dev server
+# never fails to resolve a package the branch brought in.
+post-merge:
+  jobs:
+    - name: install
+      run: node scripts/install-if-behind.js
+post-checkout:
+  jobs:
+    - name: install
+      run: node scripts/install-if-behind.js

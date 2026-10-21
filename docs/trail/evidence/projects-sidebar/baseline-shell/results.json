@@ -1,0 +1,67 @@
+[
+  {
+    "id": "P1",
+    "ok": true,
+    "detail": "whole title shown true, runs past the middle true; ink beside the grip 37 at rest, 162 on hover; grip 1 on the bar, 0 over the title"
+  },
+  {
+    "id": "P2",
+    "ok": true,
+    "detail": "rule 0px, decoration none, focused true"
+  },
+  {
+    "id": "P3",
+    "ok": false,
+    "detail": "native drags 1; cursors default/auto/col-resize; canvas lit false; lanes First lane | Second lane | Last week's pr; Escape cancels true"
+  },
+  {
+    "id": "P3h",
+    "ok": false,
+    "detail": "native drags 1; cursor auto; draft \"> Here's last week's profit by day.\\n\\n\""
+  },
+  {
+    "id": "P8",
+    "ok": true,
+    "detail": "hover fill inset 4px left, 4px right"
+  },
+  {
+    "id": "P4",
+    "ok": false,
+    "detail": "TimeoutError: page.waitForURL: Timeout 20000ms exceeded."
+  },
+  {
+    "id": "P5",
+    "ok": false,
+    "detail": "TimeoutError: page.waitForURL: Timeout 20000ms exceeded."
+  },
+  {
+    "id": "P6",
+    "ok": false,
+    "detail": "TimeoutError: page.waitForURL: Timeout 20000ms exceeded."
+  },
+  {
+    "id": "P7",
+    "ok": false,
+    "detail": "TimeoutError: locator.waitFor: Timeout 20000ms exceeded."
+  },
+  {
+    "id": "P9",
+    "ok": false,
+    "detail": "TimeoutError: page.waitForURL: Timeout 20000ms exceeded."
+  },
+  {
+    "id": "P10",
+    "ok": false,
+    "detail": "TimeoutError: page.waitForURL: Timeout 20000ms exceeded."
+  },
+  {
+    "id": "P11",
+    "ok": false,
+    "detail": "TimeoutError: page.waitForURL: Timeout 20000ms exceeded."
+  },
+  {
+    "id": "P12",
+    "ok": false,
+    "detail": "TimeoutError: page.waitForURL: Timeout 20000ms exceeded."
+  }
+]

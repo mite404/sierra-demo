@@ -1,0 +1,14 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "ignorePatterns": [
+    ".claude/**",
+    ".agents/**",
+    "**/*.md",
+    "pnpm-lock.yaml",
+    "**/.react-router",
+    "**/build",
+    "**/dist",
+    "**/storybook-static",
+    ".artifacts"
+  ]
+}

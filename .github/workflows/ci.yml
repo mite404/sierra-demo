@@ -1,0 +1,104 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  STORYBOOK_DISABLE_TELEMETRY: 1
+  TURBO_TELEMETRY_DISABLED: 1
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # fallow audit diffs against the PR's base branch, so it needs history.
+          fetch-depth: 0
+      # Reads the pnpm version from package.json's packageManager field.
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Format
+        run: pnpm format:check
+      - name: Lint
+        run: pnpm lint --format github
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Gateway tests with coverage
+        run: pnpm --filter gateway test:coverage
+      - name: Fallow audit (findings this PR introduces)
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: >-
+          pnpm fallow audit --base "origin/$BASE_REF"
+          --coverage apps/gateway/coverage/coverage-final.json --format github-annotations
+
+      - name: Install Chromium for story tests
+        run: pnpm --filter storybook exec playwright install --with-deps chromium
+      - name: Unit and story tests
+        run: pnpm test --filter='!gateway'
+      - name: Build
+        run: pnpm build
+      - name: Build Storybook
+        run: pnpm build-storybook
+
+      - name: Upload failed-story screenshots
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: failed-story-screenshots
+          path: apps/storybook/**/__screenshots__/
+          if-no-files-found: ignore
+      - name: Upload Storybook
+        uses: actions/upload-artifact@v7
+        with:
+          name: storybook-static
+          path: apps/storybook/storybook-static/
+
+  design-verification:
+    runs-on: ubuntu-latest
+    # Baselines identify Debian 12 separately from Ubuntu and macOS rasterization.
+    container: node:26.10.0-bookworm
+    timeout-minutes: 30
+    env:
+      HOME: /root
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Trust the runner-mounted checkout
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - uses: pnpm/action-setup@v4
+      - run: pnpm install --frozen-lockfile
+      - name: Install the three browser engines
+        run: pnpm --filter verify-ui-drift exec playwright install --with-deps chromium firefox webkit
+      - name: Compare the foundation matrix
+        run: pnpm verify-ui-drift run
+      - name: Exercise the review interface
+        if: success() || failure()
+        run: pnpm --filter verify-ui-drift test:review
+      - name: Upload design evidence even when comparison fails
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: design-verification
+          path: |
+            .artifacts/verify-ui-drift/runs/
+            .artifacts/verify-ui-drift/review-check/
+          include-hidden-files: true
+          if-no-files-found: error

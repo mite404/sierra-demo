@@ -1,0 +1,331 @@
+/* Primitives shared by every surface (ADR-062): icon button, menu, disclosure, modal and
+   card header. Colours come only from tokens, so each adapts inside the attention surface. */
+
+/* Icon button: a square, borderless target for one icon. */
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--soft-ink);
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+}
+.icon-btn:hover,
+.icon-btn[aria-expanded="true"] {
+  background: var(--paper-deep);
+  color: var(--ink);
+}
+.icon-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Menu: a popup list anchored to its trigger. */
+.menu-anchor {
+  position: relative;
+  display: inline-flex;
+}
+.menu {
+  position: fixed; /* placed beside its trigger in Menu.tsx */
+  z-index: 20;
+  min-width: 220px;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--compose-bg);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  box-shadow: var(--popup-shadow);
+  overflow-y: auto; /* past its max-height (Menu.tsx) */
+  animation: menu-in 120ms ease-out;
+}
+.menu button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 13px;
+  text-align: left;
+  white-space: nowrap;
+}
+.menu button:hover:not(:disabled),
+.menu button:focus-visible {
+  background: var(--paper-deep);
+  outline: none;
+}
+.menu button:disabled {
+  color: var(--soft-ink);
+  opacity: 0.6;
+  cursor: default;
+}
+.menu-icon {
+  display: inline-flex;
+  color: var(--soft-ink);
+}
+.menu-label {
+  flex: 1;
+}
+.menu-detail {
+  color: var(--soft-ink);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.menu-shortcut {
+  padding: 1px 5px;
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  color: var(--soft-ink);
+  font: inherit;
+  font-size: 11px;
+}
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+}
+
+/* Disclosure: a header that folds the body below it. Inset 4px from the host's edges, so the
+   hover fill never runs flush with a card's own edge. */
+.disclosure-header {
+  width: calc(100% - 8px);
+  margin: 0 4px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+}
+.disclosure-header:hover {
+  background: var(--paper-deep);
+}
+/* Open, a flush line separates the header from the body, 8px below the header so its
+   hover fill never touches the line. Folded, there is no body, so no line. */
+.disclosure[data-open] > .disclosure-body {
+  margin-top: 8px;
+  border-top: 1px solid var(--hairline);
+}
+.disclosure-chevron {
+  margin-left: auto;
+  display: inline-flex;
+  color: var(--soft-ink);
+}
+/* A quiet note beside the summary (a count, a state), in the menu's detail type. It stays by the
+   words rather than at the far edge, where a thread's reading tools float over the newest turn
+   (ADR-143) and would cover it. */
+.disclosure-detail {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--soft-ink);
+  font-size: 12px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Modal: covers its nearest positioned ancestor with a scrim, and rises into view. */
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  padding: var(--thread-gutter, 20px);
+  background: var(--scrim);
+  backdrop-filter: blur(3px);
+  animation: modal-fade 160ms ease-out;
+}
+/* The modal is a <dialog> shown in place, so the backdrop's grid centres it. :where() undoes the
+   browser's dialog defaults (absolute centring, 1em padding, system colours) at zero specificity,
+   so every rule of ours, such as .dictation's width and padding, still wins. */
+:where(dialog.modal) {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  color: inherit;
+}
+.modal {
+  background: var(--paper);
+  border: 1px solid var(--hairline);
+  border-radius: 16px;
+  box-shadow: 0 18px 48px var(--shadow-strong);
+  animation: modal-rise 200ms ease-out;
+}
+@keyframes modal-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes modal-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+/* Card header: title left, actions right, and a flush line under it, edge to edge. */
+/* A header that carries its card (ADR-089) says so with the cursor. A finger on it carries the
+   card too, so the browser leaves its moves to the carry instead of panning the page. */
+.card-heading[data-carry] {
+  cursor: grab;
+  touch-action: none;
+}
+.card-heading[data-carry]:active {
+  cursor: grabbing;
+}
+/* In a thread, a card that carries shows the grip a lane's title bar shows (index.css, ADR-089):
+   six dots fading up in the middle of its header over a veil in the header's own paper, so the
+   card says it can be picked up (Ethan). They wake while the pointer is within 25px of them, as
+   a lane's do (CardHeader.tsx marks data-grip-near by gripZone.ts), never by what the pointer is
+   over: a title wrapped to fill a narrow header left only gaps between its words to wake them,
+   so they flickered (Ethan). Its picture in flight keeps the grip up the whole way, so the hand
+   still holds what it took (Ethan). The same measures as the lane's: an 86px veil, solid for its
+   middle 47px, 16px clear either side of the 15px dots, which sit 2px above the header's
+   middle. */
+:is(.thread-scroll, .carry-ghost) .card-heading[data-carry] {
+  position: relative;
+}
+:is(.thread-scroll, .carry-ghost) .card-heading[data-carry]::before,
+:is(.thread-scroll, .carry-ghost) .card-heading[data-carry]::after {
+  content: "";
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms ease;
+}
+:is(.thread-scroll, .carry-ghost) .card-heading[data-carry]::before {
+  inset: 0 auto 0 50%;
+  width: 86px;
+  transform: translateX(-50%);
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--paper) calc(50% - 23.5px),
+    var(--paper) calc(50% + 23.5px),
+    transparent
+  );
+}
+:is(.thread-scroll, .carry-ghost) .card-heading[data-carry]::after {
+  top: calc(50% - 2px);
+  left: 50%;
+  width: 15px;
+  height: 10px;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, var(--soft-ink) 1.25px, transparent 1.75px) 0 0 / 5px 5px;
+}
+.thread-scroll .card-heading[data-carry][data-grip-near]::before,
+.thread-scroll .card-heading[data-carry][data-grip-near]::after,
+.carry-ghost .card-heading[data-carry]::before,
+.carry-ghost .card-heading[data-carry]::after {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .thread-scroll .card-heading[data-carry]::before,
+  .thread-scroll .card-heading[data-carry]::after {
+    transition: none;
+  }
+}
+/* The card left behind while its picture rides the pointer (ADR-089). */
+.card[data-lifted] {
+  opacity: 0.35;
+}
+
+/* A carry (carry.ts): from the lift to the end the closed hand holds over everything, as the
+   browser's own drag cursor does, whatever cursor an element under it asks for. */
+html[data-carrying],
+html[data-carrying] * {
+  cursor: grabbing !important;
+}
+/* The picture that rides the pointer: a clone of what was lifted, or a quote chip for text.
+   It is never hit by the pointer, so the target under it is what the carry finds. */
+.carry-ghost {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 100;
+  opacity: 0.85;
+  pointer-events: none;
+  will-change: transform;
+}
+.carry-ghost [data-carry-picture] {
+  width: var(--carry-width, auto);
+  margin: 0;
+  box-shadow: 0 18px 48px var(--shadow-strong);
+}
+/* A clone starts its animations over, so a value that flashed in once would flash again on the
+   picture: the picture holds still, as the card stands. */
+.carry-ghost * {
+  animation: none !important;
+}
+/* A highlight in flight: one line of it, cut short with an ellipsis. */
+.carry-quote {
+  max-width: 320px;
+  overflow: hidden;
+  padding: 3px 9px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: var(--paper-deep);
+  color: var(--ink);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.card-heading {
+  align-items: flex-start;
+  border-bottom: 1px solid var(--hairline);
+}
+.card-heading-text {
+  min-width: 0;
+}
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  margin: -4px -6px 0 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu,
+  .device-list,
+  .modal-backdrop,
+  .modal {
+    animation: none;
+  }
+  .icon-btn {
+    transition: none;
+  }
+}
+
+/* Share: the copied confirmation appears beside the button, then fades away. */
+.share {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.share-status {
+  font-size: 12px;
+  color: var(--soft-ink);
+  white-space: nowrap;
+}
+.share-status:empty {
+  display: none;
+}

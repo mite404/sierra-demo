@@ -1,0 +1,2 @@
+# Failure screenshots vitest attaches to a failed browser test or story.
+.vitest-attachments/

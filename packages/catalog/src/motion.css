@@ -1,0 +1,340 @@
+/* Microinteractions and motion. Every colour here is a brand token; the timing lives in one
+   custom property per component so Storybook can scrub it without touching the keyframes. */
+
+/* The working ramp, shared by every "agent is busy" glyph so they read as one family. Light
+   mode: moss when solid, olive on the way out, sage near clear. */
+.agent-working,
+.agent-tree {
+  --working-strong: var(--moss);
+  --working-mid: var(--yak-green);
+  --working-soft: var(--sage);
+}
+/* Dark mode flips the ramp, so "solid" still means the most contrast against the paper. */
+:root[data-theme="dark"] :is(.agent-working, .agent-tree) {
+  --working-strong: var(--sage);
+  --working-mid: var(--olive);
+  --working-soft: var(--yak-green);
+}
+/* Dark mode's seven, all light enough to read on the dark paper. */
+:root[data-theme="dark"] .agent-working {
+  --shade-0: var(--sage);
+  --shade-1: var(--olive);
+  --shade-2: var(--chalk);
+  --shade-3: color-mix(in srgb, var(--sage) 55%, var(--olive));
+  --shade-4: color-mix(in srgb, var(--chalk) 70%, var(--yak-green));
+  --shade-5: color-mix(in srgb, var(--olive) 60%, var(--chalk));
+  --shade-6: color-mix(in srgb, var(--sage) 60%, var(--yak-green));
+}
+
+/* Agent working: Kay's 2x2 task-size glyph, animated. Each square fades in to the strongest
+   green it has drawn, then fades out; each flash draws its shade from a set of seven brand
+   greens, so the glyph never repeats itself the same way twice in a row.
+   Two patterns: a wave (the right column a step behind the left, so the lit edge travels left
+   to right) and an orbit (each square a step behind the last, clockwise). */
+.agent-working {
+  --working-duration: 2000ms;
+  /* Seven shades of the brand greens, in an order that jumps between dark and light so no two
+     flashes in a row look alike. Light mode stays dark enough to read at full opacity on paper
+     (the lightest is 3.3:1); the fade toward clear supplies the tints. */
+  --shade-0: var(--moss);
+  --shade-1: color-mix(in srgb, var(--yak-green) 55%, var(--sage));
+  --shade-2: var(--chrome);
+  --shade-3: var(--yak-green);
+  --shade-4: color-mix(in srgb, var(--moss) 65%, var(--sage));
+  --shade-5: var(--chrome-painting);
+  --shade-6: color-mix(in srgb, var(--moss) 50%, var(--yak-green));
+  /* The right column runs 25% of a cycle behind, so it peaks while the left one fades.
+     Written as a head start of 75% (a negative delay), so no square waits blank on load. */
+  --working-lag: calc(var(--working-duration) * -0.75);
+  display: inline-grid;
+  grid-template-columns: repeat(2, 5px);
+  grid-auto-rows: 5px;
+  gap: 2px;
+  /* One 12px footprint for every cell count, so swapping variants never shifts the layout. */
+  box-sizing: border-box;
+  width: 12px;
+  height: 12px;
+  place-content: center;
+  flex: none;
+}
+/* Six squares, two columns of three, in the same 12px box. Every edge must land on a whole
+   pixel: with 1.5px gaps, or centred in the box, the rows sat at half pixels and the screen
+   rounded one gap up and the next down (2px, then 1px). So: 3px squares, 1px gaps, a 7x11
+   glyph pinned 2px in and 1px down, and a half-pixel corner, since 1px rounds a 3px square
+   into a plus sign. */
+.agent-working[data-cells="6"] {
+  grid-template-columns: repeat(2, 3px);
+  grid-auto-rows: 3px;
+  gap: 1px;
+  place-content: start;
+  padding: 1px 0 0 2px;
+  --working-radius: 0.5px;
+}
+.agent-working-cell {
+  border-radius: var(--working-radius, 1px);
+  background: var(--working-strong);
+  opacity: 0;
+  /* Two tracks on one clock: the opacity track is the motion, and the shade track steps to
+     the next green once per loop, 80% into the square's own cycle, while it is clear, so a
+     flash is one shade from its first frame to its last and never smears between two. */
+  animation:
+    agent-working-wave var(--working-duration) linear infinite,
+    agent-working-shade calc(var(--working-duration) * 7) steps(1, end) infinite;
+  animation-delay:
+    var(--working-offset, 0ms),
+    calc(var(--working-offset, 0ms) - var(--working-duration) * (0.2 + var(--shade-shift, 0)));
+}
+/* Grid order is row by row, so the right column is every even child, in both grids. */
+.agent-working-cell:nth-child(even) {
+  --working-offset: var(--working-lag);
+}
+/* Each square starts somewhere else in the seven, so no two squares ever flash the same shade
+   in the same loop. The shifts are solved against each layout's own delays (the wave's right
+   column already runs a shade ahead, and the six-square orbit's middle-left one behind); of the
+   sets that keep all four layouts clash-free, this one puts the most contrast between
+   side-by-side squares. */
+.agent-working-cell:nth-child(2) {
+  --shade-shift: 3;
+}
+.agent-working-cell:nth-child(3) {
+  --shade-shift: 5;
+}
+.agent-working-cell:nth-child(4) {
+  --shade-shift: 1;
+}
+.agent-working-cell:nth-child(5) {
+  --shade-shift: 6;
+}
+.agent-working-cell:nth-child(6) {
+  --shade-shift: 2;
+}
+/* The seven shades, one per loop. A timing function runs per keyframe segment, so steps(1)
+   holds each shade for its whole segment (one loop) and then jumps; steps(7) would split every
+   segment into seven smeared blends. */
+@keyframes agent-working-shade {
+  0%,
+  100% {
+    background: var(--shade-0);
+  }
+  14.2857% {
+    background: var(--shade-1);
+  }
+  28.5714% {
+    background: var(--shade-2);
+  }
+  42.8571% {
+    background: var(--shade-3);
+  }
+  57.1429% {
+    background: var(--shade-4);
+  }
+  71.4286% {
+    background: var(--shade-5);
+  }
+  85.7143% {
+    background: var(--shade-6);
+  }
+}
+/* The motion fits in the first 65% of the cycle; each square then rests clear. With the 25%
+   lag, the right column finishes as the loop ends, so the wave completes and all four squares
+   sit clear for a beat (90-100%) before the left column comes back in. */
+@keyframes agent-working-wave {
+  0% {
+    opacity: 0;
+  }
+  25%,
+  35% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+  65%,
+  100% {
+    opacity: 0;
+  }
+}
+/* Orbit: a comet going clockwise. A fast rise and a long fall, so the lit square leads and the
+   ones behind it trail off; with even spacing around the lap there is no rest, since a circle
+   has no end to rest at. Each square starts its lap (its step / cells) of a loop later,
+   written as a negative head start so no square waits blank on load. Scoped to motion that
+   is allowed, so the reduced-motion still frame below is never overridden. */
+@media (prefers-reduced-motion: no-preference) {
+  .agent-working[data-pattern="orbit"] .agent-working-cell {
+    --working-offset: calc(
+      var(--working-duration) * (var(--working-step) / var(--working-cells) - 1)
+    );
+    animation-name: agent-working-orbit, agent-working-shade;
+  }
+}
+@keyframes agent-working-orbit {
+  0% {
+    opacity: 0;
+  }
+  8%,
+  18% {
+    opacity: 1;
+  }
+  40% {
+    opacity: 0.55;
+  }
+  65%,
+  100% {
+    opacity: 0;
+  }
+}
+/* No wave under reduced motion: the glyph holds still, half lit, still reading as "busy". */
+@media (prefers-reduced-motion: reduce) {
+  .agent-working-cell {
+    animation: none;
+    opacity: 0.55;
+    background: var(--working-mid);
+  }
+  .agent-working-cell:nth-child(odd) {
+    opacity: 1;
+    background: var(--working-strong);
+  }
+}
+
+/* Agent tree: Kay's three-pill glyph (left, right, full-width base), climbed. Green runs down
+   the branches, top then middle; the base fills in and holds solid, darkest, for a beat; then
+   the top branch scrolls in from above, fading up, and a beat later the base scrolls down out
+   of the box behind it, so the tree seems to move down past us as we climb.
+   Only those two move: they are the only pills lit during the scroll, so moving them alone
+   reads as the whole tree scrolling. Once the base is out of sight it jumps back, clear, and
+   later fades in where it started. Geometry on whole pixels: 3px pills, 1px gaps, a 12px box
+   pinned 1px down, whose edges clip both scrolling pills.
+   Every pill's keyframes are written in loop time (no delays), so the cues line up by eye. */
+.agent-tree {
+  --working-duration: 2000ms;
+  display: inline-grid;
+  grid-template-columns: repeat(12, 1px);
+  grid-auto-rows: 3px;
+  row-gap: 1px;
+  box-sizing: border-box;
+  width: 12px;
+  height: 12px;
+  padding-top: 1px;
+  place-content: start;
+  overflow: hidden; /* the edges the pills scroll under */
+  flex: none;
+}
+.agent-tree-pill {
+  border-radius: 999px;
+  background: var(--working-strong);
+  opacity: 0;
+  animation: agent-tree-top var(--working-duration) linear infinite;
+}
+.agent-tree-pill:nth-child(1) {
+  grid-column: 3 / span 7; /* x 2-9: the top branch, left */
+}
+.agent-tree-pill:nth-child(2) {
+  grid-column: 6 / span 7; /* x 5-12: the middle branch, right */
+  animation-name: agent-tree-middle;
+}
+.agent-tree-pill:nth-child(3) {
+  grid-column: 1 / span 12; /* x 0-12: the base */
+  animation-name: agent-tree-base;
+}
+/* The scroll: the top branch enters by the top edge over 0-24%, and the base leaves by the
+   bottom one over 8-32%, both 4px down on the same ease-in-out curve (written out in each,
+   since a keyframe's timing function cannot read a custom property: var() there silently falls
+   back to "ease"). Equal distance, equal curve: they move as one strip of film, so the eye
+   reads a camera tilting up the tree. 4px is what the top branch needs to start fully hidden
+   (it sits 1px below the edge and is 3px tall); the base, which needs 3px, travels the same 4px
+   so neither outruns the other. The top branch fades up as it comes, clear to solid.
+   The base waits a third of the top's entry (8%, 160ms at the default speed) because the top
+   arrives clear and clipped: started on the same frame, the base read as leaving first and the
+   top as filling an empty box after it. With the lead, the top is already a quarter lit and 1px
+   into the box when the base starts to roll (Ethan picked it from three cues side by side). */
+@keyframes agent-tree-top {
+  0% {
+    opacity: 0;
+    background: var(--working-soft);
+    transform: translateY(-4px);
+    animation-timing-function: cubic-bezier(0.4, 0, 0.6, 1); /* same curve in both */
+  }
+  24%,
+  30% {
+    opacity: 1;
+    background: var(--working-strong);
+    transform: none;
+  }
+  40% {
+    opacity: 0.55;
+    background: var(--working-mid);
+  }
+  50%,
+  100% {
+    opacity: 0;
+    background: var(--working-soft);
+  }
+}
+/* Middle branch: the same shape, a step behind the top. */
+@keyframes agent-tree-middle {
+  0%,
+  28% {
+    opacity: 0;
+    background: var(--working-soft);
+  }
+  45%,
+  50% {
+    opacity: 1;
+    background: var(--working-strong);
+  }
+  60% {
+    opacity: 0.55;
+    background: var(--working-mid);
+  }
+  70%,
+  100% {
+    opacity: 0;
+    background: var(--working-soft);
+  }
+}
+/* Base: holds home while the top branch starts in (0-8%); scrolls 4px down, solid, until it is
+   fully under the edge (8-32%); turns clear and jumps home out of sight (32-34%); fades in where
+   it started as the middle branch leaves (52-70%); holds solid for the beat (70-108%, wrapping
+   into the next loop: 760ms at the default speed). */
+@keyframes agent-tree-base {
+  0%,
+  8% {
+    opacity: 1;
+    background: var(--working-strong);
+    transform: none;
+    animation-timing-function: cubic-bezier(0.4, 0, 0.6, 1); /* same curve in both */
+  }
+  32% {
+    opacity: 1;
+    background: var(--working-strong);
+    transform: translateY(4px);
+  }
+  33% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  34%,
+  52% {
+    opacity: 0;
+    background: var(--working-soft);
+    transform: none;
+  }
+  70%,
+  100% {
+    opacity: 1;
+    background: var(--working-strong);
+    transform: none;
+  }
+}
+/* Under reduced motion the tree stands still: branches half lit, the base solid. */
+@media (prefers-reduced-motion: reduce) {
+  .agent-tree-pill {
+    animation: none;
+    opacity: 0.55;
+    background: var(--working-mid);
+  }
+  .agent-tree-pill:nth-child(3) {
+    opacity: 1;
+    background: var(--working-strong);
+  }
+}

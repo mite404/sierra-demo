@@ -1,0 +1,1475 @@
+/* Chat thread panel: one vertical column. Text measure and gutters are tokens so the
+   column can be tuned without touching components. `ch` resolves against the panel's
+   own 15px type, so 80ch means eighty characters of thread text. */
+.thread-panel {
+  /* Positioned container: overlays such as dictation are scoped to the panel. */
+  position: relative;
+  container: panel / inline-size;
+  --thread-measure: 80ch;
+  --thread-gutter: 20px;
+  /* Where a card comes to rest: this far above the compose box, or above the dock card. */
+  --rest-gap: 20px;
+  /* The compose row's top inset, which keeps the focus ring inside its clipped row. */
+  --compose-inset: 4px;
+  width: calc(var(--thread-measure) + 2 * var(--thread-gutter));
+  max-width: 100%;
+  /* Fill the space the host gives the thread, but never overflow it. */
+  height: min(var(--thread-height, 720px), calc(100vh - 32px));
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  background: var(--paper);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+  font-size: 15px;
+  overflow: hidden;
+}
+
+/* A bare thread (a main thread's) has no window of its own and no title bar: it fills the
+   surface it stands on, and its text keeps the same measure by widening the gutters, not the
+   column. The scroll area and the compose box each sit in their own grid row. Empty, the scroll
+   area (a welcome's art) runs on behind the compose box, so the greeting and the box it starts
+   with share one surface. */
+.thread-panel[data-bare] {
+  --thread-gutter: max(20px, calc((100cqw - var(--thread-measure)) / 2));
+  width: 100%;
+  height: var(--thread-height, 100%);
+  max-height: 100%;
+  grid-template-rows: minmax(0, 1fr) auto;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.thread-panel[data-bare] > * {
+  grid-column: 1;
+}
+.thread-panel[data-bare] > .thread-scroll {
+  grid-row: 1;
+}
+.thread-panel[data-bare] > .thread-dock {
+  grid-row: 2;
+}
+.thread-panel[data-bare][data-empty] > .thread-scroll {
+  grid-row: 1 / -1;
+}
+.thread-panel[data-bare][data-empty] > .thread-dock {
+  z-index: 1;
+}
+
+/* Reading tools (ReadingTools.tsx): a small bar at the right just above the compose box, over the
+   conversation's resting gap, so the turns keep resting 20px above the box (pillar 12). A row laid
+   out as the compose row is (the same gutter, the same reserved scrollbar) puts the bar's right
+   edge on the compose box's. It stands 8px clear of the box, its own 4px and the compose row's
+   4px inset, and with a card docked (--dock-space, set by the panel) 8px clear of the card
+   instead. Its corners and gaps are the menu's (8px) and the title bar's actions' (2px).
+   The bar floats beside the compose box at its height, so it casts a shadow down and to the
+   right as the cards do (--float-shadow, Ethan); the box itself lies flat (ADR-162). The dock clips sideways (overflow keeps the
+   scrollbar gutter that lines the bar up), so it reaches 16px further down to hold that shadow,
+   its 8px drop plus its 14px blur less its 6px spread, and sits 16px lower to keep the bar where
+   it was. */
+.reading-dock {
+  --shadow-room: 16px;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + var(--dock-space, 0px) - var(--shadow-room));
+  z-index: 1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  overflow: hidden;
+  scrollbar-gutter: stable;
+  padding: 4px var(--thread-gutter) calc(4px + var(--shadow-room));
+  pointer-events: none;
+}
+/* Two coats of the existing 72% paper scrim give the small controls a denser backing
+   (92.16% combined), while their glyphs stay opaque in every state (Ethan). */
+.reading-tools {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  min-inline-size: 0; /* a fieldset's default is its content's width */
+  margin: 0;
+  padding: 2px;
+  background: var(--scrim);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  box-shadow: var(--float-shadow);
+  pointer-events: auto;
+  transition: opacity 300ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+/* The blurred sheet carries the second coat. Filtering the fieldset itself would make it
+   the containing block of the menu's fixed positioning, not the viewport. */
+.reading-tools::before,
+.reading-tools .menu {
+  background: var(--scrim);
+  backdrop-filter: blur(8px);
+}
+.reading-tools::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+}
+/* The bar follows the pointer (Ethan): it is clear until the pointer is over the thread, fades
+   up over 300ms on the strong ease-out as the pointer leaves the compose box for the turns, and
+   fades back as it leaves the thread. The panel reports the pointer's zone (data-pointer, from
+   its own pointer events, so a story's synthetic hover can prove it). A tool that is open, or a
+   keyboard in the bar, holds it up; a touch screen, with no pointer to follow, keeps it. Clear,
+   not hidden: a keyboard can still reach it, and reaching it shows it. */
+@media (hover: hover) and (pointer: fine) {
+  .reading-tools {
+    opacity: 0;
+  }
+  .thread-panel[data-pointer="thread"] .reading-tools,
+  .reading-tools:is([data-open], :has([aria-expanded="true"]), :has(:focus-visible)) {
+    opacity: 1;
+  }
+}
+/* Keep the reference popover's single scrim and blur unchanged. Longer labels give way to
+   their time on narrow screens. */
+.reading-tools .menu {
+  max-width: calc(100vw - 2 * var(--thread-gutter) - var(--space));
+}
+.reading-tools .menu-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.reading-tools .menu-detail {
+  flex-shrink: 0;
+}
+.reading-search {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  margin-inline-end: 2px;
+}
+.reading-search .field {
+  width: 200px;
+  min-width: 0;
+  flex: 1 1 auto;
+  padding-block: 3px; /* the field's 5px less 2px, so it stands 28px, as its buttons */
+}
+/* The browser's own clear button repeats Close search in a colour off the palette. */
+.reading-search .field::-webkit-search-cancel-button {
+  appearance: none;
+}
+.reading-count {
+  min-width: 7ch;
+  padding: 0 6px;
+  color: var(--soft-ink);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  white-space: nowrap;
+}
+.reading-count:empty {
+  min-width: 0;
+  padding: 0;
+}
+/* Search and its bar, left of the bookmark, open by default: a touch screen has no hover to
+   unfold them by. The 2px before the bookmark lives inside the track, so it folds away with them. */
+.reading-more {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+.reading-fold {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+}
+.reading-fold > .icon-btn {
+  margin-inline-end: 2px; /* a margin, not padding: padding could not fold below 2px */
+}
+/* The fold clips anything past the tools' edges, the focus ring included, so the bar's rings sit
+   inside their buttons, as an awaiting tile's does; the bookmark matches so the two read alike. */
+.reading-tools .icon-btn:focus-visible {
+  outline-offset: -2px;
+}
+/* With a fine pointer the bar rests as the bookmark alone and unfolds leftward while the pointer
+   is on it (data-unfolded, set from its pointer events so a story's synthetic hover can prove
+   it), a keyboard is in it, or search or the list of requests is open. Focus counts only when the
+   last input was not a pointer (ADR-053): a menu hands focus back to its trigger after a click,
+   which the browser calls focus-visible, and the bar would stay unfolded after the pointer left.
+   The track clips from 0fr to 1fr rather than scaling (pillar 22), over 150ms on the strong
+   ease-out, as a lane's menu fades. Folded, Search is hidden, so a keyboard skips it until it
+   reaches the bar; visibility waits out the fold so the clip finishes first. The fold itself
+   slides as the projects drawer does: 220ms on the panel ease (pillar 26), so Search comes out
+   at the drawer's pace rather than snapping (Ethan). */
+@media (hover: hover) and (pointer: fine) {
+  .reading-more {
+    grid-template-columns: 0fr;
+    visibility: hidden;
+    transition:
+      grid-template-columns 220ms cubic-bezier(0.17, 1.02, 0.58, 1),
+      visibility 0s linear 220ms;
+  }
+  .reading-tools:is([data-unfolded], [data-open], :has([aria-expanded="true"])) .reading-more,
+  :root:not([data-input="pointer"]) .reading-tools:has(:focus-visible) .reading-more {
+    grid-template-columns: 1fr;
+    visibility: visible;
+    transition: grid-template-columns 220ms cubic-bezier(0.17, 1.02, 0.58, 1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reading-more,
+  .reading-tools .reading-more,
+  .reading-tools {
+    transition: none;
+  }
+}
+
+/* The running status (ADR-142), for a reader scrolled up while a reply streams: at the left of
+   the reading tools' row, their mirror in paper, hairline and the menu's 8px corners, and as tall
+   (2px around a 28px button). Sharing the row, it gives way as the tools unfold, cutting its
+   narration short rather than running under them. */
+.thread-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin-inline-end: auto;
+  padding: 2px 2px 2px 10px; /* 10px: the field's inset, so the glyph sits as a field's text */
+  background: var(--paper);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  color: var(--soft-ink);
+  font-size: 13px;
+  line-height: 20px;
+  pointer-events: auto;
+}
+.thread-status-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Header and compose reserve the same scrollbar gutter as the scroll area,
+   so all three share one text column on every platform. */
+.thread-header,
+.thread-compose,
+.thread-footnote {
+  overflow: hidden;
+  scrollbar-gutter: stable;
+}
+.thread-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px var(--thread-gutter);
+  border-bottom: 1px solid var(--hairline);
+}
+/* A host's control before the title (ADR-134), such as a lane's collapse: first in the bar's
+   row, --leading-space in from the lane's edge, as on the collapsed strip, and --leading-gap
+   before the title, the space between the bar's Share and Close icons (Ethan), as on a card
+   lane's heading. The bar's 8px gap is part of that space; measured ink to ink, the glyph sits
+   20px from the title's first letter, as the Share icon does from the Close. */
+.thread-header > .header-leading {
+  display: flex;
+  flex-shrink: 0;
+  margin: 0 calc(var(--leading-gap) - 8px) 0 calc(var(--leading-space) - var(--thread-gutter));
+  /* Centred on the title's capitals, from their top to the baseline, rather than on its line
+     box, which the serif's deep descent pulls 2px low (measured at 17px, the title's size). */
+  translate: 0 -2px;
+}
+/* The thread title is a display moment: brand serif (Newsreader). It keeps its own width, so a
+   lane's bar stays free around it to lift the lane by (ADR-089), and shrinks when crowded. */
+.thread-header h2 {
+  min-width: 0;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+/* A title that can be renamed (ADR-089) reads exactly like one that cannot until the pointer
+   rests on it; then the text cursor alone says it is a field waiting to open (Ethan), with no
+   rule under it. A key arriving on it sees the site's own ring. */
+.thread-title {
+  all: unset;
+  cursor: text;
+  font: inherit;
+  color: inherit;
+}
+.thread-title:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+/* The host's actions at the bar's end (ADR-126): pushed there by their own margin, and pulled
+   into the bar's padding, so a button taller than the title's line never makes the bar taller. */
+.thread-header-actions {
+  margin-inline-start: auto;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 2px;
+  margin-block: -6px;
+  margin-inline-end: -8px;
+}
+/* No rule under the field (ADR-089): the title reads the same, in the same box, the moment
+   editing starts, rather than jumping a pixel to make room for an underline. */
+.thread-rename {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 500;
+  line-height: inherit;
+  outline: none;
+}
+
+/* A highlight is something to pick up (ADR-089): an open hand over it, a closed one while it
+   is held; the thread sets data-grab from the pointer (grabbable.ts). */
+.thread-scroll[data-grab="ready"] {
+  cursor: grab;
+}
+.thread-scroll[data-grab="held"] {
+  cursor: grabbing;
+}
+/* The scroll area is the size container for embedded cards (ADR-023).
+   A stable scrollbar gutter keeps content from shifting when the bar appears (ADR-003).
+   The thread steers its own scroll (threadReveal.ts), so the browser's scroll anchoring, which
+   would shift it to hold a paragraph in place as content sizes, stays off (ADR-103).
+   It scrolls up and down only. `overflow-y: auto` alone would make the x axis scrollable too,
+   and `contain` on both axes kept every sideways swipe over the thread from reaching the
+   canvas behind it, so a row of lanes only panned from the bare ground between them. */
+.thread-scroll {
+  container: thread / inline-size;
+  /* Positioned, so the search's rings (below) scroll with the turns. */
+  position: relative;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overflow-anchor: none;
+  overscroll-behavior-x: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
+  /* The bottom padding lands the last card --rest-gap above the compose box or the dock
+     card: --dock-space is the dock card's height over the compose box (ADR-038). A jump to a
+     turn near the end adds --jump-runway below it, so the turn can land centered (ADR-022;
+     threadReveal.ts sets and releases it). */
+  padding: 20px var(--thread-gutter)
+    calc(var(--rest-gap) - var(--compose-inset) + var(--dock-space, 0px) + var(--jump-runway, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+/* Feather both ends of the fade, leaving its upper edge lighter than a linear veil. It fits
+   the resting padding so a last turn stays fully legible; empty welcome art keeps its edge. */
+.thread-scroll:not([data-empty]) {
+  --compose-fade: calc(var(--rest-gap) - var(--compose-inset));
+  mask-image: linear-gradient(
+    to bottom,
+    #000 calc(100% - var(--compose-fade)),
+    rgb(0 0 0 / 85%) calc(100% - var(--compose-fade) * 0.75),
+    rgb(0 0 0 / 50%) calc(100% - var(--compose-fade) * 0.5),
+    rgb(0 0 0 / 15%) calc(100% - var(--compose-fade) * 0.25),
+    transparent
+  );
+}
+/* The turns take the focus so a keyboard can scroll them; the ring sits inside the edge the
+   panel clips, as an awaiting tile's does. */
+.thread-scroll:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+/* An empty thread showing its host's `empty` slot, such as a welcome, gives the slot the whole
+   area: no gutters and no reserved scrollbar, so its art can reach the panel's edges. */
+.thread-scroll[data-empty] {
+  padding: 0;
+  scrollbar-gutter: auto;
+}
+
+.turn p {
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* The user's turn is a tinted surface resting on the thread background: recognisable
+   as "you" by shape and position (right-aligned bubble), not by heavy contrast (ADR-025).
+   Line breaks the user typed (Shift+Enter) or pasted stay where they were. */
+.turn-user {
+  align-self: flex-end;
+  max-width: 85%;
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+}
+.user-bubble {
+  min-width: 0;
+  background: linear-gradient(135deg, var(--bubble-tint), var(--bubble-tint-strong));
+  border: 1px solid var(--bubble-line);
+  border-radius: 12px;
+  padding: 10px 14px;
+}
+.user-bubble p {
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+/* A long request folds to eight lines (--bubble-clamp, from Turns.tsx) and fades out over its
+   last two, so it reads as more to come rather than cut off. The mask takes only alpha, so any
+   opaque token draws it. */
+.user-bubble p[data-clamped] {
+  max-height: var(--bubble-clamp);
+  overflow: hidden;
+  mask-image: linear-gradient(to bottom, var(--ink) calc(100% - 48px), transparent);
+}
+/* Show more / Show less: a text button inside the bubble, the soft ink that darkens on hover
+   over the button's 150ms ease (pillar 8). */
+.bubble-more {
+  display: block;
+  margin: 4px 0 0;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--soft-ink);
+  font-size: 13px;
+  line-height: 20px;
+  transition: color 150ms ease;
+}
+.bubble-more:hover {
+  background: transparent;
+  color: var(--ink);
+}
+/* The thread's one stamp, under its latest reply: how long ago it arrived, in 20-minute steps
+   (turnTime.ts). A user's turn carries no time; the reply dates the exchange. */
+.turn-stamp {
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--soft-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 16px between a turn's parts, the prose's own paragraph gap, so a card or a note after the
+   prose sits as a paragraph would (ADR-140). */
+.turn-agent {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+/* Quiet prose (ADR-140; QuietProse.tsx): 15px Inter on a 24px line in the body ink, 16px between
+   paragraphs, headings at body size in 600 with 32px above, emphasis at 600 in the heading ink,
+   real italics, and a 510px measure for text. Cards between paragraphs take the thread's measure
+   and 16px above and below. The same rules hold while a reply streams and after it completes. */
+.quiet-prose {
+  min-width: 0;
+  font-size: 15px;
+  line-height: 24px;
+  color: var(--soft-ink);
+  overflow-wrap: anywhere;
+  font-synthesis: none;
+}
+.quiet-prose > :is(p, h3, ul) {
+  max-width: 510px;
+}
+.quiet-prose > p {
+  margin: 0 0 16px;
+  line-height: 24px;
+}
+.quiet-prose > h3 {
+  margin: 32px 0 4px;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 24px;
+}
+.quiet-prose strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+.quiet-prose em {
+  font-style: italic;
+}
+.quiet-prose a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.quiet-prose a:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+.quiet-prose code {
+  padding: 2px 4px;
+  border-radius: 3px;
+  background: var(--paper-deep);
+  font:
+    13px/20px ui-monospace,
+    monospace;
+}
+.quiet-prose > ul {
+  margin: 0 0 16px;
+  padding-left: 22px;
+  list-style: disc;
+}
+.quiet-prose li {
+  margin: 0 0 6px;
+}
+.quiet-prose > .prose-card {
+  margin: 16px 0;
+}
+/* What a reply could not do (ADR-147, widened; pillar 29). It sits in the words, so it reads as
+   prose, set off at the left by the rule a reply that stopped short wears (.turn-ended), never
+   by a warning colour: the sentence in the body ink, the request it offers quoted in the
+   heading ink, then the compact outline button that sends it. */
+.quiet-prose > .prose-limitation {
+  display: grid;
+  justify-items: start;
+  gap: 8px; /* .turn-ended's gap */
+  max-width: 510px; /* the prose's measure */
+  margin: 0 0 16px; /* the paragraph gap */
+  padding-left: 16px; /* .turn-ended's inset */
+  border-left: 2px solid var(--hairline); /* .turn-ended's rule */
+}
+.prose-limitation p {
+  margin: 0;
+  line-height: 24px; /* the prose's line, over the page's 1.6 */
+}
+.prose-limitation-prompt {
+  color: var(--ink);
+}
+/* A block the stream has opened but not yet filled takes no room: no empty bullet or paragraph
+   gap flashes before its first words arrive. */
+.quiet-prose > :is(p, h3):empty,
+.quiet-prose > ul:not(:has(> li:not(:empty))),
+.quiet-prose li:empty {
+  display: none;
+}
+.quiet-prose > :first-child {
+  margin-top: 0;
+}
+.quiet-prose > :last-child {
+  margin-bottom: 0;
+}
+
+/* What a streaming reply is doing now, under its words: quiet, one step smaller (ADR-139). */
+.turn-activity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--soft-ink);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+/* A reply that stopped short says so after its words, set off by a rule at the left as a quote
+   is, never by an alarm colour: how it ended, why, and Try again (ADR-139). */
+.turn-ended {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  padding-left: 16px;
+  border-left: 2px solid var(--hairline);
+  color: var(--soft-ink);
+  font-size: 13px;
+  line-height: 20px;
+}
+.turn-ended p {
+  margin: 0;
+  line-height: 20px;
+}
+.turn-ended-label {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* The one disclosure above a reply (ADR-139, amended; WorkDetails.tsx): its header pulled back
+   onto the text column, so its label starts where the prose does and its hover fill reaches 8px
+   into the gutter, as a card's rows reach into its padding. Live, the label sits beside the
+   working glyph, as the sidebar's rows do. The nested Technical details match, and so does the
+   reasoning's fold above it (ADR-166). */
+.work-details .disclosure-header,
+.turn-thinking .disclosure-header {
+  width: calc(100% + 16px);
+  margin: 0 -8px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.work-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+/* The fold's chevron leads the label here, as a numbered list's marker would: at the header's
+   far right it sat under the reading tools, which float over the newest turn's bottom-right
+   corner (ADR-143), and a control hidden under a control is worse than a word covered. */
+.work-details .disclosure-header > .disclosure-chevron,
+.turn-thinking .disclosure-header > .disclosure-chevron {
+  order: -1;
+  margin: 0;
+}
+.work-details .disclosure-body,
+.turn-thinking .disclosure-body {
+  padding-top: 12px;
+}
+/* The model's reasoning (ADR-166): its fold in the wait's muted ink (.turn-pending), since it is
+   how the reply got there, never the reply; folded open, the reasoning as it came, set as the
+   narration under a streaming reply (pillar 29), at the prose's measure. */
+.turn-thinking .disclosure-header {
+  color: var(--soft-ink);
+}
+.turn-thinking-text {
+  max-width: 510px; /* the prose's measure */
+  margin: 0;
+  color: var(--soft-ink);
+  font-size: 13px;
+  line-height: 20px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.work-list {
+  display: grid;
+  gap: 16px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+.work-step {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.work-step p {
+  margin: 0;
+}
+.work-step-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--soft-ink);
+  font-size: 12px;
+  line-height: 16px;
+}
+.work-step-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 24px;
+}
+.work-step-thread {
+  display: inline-flex;
+  color: var(--soft-ink);
+}
+/* The branch's words, for a screen reader: the glyph alone says nothing to one. */
+.work-step-thread-name {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.work-step-outcome {
+  max-width: 510px; /* the prose's measure */
+  font-size: 15px;
+  line-height: 24px;
+}
+/* How the outcome was reached (pillar 30): a few lines under it, set as the narration one fold
+   down is, a step smaller in the body ink, so the finding stays the loudest line of the row. */
+.work-step-basis {
+  max-width: 510px; /* the prose's measure */
+  margin: 0;
+  padding-left: 22px; /* .work-narration's indent */
+  list-style: disc; /* said, as the narration's: nested in the steps it would be circles */
+  color: var(--soft-ink);
+  font-size: 13px;
+  line-height: 20px;
+}
+.work-step > .card {
+  margin-top: 10px; /* with the row's 2px, the 12px a card keeps from the text above it */
+}
+.work-technical {
+  display: grid;
+  gap: 12px;
+}
+.work-technical p,
+.work-narration {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+}
+.work-technical-title {
+  color: var(--ink);
+  font-weight: 600;
+}
+.work-narration {
+  padding-left: 22px;
+  list-style: disc; /* said, since a host's reset (the app's Tailwind) takes the bullets away */
+  color: var(--soft-ink);
+}
+.work-logs {
+  margin: 0;
+  padding: 14px;
+  overflow: auto;
+  background: var(--paper-deep);
+}
+.work-logs code {
+  color: var(--ink);
+  font:
+    12px/20px ui-monospace,
+    monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* The user's answers to the agent's questions (ADR-039): one quiet paper surface across the
+   column, each question over its answer, consecutive answers together. Not the sage bubble: an
+   answer picks from what was asked, and the question it answered stays beside it. */
+.turn-answered {
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  background: var(--paper);
+  padding: 12px 16px;
+}
+.turn-answered dl {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+.answered-pair dt {
+  color: var(--soft-ink);
+  font-size: 13px;
+  line-height: 20px;
+}
+.answered-pair dd {
+  margin: 2px 0 0;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 24px;
+  overflow-wrap: anywhere;
+}
+
+/* A reply's iterator running with nothing to show yet: the working glyph and a quiet line,
+   in the thread's muted ink so it reads as a wait, not a turn with something to say. */
+.turn-pending {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--soft-ink);
+}
+
+/* The dock stacks the recap above the compose box without affecting the compose
+   box's position: the recap is absolutely placed and overlays the conversation. */
+.thread-dock {
+  position: relative;
+}
+
+/* No divider: the compose box floats directly under the conversation. It stands over the
+   reading dock, so the shadow the bar above it casts passes under the box, the two at one
+   height, rather than across it. */
+.thread-compose {
+  position: relative;
+  z-index: 2;
+  padding: var(--compose-inset) var(--thread-gutter) 16px;
+}
+/* A footnote under the box (who controls the thread, ADR-141) takes half the box's bottom room. */
+.thread-compose[data-footnote] {
+  padding-bottom: 8px;
+}
+.thread-footnote {
+  padding: 6px var(--thread-gutter) 12px; /* 12px: a lane's 14px corner arc clears the words */
+  color: var(--soft-ink);
+  font-size: 12px;
+  line-height: 16px;
+}
+/* Flat in either theme, with no drop shadow (Ethan, ADR-162): its border and fill set it apart. */
+.compose-box {
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  padding: 10px 8px 6px 12px;
+  background: var(--compose-bg);
+}
+.compose-box:focus-within {
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 16%, transparent);
+}
+/* Clicked into, the compose box keeps its focused border but drops the ring. */
+:root[data-input="pointer"] .compose-box:focus-within {
+  box-shadow: none;
+}
+.compose-box textarea {
+  display: block;
+  width: 100%;
+  height: 44px;
+  min-height: 44px;
+  max-height: 6lh;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0 4px 0 0;
+  border: none;
+  border-radius: 0;
+  resize: none;
+  outline: none;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--ink);
+  background: transparent;
+}
+/* Attach on the far left; dictate then send on the right (ADR-026). */
+.compose-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: -6px;
+}
+.compose-hint {
+  flex: 1;
+  min-width: 0;
+  padding-left: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Card context waiting to be sent (ADR-030): it takes the hint's place in the bar. */
+.compose-context {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 6px;
+  overflow: hidden;
+  padding-left: 2px;
+}
+.context-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 3px 4px 3px 9px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: var(--paper-deep);
+  color: var(--ink);
+  font-size: 12px;
+  white-space: nowrap;
+  animation: chip-in 180ms ease-out;
+}
+.context-chip button {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  font-size: 14px;
+  line-height: 1;
+}
+.context-chip button:hover {
+  background: var(--hairline);
+}
+@keyframes chip-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+}
+/* Sent context stays visible under the message it went with. */
+.sent-context {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sent-context .context-chip {
+  padding-right: 9px;
+  animation: none;
+}
+
+.compose-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--soft-ink);
+}
+.compose-icon:hover {
+  background: var(--paper-deep);
+  color: var(--ink);
+}
+.compose-icon:disabled {
+  opacity: 0.4;
+  background: transparent;
+  cursor: default;
+}
+.compose-send {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  margin-left: 2px;
+  padding: 0;
+  border-radius: 50%;
+  border: none;
+  background: var(--send);
+  color: var(--on-send);
+  font-size: 15px;
+}
+.compose-send:hover {
+  background: var(--send);
+}
+.compose-send:disabled {
+  background: var(--paper-deep);
+  color: var(--soft-ink);
+  cursor: default;
+}
+
+/* The dock overlay floats one card above the compose box: the recap (ADR-018) or a
+   question the agent is waiting on (ADR-039). It shares the scroll area's gutters so the
+   card lines up with the conversation column. */
+.dock-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  overflow: hidden;
+  scrollbar-gutter: stable;
+  padding: 12px var(--thread-gutter) 10px;
+  pointer-events: none;
+}
+.recap,
+.recap-chip,
+.awaiting {
+  pointer-events: auto;
+  animation: recap-in 180ms ease-out;
+}
+/* What needs attention sits on the attention surface (.attention-surface, ADR-042), so it stands
+   apart from every card in the thread; the shadow lifts it off the conversation. */
+.recap,
+.awaiting {
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  /* Light from the top left (ADR-069): the shadow is shifted 8px right and 8px down and
+     shrunk by 8px, so it shows on the bottom and right edges and never on the top or left. */
+  box-shadow: 8px 8px 16px -8px var(--shadow-strong);
+}
+.recap {
+  /* Rows carry their own 8px inset so their hover wash lines up with the header text. */
+  padding: 10px 8px 8px 6px;
+}
+.recap-header {
+  padding-left: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.recap-header p {
+  margin: 0;
+  font-size: 12px;
+}
+.recap-close {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--soft-ink);
+  font-size: 18px;
+  line-height: 1;
+}
+.recap-close:hover {
+  background: var(--paper-deep);
+  color: var(--ink);
+}
+.recap ul {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+.recap li button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 10px;
+  padding: 7px 8px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.recap li button:hover {
+  background: var(--paper-deep);
+}
+.recap-go {
+  color: var(--soft-ink);
+  opacity: 0;
+}
+.recap li button:hover .recap-go,
+.recap li button:focus-visible .recap-go {
+  opacity: 1;
+}
+.recap-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--hairline);
+  box-shadow: 0 2px 8px var(--shadow);
+  font-size: 12px;
+}
+/* "Needs you" (ADR-039, ADR-045): numbered tiles on the attention surface, a Skip and Submit
+   pair, and a header that folds the card to one line. Everything lines up on a 12px inset. */
+.awaiting.attention-surface {
+  --tile-bg: var(--awaiting-tile-bg);
+  --attention-hover: var(--awaiting-hover);
+  --tile-wash: var(--awaiting-hover);
+  padding: 4px 0 12px;
+  background: var(--awaiting-bg);
+}
+.awaiting:not([data-open]) {
+  padding-bottom: 4px;
+}
+/* The fold (Disclosure) spans the card, so its line is flush with the card's edges; the
+   header's own 4px inset plus its 8px padding puts the label on the same 12px inset as
+   the body below. */
+.awaiting .disclosure-body {
+  padding: 0 12px;
+}
+.awaiting-label {
+  flex: none;
+  margin: 0;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: var(--awaiting-label-bg);
+  color: var(--awaiting-label-ink);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+.awaiting-summary {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 500;
+}
+.awaiting-question {
+  margin: 12px 0 10px; /* 12px below the line */
+  font-size: 14px;
+  font-weight: 550;
+  line-height: 1.45;
+  letter-spacing: 0;
+  color: var(--ink);
+}
+/* Options rest unfilled on the card; each fills only on hover (ADR-067). */
+.awaiting-options {
+  display: grid;
+  gap: 4px;
+}
+.awaiting-tile {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  margin: 0;
+  padding: 8px;
+  border: none;
+  border-radius: 4px;
+  text-align: left;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink);
+  cursor: pointer;
+}
+/* `data-hover` is the same look for an answer a host is giving on the user's behalf (a scripted
+   demo), so a viewer sees the pointer reach the tile it will choose. */
+:is(.awaiting-tile:hover, .awaiting-tile[data-hover]) {
+  background: var(--paper-deep);
+}
+/* Hovered rows on the attention surface darken, so their text switches to the hover ink. */
+.attention-surface
+  :is(.awaiting-tile, .recap li button, .disclosure-header, .awaiting-action, .recap-close):hover {
+  --ink: var(--attention-hover-ink);
+  --soft-ink: var(--attention-hover-ink);
+  color: var(--ink);
+}
+/* Needs you hovers to a light grey, so its rows keep their usual inks. */
+.awaiting.attention-surface :is(.awaiting-tile, .disclosure-header, .awaiting-action):hover,
+.awaiting.attention-surface .awaiting-tile[data-hover] {
+  --ink: var(--tile-ink);
+  --soft-ink: var(--tile-muted);
+}
+/* Keyboard focus sits inside the tile, where it clears 3:1 against the tile itself. */
+.awaiting-tile:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+/* The number badge: no outline at rest, an outline on hover, filled solid when selected. */
+.awaiting-key {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-top: -0.5px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--soft-ink);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  transition:
+    border-color var(--btn-duration, 150ms) ease,
+    background-color var(--btn-duration, 150ms) ease;
+}
+:is(.awaiting-tile:hover, .awaiting-tile[data-hover]) .awaiting-key {
+  border-color: var(--soft-ink);
+}
+.awaiting-tile[data-selected] .awaiting-key {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--awaiting-bg); /* the tile has no fill of its own at rest */
+  font-weight: 600;
+}
+.awaiting-option,
+.awaiting-detail {
+  display: block;
+}
+.awaiting-option {
+  font-weight: 500;
+}
+.awaiting-detail {
+  color: var(--soft-ink);
+}
+/* The typed answer: an outlined field (.field) inside its tile, so it reads as a place to
+   type; the tile trims its padding so the field's text sits level with its number. */
+.awaiting-answer {
+  align-items: center;
+  padding-block: 4px;
+}
+.awaiting-answer .field {
+  padding-inline: 8px;
+}
+.awaiting-answer .awaiting-key {
+  margin-top: 0;
+}
+/* Skip and Submit, bottom right. Submit waits for a selection (and, for the typed answer,
+   some text); it is cream on the attention surface, where olive would disappear. */
+.awaiting-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+.awaiting-action {
+  padding: 6px 14px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--btn-radius);
+  background: transparent;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.3;
+  transition:
+    background-color var(--btn-duration, 150ms) ease,
+    opacity var(--btn-duration, 150ms) ease,
+    scale 160ms ease-out;
+}
+.awaiting-action:hover {
+  background: var(--paper-deep);
+}
+/* A press gives under the hand (scale 0.96, better-ui), for a click and for Submit pressed on the
+   user's behalf (`data-pressed`) alike. */
+.awaiting-action:active:not(:disabled),
+.awaiting-submit[data-pressed] {
+  scale: 0.96;
+}
+/* Submit is an outline, never filled at rest (ADR-061). When a choice makes it available, a
+   second outline fades in from 8px outside, thinning from 6px to 4px and then to 1px, and closes onto the
+   border in 450ms, so readiness is a
+   motion, not a colour; the fill is left for hover alone. CSS only: the pseudo-element is
+   created when :disabled stops matching, which starts the animation. */
+.awaiting-submit {
+  position: relative;
+  border-color: var(--ink);
+}
+.awaiting-submit:not(:disabled)::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: var(--btn-radius);
+  /* Drawn as an inset shadow, not a border: border widths snap to whole pixels, so the
+     thinning would step instead of flowing. */
+  box-shadow: inset 0 0 0 1px var(--ink);
+  pointer-events: none;
+  /* Hidden at rest: it exists only while it travels, then hands off to the real border, so
+     two outlines never render on top of each other (their anti-aliased corners doubled). */
+  opacity: 0;
+  animation: submit-ready 450ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+@keyframes submit-ready {
+  from {
+    inset: -9px;
+    border-radius: calc(var(--btn-radius) + 8px); /* concentric with the border, 8px out */
+    box-shadow: inset 0 0 0 6px var(--ink);
+    opacity: 0;
+  }
+  /* 6px thins to 4px on the way in, then to the border's 1px in the last frames, so the
+     settled outline is indistinguishable from the border it lands on. */
+  80% {
+    box-shadow: inset 0 0 0 4px var(--ink);
+  }
+  /* Lands exactly on the border (same box, same corners), then disappears. */
+  to {
+    inset: -1px;
+    border-radius: var(--btn-radius);
+    box-shadow: inset 0 0 0 1px var(--ink);
+    opacity: 1;
+  }
+}
+/* Green is kept for button hovers: Submit fills with the site's moss, as .btn does. */
+.attention-surface .awaiting-submit:is(:hover, [data-pressed]):not(:disabled) {
+  border-color: var(--moss);
+  background: var(--moss);
+  color: var(--paper); /* 10.4:1 */
+}
+.awaiting-submit:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+@media (prefers-reduced-motion: reduce) {
+  .awaiting-key,
+  .awaiting-action {
+    transition: none;
+  }
+  .awaiting-action:active:not(:disabled),
+  .awaiting-submit[data-pressed] {
+    scale: none;
+  }
+  .awaiting-submit:not(:disabled)::after {
+    animation: none;
+  }
+}
+
+@keyframes recap-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* A thread's search (searchMarks.ts) marks the words it found as a text editor's find does:
+   every match tinted with the selection's blue, the one stepped to selected outright, as a
+   click and drag would select it (Ethan). */
+::highlight(thread-search) {
+  background-color: color-mix(in srgb, var(--blue) 40%, transparent);
+  color: var(--ink);
+}
+::highlight(thread-search-current) {
+  background-color: var(--blue);
+  color: var(--on-blue);
+}
+/* The layer the rings hang in: no box of its own, at the turns' origin, so each ring placed in
+   the turns' coordinates scrolls with them. */
+.search-rings {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+/* The ring around the match a step lands on, once, so the eye finds the words rather than the
+   turn they sit in: the selection's blue drawn tight around them, widening and fading out over
+   the 1.2s a jumped-to turn glows. */
+.search-ring {
+  position: absolute;
+  border-radius: 3px;
+  animation: search-ring 1.2s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+@keyframes search-ring {
+  from {
+    box-shadow:
+      0 0 0 2px var(--blue),
+      0 0 0 5px color-mix(in srgb, var(--blue) 45%, transparent);
+  }
+  to {
+    box-shadow:
+      0 0 0 2px transparent,
+      0 0 0 10px transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .search-ring {
+    animation: none;
+    box-shadow: 0 0 0 2px var(--blue);
+  }
+}
+
+/* A jumped-to turn glows briefly so the eye finds it (ADR-022); an answer glows alone on its
+   surface, and a recap's outcome glows on its own card or step. */
+:is(.turn, .answered-pair, .card, .work-step)[data-flash] {
+  border-radius: 12px;
+  animation: turn-flash 1.2s ease-out;
+}
+@keyframes turn-flash {
+  from {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--focus) 25%, transparent);
+  }
+  to {
+    box-shadow: 0 0 0 4px transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .context-chip,
+  .recap,
+  .recap-chip,
+  .awaiting,
+  :is(.turn, .answered-pair, .card, .work-step)[data-flash] {
+    animation: none;
+  }
+  .bubble-more {
+    transition: none;
+  }
+}
+/* Without the glow's fade, a jumped-to turn holds the glow's first frame until it clears, so the
+   eye still finds it. */
+@media (prefers-reduced-motion: reduce) {
+  :is(.turn, .answered-pair, .card, .work-step)[data-flash] {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--focus) 25%, transparent);
+  }
+}
+
+/* Catalog cards inside a thread drop page-level framing: the question is already the
+   user turn above, and component names are developer vocabulary (ADR-023). */
+.card[data-context="thread"] {
+  border-radius: 12px;
+}
+.card[data-context="thread"] .card-heading {
+  padding: 12px 12px 12px 16px; /* 12px on the right: the share button carries its own inset */
+  margin-bottom: 12px;
+  align-items: center;
+}
+/* A heading that carries a host's collapse (a card lane, ADR-134) starts --leading-space in, the
+   collapse's fill on that line (tokens.css), as a thread lane's. Later than the context's
+   padding above, so it wins at the same weight. */
+.card .card-heading:has(> .header-leading) {
+  padding-left: var(--leading-space);
+}
+.card[data-context="thread"] .card-heading .eyebrow,
+.card[data-context="thread"] .card-heading .badge {
+  display: none;
+}
+.card[data-context="thread"] .card-heading h2 {
+  font-size: 15px;
+  letter-spacing: -0.2px;
+  margin: 0;
+}
+.card[data-context="thread"] .measure {
+  padding: 0 16px 6px;
+}
+.card[data-context="thread"] .chart {
+  height: 200px;
+}
+.card[data-context="thread"] .notice {
+  margin: 8px 16px;
+}
+.card[data-context="thread"] .table-wrap {
+  max-height: 220px;
+  padding: 0 16px 12px;
+}
+.card[data-context="thread"] footer {
+  padding: 10px 16px;
+  font-size: 11px;
+  line-height: 17px; /* whole pixels, matching the button's line (ADR-072) */
+}
+.card[data-context="thread"].state {
+  min-height: 0;
+  padding: 18px 16px;
+}
+.card[data-context="thread"].state h2 {
+  font-size: 15px;
+  margin-bottom: 6px;
+}
+.card[data-context="thread"].state .state-symbol,
+.card[data-context="thread"] .page-only {
+  display: none;
+}
+.card[data-context="thread"].state p {
+  margin-bottom: 6px;
+}
+
+/* Compact density: a narrow thread beside a split pane. */
+@container thread (max-width: 480px) {
+  .card[data-context="thread"] .chart {
+    height: 160px;
+  }
+  .card[data-context="thread"] footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .card[data-context="thread"] footer button {
+    align-self: flex-start;
+  }
+}
+
+/* The public page for one shared card (ADR-064): the card alone, centred on the paper. */
+.share-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: start center;
+  padding: 48px 16px;
+  background: var(--bg);
+}
+.share-frame {
+  container: thread / inline-size;
+  width: min(100%, 720px);
+}
+.share-note {
+  margin: 12px 4px 0;
+  font-size: 12px;
+  color: var(--soft-ink);
+}
+.share-note-lead {
+  margin: 0 4px 12px;
+}
+/* A shared thread (ADR-131) reads as the thread it came from, frame and all, but grows with its
+   turns instead of scrolling inside a box: the page scrolls, and nothing is docked below. */
+.shared-thread {
+  width: 100%;
+  height: auto;
+  grid-template-rows: auto auto;
+}
+.shared-thread .thread-scroll {
+  overflow: visible;
+  padding-bottom: 20px;
+}

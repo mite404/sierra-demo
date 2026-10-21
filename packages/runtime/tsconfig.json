@@ -1,0 +1,13 @@
+{
+  "extends": "@yaklabs/config/tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "types": ["vite/client"],
+    "noEmit": true,
+    // The catalog's sources compile inside this program (it ships .ts, not declarations), and
+    // eight of their index reads do not yet pass this check. Turn it back on once
+    // packages/catalog passes the base config; this package's own code is written to it.
+    "noUncheckedIndexedAccess": false
+  },
+  "include": ["src", "vite.config.ts"]
+}

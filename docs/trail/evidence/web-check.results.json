@@ -1,0 +1,65 @@
+{
+  "results": [
+    {
+      "step": "thread renders the profit card",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "slider moves to Net profit",
+      "ok": true,
+      "detail": "Net profit was $25.6k for Sep 14–20, peaking on Sat at $5.9k."
+    },
+    {
+      "step": "agent reply speaks to the chosen view",
+      "ok": true,
+      "detail": "Answering about Net profit · Sep 14–20, the view you set on the card. Saturday leads at every level, so the weekend carr"
+    },
+    {
+      "step": "the sent message carries the card choice as a chip",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "the conversation survives a reload",
+      "ok": true,
+      "detail": "4 turns after reload"
+    },
+    {
+      "step": "no memory-only warning",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "dark mode switches through data-theme",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "lab route renders the workbench",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "share.html renders the card from the fragment",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "share.html without a card shows the honest notice",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "unknown path shows the not-found page",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "step": "no console errors",
+      "ok": true,
+      "detail": ""
+    }
+  ],
+  "errors": []
+}

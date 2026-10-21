@@ -1,0 +1,124 @@
+#!/usr/bin/env python3
+"""Answer a closed question about text using a local Ollama model.
+
+A context guard, not a model tier. The point is that the document never enters
+the Claude context window: the calling agent pipes bulk text in and gets back a
+boolean, a line, or a short summary. Your Claude subscription already covers
+sonnet, so this saves context and OpenRouter credit, not subscription cost.
+
+    git diff | local-extract "Does this diff touch auth code? true or false"
+    curl -s "$URL" | local-extract -m prose "Summarize in 3 bullets"
+    local-extract --file notes.md "List every filename mentioned"
+
+Three settings separate this from an unusable 46-second version, and none is an
+Ollama default:
+  think=False      the extract model is a reasoner and burns 600-950 hidden
+                   tokens before emitting five words. Ollama strips them from
+                   the response but you still wait for them.
+  keep_alive       13 GB on a 24 GB machine gets evicted between back-to-back
+                   calls, costing a 7-12s reload each time.
+  short inputs     prompt eval runs about 215 tok/s on fresh text, roughly
+                   1 second per 850 characters. A 16k-char document is ~20s.
+
+ACCURACY: a 12-document boolean sweep was spot-checked against the sources and
+2 of 5 checked answers were wrong, both FALSE POSITIVES: the model answered
+"true" for two documents that never mention the topic at all. It read a
+document full of "never merge" prohibitions correctly, then invented a yes
+elsewhere.
+
+So phrase the question so a wrong answer is the SAFE answer, and never let
+"true" mean "skip". Use it to narrow a pile before Claude reads it, where a
+false positive costs one wasted Claude call and a false negative would silently
+drop real work. Do not use it as the final word on anything.
+"""
+
+import argparse
+import json
+import sys
+import time
+import urllib.error
+import urllib.request
+
+HOST = "http://127.0.0.1:11434"
+MODELS = {
+    "extract": "gemma4-extract:12b",   # closed questions, retrieval, true/false
+    "prose": "gemma4-prose:12b",       # summaries of articles and long docs
+    "base": "gemma4:12b-mxfp8",        # anything the tuned pair handles badly
+}
+
+
+def api(path, payload=None, timeout=600):
+    req = urllib.request.Request(
+        f"{HOST}{path}",
+        data=json.dumps(payload).encode() if payload is not None else None,
+        headers={"Content-Type": "application/json"},
+    )
+    return json.loads(urllib.request.urlopen(req, timeout=timeout).read())
+
+
+def main():
+    ap = argparse.ArgumentParser(add_help=False)
+    ap.add_argument("question", nargs="?")
+    ap.add_argument("-m", "--model", default="extract",
+                    help="extract (default), prose, base, or a raw Ollama tag")
+    ap.add_argument("--file", help="read the document from a file instead of stdin")
+    ap.add_argument("--keep-alive", default="5m",
+                    help="how long to pin the model in RAM (default 5m). "
+                         "It is 13 GB; 0 unloads immediately.")
+    ap.add_argument("--think", action="store_true",
+                    help="allow hidden reasoning tokens. Roughly 3x slower.")
+    ap.add_argument("--stats", action="store_true", help="print timings to stderr")
+    ap.add_argument("--list", action="store_true")
+    ap.add_argument("-h", "--help", action="store_true")
+    a = ap.parse_args()
+
+    if a.help:
+        print(__doc__)
+        print(f"models: {', '.join(f'{k}={v}' for k, v in MODELS.items())}")
+        return 0
+
+    try:
+        api("/api/version", timeout=5)
+    except (urllib.error.URLError, OSError):
+        sys.exit(f"local-extract: no Ollama server at {HOST}. Start it with `ollama serve`.")
+
+    if a.list:
+        for m in api("/api/tags", timeout=30)["models"]:
+            print(f"{m['name']:<24} {m['size'] / 1e9:5.1f} GB")
+        return 0
+
+    if not a.question:
+        sys.exit("local-extract: a question is required. See --help.")
+
+    doc = open(a.file, encoding="utf-8", errors="replace").read() if a.file else sys.stdin.read()
+    if not doc.strip():
+        sys.exit("local-extract: empty document (nothing on stdin, no --file)")
+
+    model = MODELS.get(a.model, a.model)
+    prompt = (f"Answer with only what is asked. No preamble, no explanation.\n\n"
+              f"{a.question}\n\n---\n{doc}")
+
+    t0 = time.time()
+    d = api("/api/generate", {
+        "model": model,
+        "prompt": prompt,
+        "stream": False,
+        "think": a.think,
+        "keep_alive": a.keep_alive,
+        "options": {"temperature": 0},
+    })
+    wall = time.time() - t0
+
+    print(d["response"].strip())
+
+    if a.stats:
+        pe = d.get("prompt_eval_duration", 0) / 1e9
+        pc = d.get("prompt_eval_count") or 0
+        print(f"[{model}  {pc} tok in {pe:.1f}s ({pc / pe:.0f} tok/s) "
+              f"| load {d.get('load_duration', 0) / 1e9:.1f}s "
+              f"| gen {d.get('eval_count')} tok | wall {wall:.1f}s]", file=sys.stderr)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

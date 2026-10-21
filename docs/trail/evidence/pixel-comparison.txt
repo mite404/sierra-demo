@@ -1,0 +1,11 @@
+Pixel comparison of all 40 stories, byte for byte against two baseline runs shot from the
+old layout (commit 912b5f4) before any file moved.
+
+after the move            identical=36 second-run-match=1 animation-only=3
+after the token renames   identical=36 second-run-match=1 animation-only=3
+after the a11y fixes      identical=35 second-run-match=1 animation-only=4 (profit story identical in 3 reruns)
+after the refactors       identical=34 second-run-match=1 animation-only=5 (fallbacks-narrow identical on rerun 3)
+
+Animation-only stories: the three dictation stories (live waveform), share-public-page--interactive-card,
+thread-chat-thread-panel--interactive-profit and --fallbacks-narrow (Recharts mid-animation).
+Rerun: node .agents/skills/verify-storybook/scripts/shoot.mjs <ids> --out <dir>, then cmp each PNG.

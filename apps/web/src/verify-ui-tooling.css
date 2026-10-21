@@ -1,0 +1,710 @@
+/* The design tooling page (ADR-160, routes/verify-ui-tooling.tsx): a landing page of Kay's paper
+   outside the shell that says what tools/verify-ui-drift is for and shows it. The catalog
+   styles the bare elements (tokens.css: the top bar, the buttons, the footer); this adds the
+   page's own blocks, in the components layer so a utility on an element still wins. Every rule
+   is scoped under .tooling or a land- class: a route's stylesheet stays loaded once the visitor
+   goes back into the app, so nothing here may reach a bare element.
+   The blocks, top to bottom: the hero with Ethan's headline, the run's terminal in a little
+   perspective and the seal stamped on its corner; a ticker of the four verdicts; his question;
+   a bento of six cells of the tool's own evidence; a full-bleed band in the window chrome's
+   green with his second headline and the contrast table; and the seal with the way back. */
+@layer components {
+  .tooling {
+    --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+    /* The terminal: the night lifted toward Ethan's slate, a warm dark grey like the one in
+       his screenshot, the same in both themes; its soft ink is the cream at 72% (rule 4). */
+    --term-bg: color-mix(in srgb, var(--yak-night) 72%, var(--yak-slate));
+    --term-soft: color-mix(in srgb, var(--yak-cream) 72%, var(--term-bg));
+    max-width: 1200px;
+    overflow-x: clip;
+    color: var(--ink);
+    padding-bottom: 48px;
+  }
+  .tooling .topbar {
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    height: auto;
+    min-height: 72px;
+    padding: 12px 0;
+    border-bottom: 0;
+  }
+  .tooling .brand {
+    gap: 6px;
+    white-space: nowrap;
+  }
+  .tooling .brand span {
+    color: var(--soft-ink);
+    font-weight: 400;
+  }
+  .land-bar-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  /* A band that runs edge to edge of the window, out from the page's column. */
+  .land-bleed {
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+  }
+  .land-kicker {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.6;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--soft-ink);
+  }
+
+  /* The hero: the claim at the left, the run itself at the right, the words 5 columns to the
+     terminal's 7 so the picture is the bigger half, as a product's landing page gives it. */
+  .land-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: 48px;
+    align-items: center;
+    padding: 56px 0 32px;
+  }
+  .land-title {
+    margin: 12px 0 20px;
+    font-family: var(--font-display);
+    font-size: clamp(44px, 5.4vw, 72px);
+    font-weight: 500;
+    line-height: 1.02;
+    letter-spacing: -0.025em;
+  }
+  .land-title span {
+    color: var(--soft-ink);
+  }
+  .land-lede {
+    max-width: 46ch;
+    font-size: 17px;
+    line-height: 1.55;
+  }
+  .land-cta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 24px;
+  }
+  .land-proof {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 20px;
+    margin: 28px 0 0;
+    padding: 0;
+    list-style: none;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.5;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--soft-ink);
+  }
+  .land-proof b {
+    margin-right: 5px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  /* The stage: the terminal turned a few degrees toward the words, lit from the top left as
+     every card on the site is, with the seal stamped over its bottom corner at the welcome's
+     tilt. The turn is a pose, not motion, so reduced motion keeps it. */
+  .land-stage {
+    position: relative;
+    margin: 0;
+    perspective: 1600px;
+  }
+  .land-terminal {
+    overflow: hidden;
+    border-radius: 10px;
+    background: var(--term-bg);
+    color: var(--yak-cream);
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.6;
+    box-shadow:
+      0 1px 2px var(--shadow),
+      2px 28px 56px -18px var(--shadow-strong);
+    transform: rotateY(-7deg) rotateX(2deg);
+    transform-origin: 65% 50%;
+  }
+  .land-term-bar {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 10px 14px;
+    background: color-mix(in srgb, var(--term-bg) 78%, black);
+    font-size: 11px;
+    color: var(--term-soft);
+  }
+  .land-term-bar i {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: var(--traffic-close);
+  }
+  .land-term-bar i:nth-child(2) {
+    background: var(--traffic-minimise);
+  }
+  .land-term-bar i:nth-child(3) {
+    background: var(--traffic-zoom);
+  }
+  .land-term-bar span {
+    flex: 1;
+    text-align: center;
+  }
+  .land-term-bar span::after {
+    content: "";
+    display: inline-block;
+    width: 32px;
+  }
+  /* The prompt bar as the shell drew it: the path on blue, the branch on olive, the clock on
+     the caution orange with its brown ink. */
+  .land-prompt {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    margin: 16px 16px 4px;
+    font-size: 11.5px;
+    white-space: nowrap;
+  }
+  .land-prompt > span {
+    padding: 3px 10px;
+  }
+  .land-seg-path {
+    min-width: 0;
+    border-radius: 3px 0 0 3px;
+    background: var(--blue);
+    color: var(--on-blue);
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .land-seg-branch {
+    flex-shrink: 0;
+  }
+  .land-seg-branch {
+    border-radius: 0 3px 3px 0;
+    background: var(--olive);
+    color: var(--on-accent);
+  }
+  .land-seg-time {
+    margin-left: auto;
+    border-radius: 3px;
+    background: var(--yak-orange);
+    color: var(--yak-brown-ink);
+  }
+  .land-term-body {
+    margin: 0;
+    padding: 4px 16px 18px;
+    max-height: none;
+    border-radius: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .land-term-body .program {
+    color: var(--sage);
+  }
+  .land-term-body b {
+    font-weight: 600;
+  }
+  /* The lines arrive one after another, 60ms apart, as a run prints them: a step from hidden
+     to shown, no fade, since a terminal does not fade. The cursor blinks after the last. */
+  .land-line {
+    display: block;
+    min-height: 1.6em;
+    animation: land-line 0s both; /* each line sets its own delay */
+  }
+  @keyframes land-line {
+    from {
+      visibility: hidden;
+    }
+  }
+  .land-cursor::after {
+    content: "";
+    display: inline-block;
+    width: 7px;
+    height: 13px;
+    margin-left: 2px;
+    vertical-align: -2px;
+    background: var(--yak-cream);
+    animation: land-blink 1s steps(2, start) infinite;
+  }
+  @keyframes land-blink {
+    to {
+      visibility: hidden;
+    }
+  }
+  .land-stamp {
+    position: absolute;
+    right: -44px;
+    bottom: -44px;
+    rotate: 25deg;
+    filter: drop-shadow(0 8px 10px var(--shadow-strong));
+  }
+
+  /* The ticker: the four verdicts and their exit codes on an ink band, rolling by at a walking
+     pace; it rests under the pointer and under reduced motion. The track holds the words
+     twice so the roll never shows a gap. */
+  .land-ticker {
+    overflow: hidden;
+    margin-top: 72px;
+    padding: 11px 0;
+    background: var(--ink);
+    color: var(--on-ink);
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .land-ticker-track {
+    display: inline-flex;
+    animation: land-ticker 48s linear infinite;
+  }
+  .land-ticker:hover .land-ticker-track {
+    animation-play-state: paused;
+  }
+  .land-ticker-track > span {
+    padding: 0 28px;
+  }
+  .land-ticker-track em {
+    margin-left: 10px;
+    font-style: normal;
+    color: color-mix(in srgb, var(--on-ink) 72%, var(--ink));
+  }
+  @keyframes land-ticker {
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
+  /* The question: a kicker at the left, the statement beside it, over the evidence below. */
+  .land-claim {
+    display: grid;
+    grid-template-columns: 160px minmax(0, 1fr);
+    gap: 32px;
+    padding: 80px 0 24px;
+  }
+  .land-claim .land-kicker {
+    position: sticky;
+    top: 24px;
+    align-self: start;
+  }
+  .land-claim h2 {
+    max-width: 18ch;
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(32px, 4vw, 52px);
+    font-weight: 500;
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+  }
+
+  /* The bento: six cells on twelve columns, the picture the biggest, a numeral, a table, an
+     ink cell with the command, four measured bars, and the five beats. */
+  .land-bento {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    grid-auto-rows: minmax(200px, auto);
+    gap: 16px;
+    padding: 56px 0 0;
+  }
+  .land-cell {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow: hidden;
+    padding: 22px;
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-card);
+    background: var(--paper);
+  }
+  .land-cell h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .land-cell p {
+    margin: 0;
+    font-size: 14px;
+  }
+  /* The whole workbench, the inspector included, scaled to the cell's width; the cell's name
+     and the count sit in a row under it rather than over its pixels. */
+  .land-cell-pixels {
+    grid-column: span 7;
+    grid-row: span 2;
+    gap: 0;
+    padding: 0;
+  }
+  .land-cell-pixels img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .land-cell-pixels .land-cell-words {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 22px;
+  }
+  .land-chip {
+    padding: 5px 10px;
+    border: 1px solid var(--hairline);
+    border-radius: 4px;
+    background: var(--paper-deep);
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink);
+  }
+  /* How the tool works, beside the picture: four numbered points in large type, the numerals in
+     the display face, each under a hairline, in the ink rather than the body's soft ink since
+     they are the page's words and not a caption. */
+  .land-how {
+    grid-column: span 5;
+    grid-row: span 2;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 8px 0 8px 16px;
+  }
+  .land-how ol {
+    margin: 14px 0 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: how;
+  }
+  .land-how li {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 12px;
+    padding: 16px 0;
+    border-top: 1px solid var(--hairline);
+    font-size: 19px;
+    line-height: 1.4;
+    letter-spacing: -0.005em;
+    color: var(--ink);
+    counter-increment: how;
+  }
+  .land-how li::before {
+    content: counter(how, decimal-leading-zero);
+    padding-top: 2px;
+    font-family: var(--font-display);
+    font-size: 22px;
+    line-height: 1.2;
+    color: var(--soft-ink);
+  }
+  .land-cell-zero {
+    grid-column: span 4;
+  }
+  .land-cell .land-numeral {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 96px;
+    font-weight: 500;
+    line-height: 0.9;
+    letter-spacing: -0.04em;
+  }
+  .land-rows {
+    margin: 6px 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: 12px;
+  }
+  .land-rows li {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 6px 0;
+    border-top: 1px solid var(--hairline);
+  }
+  .land-rows li > span:first-child {
+    flex: 1;
+    color: var(--ink);
+  }
+  .land-rows li > span:nth-child(2) {
+    color: var(--soft-ink);
+  }
+  .land-tag {
+    padding: 2px 7px;
+    border: 1px solid var(--hairline);
+    border-radius: 4px;
+    background: var(--paper-deep);
+    white-space: nowrap;
+  }
+  .land-cell-proof {
+    grid-column: span 4;
+  }
+  .land-cell-proof table {
+    margin-top: 4px;
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+  .land-cell-proof th,
+  .land-cell-proof td {
+    padding: 7px 0;
+    text-align: left;
+    color: var(--soft-ink);
+  }
+  .land-cell-proof thead {
+    background: transparent;
+  }
+  .land-cell-proof th {
+    font-weight: 500;
+  }
+  .land-cell-proof td:first-child {
+    color: var(--ink);
+  }
+  .land-cell-proof td b {
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .land-cell-ink {
+    grid-column: span 4;
+    border-color: var(--ink);
+    background: var(--ink);
+    color: var(--on-ink);
+  }
+  .land-cell-ink h3 {
+    color: var(--on-ink);
+  }
+  .land-cell-ink p {
+    color: color-mix(in srgb, var(--on-ink) 72%, var(--ink));
+  }
+  .land-cell-ink pre {
+    margin: 4px 0 0;
+    padding: 0;
+    max-height: none;
+    background: transparent;
+    color: var(--on-ink);
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .land-cell-contrast {
+    grid-column: span 6;
+  }
+  .land-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 6px 0 0;
+    padding: 0;
+    list-style: none;
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+  .land-bar {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    color: var(--soft-ink);
+  }
+  .land-bar b {
+    font-weight: 600;
+    color: var(--ink);
+  }
+  /* Flat bars (design pillars, rule 10) in the chart mark's ink, the minimum a rule across. */
+  .land-bar-track {
+    position: relative;
+    height: 8px;
+    margin-top: 5px;
+    border-radius: 2px;
+    background: var(--paper-deep);
+  }
+  .land-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: var(--data);
+  }
+  .land-bar-min {
+    position: absolute;
+    top: -3px;
+    width: 1px;
+    height: 14px;
+    background: var(--rule);
+  }
+  .land-cell-steps {
+    grid-column: span 6;
+  }
+  .land-steps {
+    margin: 4px 0 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: step;
+  }
+  .land-steps li {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr);
+    gap: 8px;
+    padding: 8px 0;
+    border-top: 1px solid var(--hairline);
+    font-size: 13px;
+    counter-increment: step;
+  }
+  .land-steps li::before {
+    content: counter(step, decimal-leading-zero);
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--soft-ink);
+  }
+  .land-steps b {
+    display: block;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  /* The band: the window chrome's green from edge to edge, the same in both themes, with the
+     contrast table framed at its right. */
+  .land-band {
+    margin-top: 72px;
+    padding: 72px 0 96px;
+    background: var(--chrome);
+    color: var(--on-chrome);
+  }
+  .land-band-inner {
+    display: grid;
+    grid-template-columns: minmax(0, 4fr) minmax(0, 7fr);
+    gap: 56px;
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 48px;
+  }
+  .land-band .land-kicker {
+    color: var(--on-chrome-soft);
+  }
+  .land-band h2 {
+    margin: 12px 0 14px;
+    font-family: var(--font-display);
+    font-size: clamp(30px, 3.6vw, 44px);
+    font-weight: 500;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: var(--on-chrome);
+  }
+  .land-band p {
+    font-size: 15px;
+    color: var(--on-chrome-soft);
+  }
+  .land-shots {
+    position: relative;
+    margin: 0;
+  }
+  .land-shots img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 10px;
+    box-shadow: 2px 28px 56px -18px var(--shadow-strong);
+  }
+  .land-shot-front {
+    position: absolute;
+    bottom: -44px;
+    left: -28px;
+    width: 58%;
+    rotate: -2deg;
+    border: 1px solid var(--chrome-line);
+    border-radius: 10px;
+  }
+
+  /* The seal and the way back, then the footer. */
+  .land-close {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 48px;
+    align-items: center;
+    margin-top: 80px;
+    padding: 64px 0 24px;
+    border-top: 1px solid var(--hairline);
+  }
+  .land-close .land-cta {
+    margin-top: 0;
+  }
+  .tooling footer {
+    margin-top: 56px;
+    padding: 20px 0;
+    font-size: 12px;
+  }
+  .tooling footer code {
+    font-size: 12px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .land-line,
+    .land-cursor::after,
+    .land-ticker-track {
+      animation: none;
+    }
+  }
+  @media (max-width: 960px) {
+    .land-hero {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 40px;
+      padding-top: 32px;
+    }
+    .land-terminal {
+      transform: none;
+    }
+    .land-stamp {
+      left: auto;
+      right: -12px;
+      bottom: -36px;
+      width: 104px;
+      height: 104px;
+    }
+    .land-seg-time {
+      display: none;
+    }
+    .land-claim {
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+    .land-claim .land-kicker {
+      position: static;
+    }
+    .land-bento > .land-cell,
+    .land-how {
+      grid-column: span 12;
+    }
+    .land-how {
+      grid-row: span 1;
+      padding: 8px 0;
+    }
+    .land-how li {
+      font-size: 17px;
+    }
+    .land-cell-pixels {
+      grid-row: span 1;
+    }
+    .land-band-inner {
+      grid-template-columns: 1fr;
+      padding: 0 28px;
+    }
+    .land-band {
+      padding-bottom: 88px;
+    }
+    .land-close {
+      grid-template-columns: 1fr;
+      gap: 24px;
+    }
+  }
+  @media (max-width: 600px) {
+    .land-shot-front {
+      display: none;
+    }
+  }
+}

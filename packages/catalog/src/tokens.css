@@ -1,0 +1,1041 @@
+/* Brand type, bundled locally (SIL Open Font License) so it renders offline and in the
+   desktop shell: Inter for interface and body text, Newsreader for display moments.
+   Optical-size cuts adjust letterforms between small labels and large headings. */
+@import "@fontsource-variable/inter/opsz.css";
+/* Inter's own italics, so an aside in a reply is a real italic, never a slanted roman (ADR-140). */
+@import "@fontsource-variable/inter/opsz-italic.css";
+@import "@fontsource-variable/newsreader/opsz.css";
+/* Newsreader's own italics, so an italic word in a headline is a real italic (ADR-160). */
+@import "@fontsource-variable/newsreader/opsz-italic.css";
+@import "./primitives.css";
+
+:root {
+  /* Fallback stacks mirror yaklabs.ai. */
+  --font-text: "Inter Variable", Inter, Helvetica, Arial, sans-serif;
+  --font-display: "Newsreader Variable", Newsreader, Georgia, serif;
+  /* The browser's own surfaces (scrollbars, form fields) follow the theme the root names, not the
+     OS: light here, dark under data-theme="dark", whatever the system prefers. */
+  color-scheme: light;
+  font-family: var(--font-text);
+  font-optical-sizing: auto;
+  color: var(--ink);
+  background: var(--bg);
+  font-synthesis: none;
+
+  /* The site's own tokens, same names as its stylesheet (ADR-049); where yaklabs.ai and
+     meetkay.ai differ, Kay's own site wins (ADR-050). Two text inks and two line weights:
+     that is the whole contrast pattern. */
+  --paper: #f0efea; /* the app surface */
+  --paper-deep: #e4e4df; /* hover and inset fill */
+  --ink: #252524; /* headings, primary text: 13.3:1 on paper */
+  /* Body and all secondary text, one step lighter than headings: the value in the site's
+     shared brand.css (ADR-057), where its pages differ (#4a4a47, #5c5c57). 6.4:1 on paper. */
+  --soft-ink: #565650;
+  /* An archived thread (ADR-129): soft ink a step toward the paper, as dim as text may go on
+     the sidebar's hover fill. 5.17:1 on paper, 4.67:1 on paper-deep. */
+  --faint-ink: #64645e;
+  --blue: #95aac8; /* text selection */
+  /* the words on --blue, in either theme: 8.0:1; the dark theme's light ink was 2.0:1 there */
+  --on-blue: var(--yak-night);
+  --sage: #c7cfba; /* the user's bubble only (ADR-047) */
+  --chalk: #e5e8d9;
+  --moss: #263b30;
+  --rust: #a86f36;
+  --rule: rgba(37, 37, 36, 0.72); /* strong lines and outlines: 5.7:1 */
+  --hairline: rgba(37, 37, 36, 0.25); /* card borders and dividers */
+
+  /* Ours, where the site declares nothing: "css" = a literal in its stylesheet, "derived" =
+     our choice, "Ethan" = Ethan's pick. Nothing is sampled from pixels: the screen used for
+     sampling had a blue-light filter (ADR-051). */
+  --yak-night: #111411; /* css: the page body behind the shell */
+  --yak-cream: #f0efea; /* css: the site's paper; the text on dark fills in either mode */
+  --yak-graphite: #56564f; /* Ethan: chart marks; green is kept for button hovers (ADR-058) */
+  --yak-paper-bright: #f8f8f6; /* Ethan: one step brighter than paper */
+  /* derived: --sage's hue (OKLCH 124°) at L 0.46 / C 0.06, an olive that reads as green in
+     flat UI and shares a hue with the sage tint; chosen over a forest-hue option. */
+  --yak-green: #515e38;
+  /* Ethan: warm greys for surfaces that need the user's attention (ADR-046, ADR-054). */
+  --yak-stone-pale: #d6d5cf; /* light mode: the Recap and Needs you cards */
+  --yak-stone: #8a8a85; /* light mode: hover on those cards; also the focus ring */
+  --yak-slate: #62625d; /* dark mode: the lightest grey where cream text clears 4.5:1 */
+  /* Ethan: the "Needs attention" label, a caution orange pill with near-black brown text (5.5:1). */
+  --yak-orange: #d19456;
+  --yak-brown-ink: #3b2612;
+
+  /* Roles built on those: the window around the app, and the rest below. */
+  --bg: var(--yak-paper-bright); /* the window around the app */
+  --compose-bg: var(--yak-paper-bright); /* the compose box, brighter than the app (ADR-056) */
+  --olive: var(--yak-green); /* 6.1:1 on paper and under cream text */
+  --on-accent: var(--yak-cream); /* css: the site's text on dark fills, in either mode */
+  --on-ink: var(--paper); /* text on an ink fill: paper in light mode, night in dark */
+  /* The compose box's send button once there is something to send: the olive, cream on it. */
+  --send: var(--olive);
+  --on-send: var(--on-accent);
+  --control-bg: white; /* a button at rest: brighter than the paper it sits on */
+  /* The user's bubble, and nothing else (ADR-047): the site's sage tint marks "you". */
+  --bubble-tint: color-mix(in srgb, var(--sage) 40%, var(--paper));
+  --bubble-tint-strong: color-mix(in srgb, var(--sage) 75%, var(--paper));
+  --bubble-line: var(--sage);
+  --data: var(--yak-graphite); /* chart marks: 6.4:1 on paper */
+  /* Ethan: a warm mid grey; 3.0:1 on the app surface and 3.3:1 on the page, the 3:1 a ring needs.
+     The same grey in dark (Ethan), never Zed's cyan: 4.56:1 on the dark paper, 3.78:1 on the
+     compose box. */
+  --focus: #8a8a85;
+  --shadow: color-mix(in srgb, var(--yak-night) 10%, transparent);
+  --shadow-strong: color-mix(in srgb, var(--yak-night) 20%, transparent);
+  /* A soft drop below the box and a faint one to its right, none above or left, fitted to Kay's:
+     the offset moves it down, the negative spread pulls its blur in from the sides, and the
+     long blur gives the slow fall-off. Both themes read the same --shadow token. */
+  --edge-shadow: 2px 13px 22px -12px var(--shadow);
+  /* derived from --edge-shadow for a small floating control, such as the reading tools' bar: the
+     same fall down and to the right, none above, scaled to a 34px bar, whose 22px blur the
+     edge shadow's -12px spread would swallow; the strong shadow, since the box below it hides
+     most of what falls. */
+  --float-shadow: 2px 8px 14px -6px var(--shadow-strong);
+  /* What floats over the whole page, a menu, a dialog or a toast: an even fall below with none
+     above, the catalog Menu's own (primitives.css), which the shadcn menu took up, named so the
+     toast can't drift from them (Ethan). */
+  --popup-shadow: 0 8px 24px var(--shadow-strong);
+  --scrim: color-mix(in srgb, var(--paper) 72%, transparent);
+  --warn-bg: #f4ecd9; /* derived: warm notice, harmonised with the paper */
+  --warn-ink: #66511f; /* derived */
+  --record: #b8432c; /* derived: recording dot */
+  /* The attention surface for what needs attention (the recap, "Needs you", ADR-042/046), its
+     text, and the tiles on it. Light mode: a mid grey with the darkest ink, since even the
+     regular ink is 4.4:1 on it, and light tiles; hovers lighten, as on every light surface. */
+  --attention-bg: var(--yak-stone-pale);
+  --on-attention: var(--ink); /* 10.4:1 */
+  --on-attention-soft: var(--soft-ink); /* 4.6:1 */
+  --attention-hover: var(--yak-stone); /* Ethan */
+  /* Hovered rows darken to #8a8a85, where the usual inks fail (4.4:1, 1.9:1), so their text
+     switches to the darkest ink: 5.4:1. */
+  --attention-hover-ink: var(--yak-night);
+  --attention-line: var(--hairline);
+  --attention-focus: var(--ink); /* 10.4:1; the page's grey ring would be 2.3:1 here */
+  --on-attention-inverse: var(--paper); /* text on a filled action: 13.3:1 on ink */
+  /* Tiles are lighter than the card: the old #cbcac4 was 1.1:1 against it, and soft-ink failed. */
+  --tile-bg: var(--paper); /* 1.3:1 against the card */
+  --tile-ink: var(--ink); /* 13.3:1 */
+  --tile-muted: var(--soft-ink); /* 5.8:1 */
+  --tile-wash: var(--yak-stone);
+  --tile-field-bg: transparent;
+  --tile-field-border: var(--rule); /* 5.7:1 */
+  --tile-field-placeholder: var(--rule); /* 5.7:1 */
+  /* Needs you parts from the Recap (ADR-059, ADR-067): the card is the app's paper with no
+     grey fill at rest; option pills, the header and Skip hover to paper-deep (ink 12.0:1,
+     soft-ink 5.8:1), and the hover badge outline is soft-ink (5.8:1). */
+  --awaiting-bg: var(--paper);
+  --awaiting-tile-bg: transparent;
+  --awaiting-hover: var(--paper-deep); /* resolved here, before .attention-surface remaps it */
+  --awaiting-label-bg: var(--yak-orange);
+  --awaiting-label-ink: var(--yak-brown-ink);
+
+  /* The window chrome (ADR-110): the title bar is a deep green in either theme, as a desktop
+     window's frame is, and everything on it is cream. Ratios are against --chrome. */
+  --chrome: #3b423c; /* Ethan's mock, sampled (R9); confirm the hex (Q3) */
+  --on-chrome: var(--yak-cream); /* 8.98:1 */
+  --on-chrome-soft: color-mix(in srgb, var(--yak-cream) 72%, var(--chrome)); /* 5.56:1 */
+  /* hover fill: 1.25:1 against the bar, so a skeleton shows; cream on it 7.21:1 */
+  --chrome-hover: color-mix(in srgb, var(--yak-cream) 8%, var(--chrome));
+  /* lines only, never a boundary a control depends on: 1.63:1 against the bar */
+  --chrome-line: color-mix(in srgb, var(--yak-cream) 18%, transparent);
+  /* The painted bar (ADR-115): the painting's mean colour, as painting.json records it from the
+     decoded file, fills the bar before the image loads or if it never does; cream on it 7.41:1.
+     No pixel of the decoded painting is brighter than luminance 0.0963, where cream is 6.23:1
+     and the painted soft ink 4.87:1. */
+  --chrome-painting: #454f47;
+  --on-chrome-painting-soft: color-mix(in srgb, var(--yak-cream) 85%, var(--chrome)); /* 5.79:1 */
+  /* a darkening wash at the bar's ends: moss is darker than every pixel under it, so it only
+     raises the inks' ratios */
+  --chrome-painting-wash: color-mix(in srgb, var(--moss) 45%, transparent);
+  /* the painted bar's hover and skeleton fill: a night wash, since a flat fill vanishes on a
+     painting of the same green (1.03:1); 1.37:1 over the painting's mean, and it only darkens,
+     so cream on it is 10.12:1 and the painted soft ink 7.91:1 */
+  --chrome-painting-hover: color-mix(in srgb, var(--yak-night) 35%, transparent);
+  /* "Selected" on the bar, the active tab and the pressed layout: a cream pill, 8.98:1
+     against the bar in either theme, with the night green on it (16.1:1). */
+  --chrome-pill: var(--yak-cream);
+  --on-chrome-pill: var(--yak-night); /* 16.1:1 */
+  --on-chrome-pill-soft: color-mix(in srgb, var(--yak-night) 72%, var(--yak-cream)); /* 6.93:1 */
+  /* the close button's hover on the pill; soft ink on it 5.89:1 */
+  --chrome-pill-hover: color-mix(in srgb, var(--yak-night) 8%, var(--yak-cream));
+  /* derived: the desk the window sits on, between Ethan's two stone greys; 1.54:1 against the
+     bright paper, 1.43:1 against the paper and 6.30:1 against the bar, so every edge shows (Q10) */
+  --desk: color-mix(in srgb, var(--yak-stone-pale) 85%, var(--yak-stone));
+  /* a new thread's welcome and the empty canvas (ADR-136). Both paintings sit under one wash of
+     the paper and show through at 11%, Ethan's Figma value for the landscape, so either reads as
+     a picture under the field, never a photograph on it; the words sit in the clearing, on plain
+     paper. Atlas is the ink at 30%, Ethan's Figma value: 1.84:1 off the paper in light, so he
+     reads as a sketch without competing with the words */
+  --splash-wash: color-mix(in srgb, var(--paper) 89%, transparent);
+  --splash-figure: color-mix(in srgb, var(--ink) 30%, transparent);
+  /* the construction lines behind Atlas, the ink at 12%: 1.26:1 off the paper, so they read as
+     pencil under the figure and never as ground */
+  --splash-line: color-mix(in srgb, var(--ink) 12%, transparent);
+  /* The design tooling seal (ADR-160), a gold medal that links the welcome to the tooling page:
+     a metal, so it keeps one colour in either theme. derived: the caution orange is the face,
+     the rust is the edge (3.5:1 on the light paper, so the silhouette clears 3:1 as a mark),
+     and the glint is the orange lifted to the bright paper. The words on the face take the
+     brown ink the orange pill already carries (5.5:1). */
+  --seal-gold: var(--yak-orange);
+  --seal-gold-deep: var(--rust);
+  --seal-gold-glint: color-mix(in srgb, var(--yak-orange) 55%, var(--yak-paper-bright));
+  --on-seal: var(--yak-brown-ink);
+
+  --btn-radius: 4px; /* every button's corners (.btn, Done, Skip, Submit); tokens.test.ts guards it */
+  --radius-card: 14px; /* the catalog card and the thread panel; shadcn owns --radius (ADR-082) */
+  /* A lane's collapse (ADR-134): its 20px fill sits --leading-space inside the lane's 1px border,
+     the inset the collapsed strip gives its expand, open or collapsed alike (Ethan: "the same
+     padding b/t the edge of the component and itself in expanded view as it does in
+     collapsed"); and --leading-gap before the title, the 14px between the Share and Close icons
+     at the bar's other end (28px buttons, 16px icons, 2px apart; Ethan). */
+  --leading-space: 7px;
+  --leading-gap: 14px;
+  --space: 24px;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+button,
+input,
+textarea {
+  font: inherit;
+}
+button,
+a {
+  touch-action: manipulation;
+}
+button {
+  cursor: pointer;
+  border: 1px solid var(--hairline);
+  border-radius: 7px;
+  background: var(--control-bg);
+  color: var(--ink);
+  padding: 10px 14px;
+  font-size: 13px;
+}
+button:hover {
+  background: var(--paper-deep);
+}
+/* Outline button, after yaklabs.ai's "Apply for this role" (ADR-035): an ink outline at rest
+   that fills with moss on hover, straight from the site's rule (ADR-052):
+   `.apply-jump:hover { background: var(--moss); border-color: var(--moss); color: var(--paper) }`.
+   The site has no delay: the "beat" before the fill is the 150ms ease transition itself.
+   Timing is tokenised for iteration. */
+.btn {
+  --btn-border: var(--rule); /* css: the site's outline is its rule */
+  --btn-hover-bg: var(--moss); /* css: the site's hover rule */
+  --btn-hover-border: var(--moss); /* css */
+  --btn-hover-ink: var(--on-accent); /* css: 10.4:1 on moss */
+  --btn-duration: 150ms; /* css */
+  --btn-delay: 0ms; /* css: none; kept as a token for iteration */
+  --btn-ease: ease; /* css: the default curve */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 22px; /* css */
+  border: 1px solid var(--btn-border);
+  border-radius: var(--btn-radius);
+  background: transparent;
+  color: var(--ink);
+  font-size: 14px; /* css */
+  font-weight: 500; /* css */
+  line-height: 1.3;
+  white-space: nowrap;
+  /* css: only the fill and text colour animate; the border turns moss instantly. */
+  transition:
+    background-color var(--btn-duration) var(--btn-ease),
+    color var(--btn-duration) var(--btn-ease);
+}
+.btn:hover,
+.btn[data-preview="hover"] {
+  background: var(--btn-hover-bg);
+  border-color: var(--btn-hover-border);
+  color: var(--btn-hover-ink);
+  transition-delay: var(--btn-delay);
+}
+.btn:focus-visible,
+.btn[data-preview="focus"] {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+  background: transparent;
+  color: var(--ink);
+}
+/* Text field: the button's outline and 4px corners (ADR-035), so a place to type reads as
+   part of the same family. Surfaces tune it through the --field-* tokens (ADR-043). */
+.field {
+  --field-bg: transparent;
+  --field-border: var(--rule); /* as .btn */
+  /* A prompt is one step greyer than body text: the rule's ink (5.7:1), as pillar 14 asks. */
+  --field-placeholder: var(--rule);
+  display: block;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 5px 10px;
+  border: 1px solid var(--field-border);
+  border-radius: 4px; /* css: the button's corners */
+  background: var(--field-bg);
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.45;
+  transition: border-color var(--btn-duration, 150ms) ease;
+}
+.field::placeholder {
+  color: var(--field-placeholder);
+  opacity: 1;
+}
+.field:hover,
+.field[data-preview="hover"] {
+  border-color: var(--ink);
+}
+.field:focus-visible,
+.field[data-preview="focus"] {
+  border-color: var(--ink);
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.field:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+@media (prefers-reduced-motion: reduce) {
+  .field {
+    transition-duration: 0ms;
+  }
+}
+
+/* Dark mode is Umbralkai (ADR-162): Andrew Sen's Zed theme, mapped onto these roles in Ethan's
+   Figma (yak-ui-tests, the Theme collection's Umbralkai mode), "Ethan" where he moved a value
+   there and "Zed" where the theme names it. Warm neutral greys from a near-black page up to an
+   off-white ink, with the brand's greens kept for what they mark (the agent glyphs, the slider,
+   the button hover). Ratios are against the dark paper unless a pair says otherwise. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #131212; /* Zed: background, the page and the workspace */
+  --paper: #242223; /* Ethan: the app surface, lifted from Zed's panel #1e1c1d; 1.18:1 on the bg */
+  /* derived: the hover and inset fill a step past the compose box and menus, so a fill on them
+     still shows (1.13:1; light's is 1.2:1, which would take the archived ink up to the body's);
+     1.36:1 on the paper */
+  --paper-deep: #3a3839;
+  --compose-bg: #323031; /* Ethan: the compose box and menus, 1.21:1 on the paper */
+  --control-bg: #2a2829;
+  --ink: #fff7ed; /* Ethan: Zed's selected ink; 14.89:1, 17.61:1 on the bg */
+  --soft-ink: #aeaeae; /* Zed: text; 7.13:1, 5.24:1 on paper-deep */
+  /* archived (ADR-129): derived, Zed's hint lifted to clear the inset fill, since its muted
+     #636363 is 2.6:1 here and fails text; 6.19:1 on paper, 4.56:1 on paper-deep */
+  --faint-ink: #a2a2a2;
+  --rule: color-mix(in srgb, #aeaeae 72%, transparent);
+  /* Ethan: the dividing lines at the old dark theme's strength, the cream at 18%, 1.71:1 on the
+     paper (1.7:1 before, 1.64:1 in light); Zed's border was 1.19:1 and read thinner */
+  --hairline: color-mix(in srgb, var(--yak-cream) 18%, transparent);
+  /* the slider's accent keeps the brand's green, lifted to clear 3:1: 5.42:1 */
+  --olive: #8e9d6f;
+  /* Zed: element background as the desk: 1.52:1 against the paper, 1.63:1 against the bar */
+  --desk: #3e4044;
+  --data: #aeaeae; /* Zed: text, chart marks: 7.13:1 */
+  --on-ink: var(--bg); /* 17.61:1 on the ink */
+  --on-accent: #fff7ed; /* the button hover keeps moss: 11.3:1 on it */
+  /* Ethan: the send button ready to send is Zed's text grey, not the olive, with the page's
+     near-black arrow on it (8.43:1; the cream would be 2.09:1); 5.91:1 on the compose box */
+  --send: #aeaeae;
+  --on-send: var(--bg);
+  /* derived: Zed's element greys, so "you" still reads apart from the agent's words */
+  --bubble-tint: #2e3033;
+  --bubble-tint-strong: #3e4044;
+  --bubble-line: #4f5257; /* 2.02:1 */
+  --shadow: color-mix(in srgb, black 50%, transparent);
+  --shadow-strong: color-mix(in srgb, black 70%, transparent);
+  /* the paintings show a step more on the dark paper (20%), where a daylight picture sits back
+     anyway; Atlas is the ink at 26%, 2.29:1 off the dark paper */
+  --splash-wash: color-mix(in srgb, var(--paper) 80%, transparent);
+  --splash-figure: color-mix(in srgb, var(--ink) 26%, transparent);
+  --warn-bg: #2b2618; /* derived: the warm notice, deepened */
+  --warn-ink: #c7ad40; /* Zed: ansi yellow; 6.8:1 on it */
+  --record: #f48e74; /* Zed: ansi red, the recording dot; 6.75:1 */
+  --attention-bg: #302e2f; /* Ethan: the recap one step above the paper */
+  --on-attention: #dedede; /* Zed: emphasis; 10.02:1 */
+  --on-attention-soft: #aeaeae; /* 6.08:1 */
+  --attention-hover: #3e4044; /* Zed: element background */
+  --attention-hover-ink: #fff7ed; /* 9.78:1 */
+  --awaiting-bg: #2a2829;
+  --awaiting-tile-bg: #1e1c1d;
+  --awaiting-hover: #3e4044;
+  --attention-line: #3e4044;
+  /* Ethan: the ring on the recap is the cream, as before Umbralkai, never Zed's cyan; 11.71:1 */
+  --attention-focus: var(--yak-cream);
+  --on-attention-inverse: #2a2829;
+  --tile-bg: #1e1c1d; /* Zed: panel */
+  --tile-ink: #dedede; /* 12.6:1 */
+  --tile-muted: #aeaeae; /* 7.64:1 */
+  --tile-wash: var(--attention-hover);
+  --tile-field-bg: #131212;
+  --tile-field-border: #636363; /* Zed: text.muted, a boundary, not text */
+  --tile-field-placeholder: #969696;
+  --awaiting-label-ink: #131212; /* 7.2:1 on the caution orange */
+
+  /* The window chrome in Zed's title bar grey, not the light theme's green (ADR-162). The pill
+     keeps the light theme's shape, a cream piece of the bar with the night on it: Zed's own
+     selected element, #fff7ed, since its darker tab is 1.1:1 against the bar and a pill must
+     clear 3:1. Ratios are against --chrome. */
+  --chrome: #1e1c1d; /* Zed: title_bar */
+  --on-chrome: #dedede; /* Zed: emphasis; 12.6:1 */
+  --on-chrome-soft: #aeaeae; /* Zed: text; 7.64:1 */
+  /* derived: Ethan's attention grey, 1.26:1 so a skeleton shows (Zed's elevated grey is 1.16:1);
+     the ink on it 10.02:1 */
+  --chrome-hover: #302e2f;
+  --chrome-line: color-mix(in srgb, #3e4044 44%, transparent);
+  --chrome-pill: #fff7ed; /* Zed: ghost_element.selected; 15.96:1 */
+  --on-chrome-pill: var(--bg); /* 17.61:1 */
+  --on-chrome-pill-soft: color-mix(in srgb, var(--bg) 72%, var(--chrome-pill)); /* 7.31:1 */
+  --chrome-pill-hover: color-mix(in srgb, var(--bg) 8%, var(--chrome-pill)); /* soft ink 6.21:1 */
+  /* The painted bar keeps its painting in either theme: the ink 6.34:1 on its mean colour, the
+     painted soft ink, which mixes in this bar, 5.48:1. */
+}
+
+/* The attention surface for what needs attention (ADR-042). It redefines the text tokens, so
+   everything inside adapts without colours of its own. */
+.attention-surface {
+  --ink: var(--on-attention);
+  --soft-ink: var(--on-attention-soft);
+  --paper-deep: var(--attention-hover);
+  --hairline: var(--attention-line);
+  --rule: var(--attention-line);
+  --focus: var(--attention-focus);
+  background: var(--attention-bg);
+  color: var(--ink);
+}
+/* The window chrome (ADR-110): the title bar redefines the roles, as the attention surface
+   does, so every primitive on it comes out cream on green with no colours of its own. shadcn's
+   roles (packages/ui globals.css) resolve on the root, so the ones the bar's primitives read are
+   restated here. Menus and tooltips open in portals outside the bar and keep the page's roles. */
+.chrome-surface {
+  --ink: var(--on-chrome);
+  --soft-ink: var(--on-chrome-soft);
+  --paper-deep: var(--chrome-hover);
+  --hairline: var(--chrome-line);
+  --rule: var(--on-chrome-soft);
+  --focus: var(--on-chrome); /* 8.98:1; the page's grey ring would be 2.98:1 here */
+  --on-ink: var(--on-chrome-pill);
+  --foreground: var(--ink);
+  --muted: var(--paper-deep);
+  --muted-foreground: var(--soft-ink);
+  --accent: var(--paper-deep);
+  --accent-foreground: var(--ink);
+  --primary: var(--ink);
+  --primary-foreground: var(--on-ink);
+  --border: var(--hairline);
+  --input: var(--rule);
+  --ring: var(--focus);
+  background: var(--chrome);
+  color: var(--ink);
+}
+/* The pill: a piece of cream on the bar, with the night inks back on it, the focus ring too,
+   since a tab draws its ring inside itself. A `.chrome-pill` is cream while it is active. */
+.chrome-surface .chrome-pill[data-active] {
+  --focus: var(--on-chrome-pill); /* 16.1:1 on the pill */
+  --ink: var(--on-chrome-pill);
+  --soft-ink: var(--on-chrome-pill-soft);
+  --paper-deep: var(--chrome-pill-hover);
+  --foreground: var(--ink);
+  --muted: var(--paper-deep);
+  --muted-foreground: var(--soft-ink);
+  --accent: var(--paper-deep);
+  --accent-foreground: var(--ink);
+}
+
+/* A tile on the attention surface: its own fill and text, so choices stand apart by colour. */
+.attention-surface .tile {
+  --ink: var(--tile-ink);
+  --soft-ink: var(--tile-muted);
+  --paper-deep: var(--tile-wash);
+  background: var(--tile-bg);
+  color: var(--ink);
+}
+.attention-surface .field {
+  --field-bg: var(--tile-field-bg);
+  --field-border: var(--tile-field-border);
+  --field-placeholder: var(--tile-field-placeholder);
+}
+
+/* Compact size for buttons inside cards and dialogs. */
+.btn-sm {
+  padding: 6px 14px;
+  font-size: 13px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn,
+  .btn:hover {
+    transition-duration: 0ms;
+    transition-delay: 0ms;
+  }
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+/* A clicked text field shows only its focused border, never the ring: the ring is for
+   keyboard and assistive focus (ADR-053, see inputModality.ts). */
+:root[data-input="pointer"] :is(input, textarea):focus-visible {
+  outline: none;
+}
+a {
+  color: var(--olive);
+}
+/* Body copy sits one step lighter than headings, as on yaklabs.ai. */
+/* A clicked text field shows only its focused border, never the ring: the ring is for
+   keyboard and assistive focus (ADR-053, see inputModality.ts). */
+:root[data-input="pointer"] :is(input, textarea):focus-visible {
+  outline: none;
+}
+/* Text selection, as on yaklabs.ai. */
+::selection {
+  background: var(--blue);
+  color: var(--on-blue);
+}
+p {
+  line-height: 1.6;
+  color: var(--soft-ink);
+}
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+h2 {
+  font-size: 22px;
+  font-weight: 550;
+  letter-spacing: -0.6px;
+}
+h3 {
+  font-size: 18px;
+  font-weight: 550;
+}
+.app {
+  display: grid;
+  grid-template-columns: 232px 1fr;
+  min-height: 100vh;
+}
+aside {
+  background: var(--paper-deep);
+  border-right: 1px solid var(--hairline);
+  padding: 34px 20px;
+  display: flex;
+  flex-direction: column;
+}
+.brand {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  text-decoration: none;
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.workspace {
+  margin-top: 38px;
+  font-size: 11px;
+  letter-spacing: 1.8px;
+}
+.workspace span {
+  float: right;
+  background: var(--paper-deep);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.sidebar-label {
+  font-size: 9px;
+  letter-spacing: 1.1px;
+  color: var(--soft-ink);
+  margin-top: 24px;
+}
+nav {
+  display: grid;
+  gap: 5px;
+}
+nav button {
+  background: transparent;
+  border: none;
+  text-align: left;
+  padding: 12px 10px;
+  font-size: 12px;
+}
+nav button span {
+  float: right;
+  color: var(--soft-ink);
+}
+nav button[aria-current] {
+  background: var(--control-bg);
+  box-shadow: 0 2px 8px var(--shadow);
+  font-weight: 650;
+}
+.sidebar-note {
+  margin-top: auto;
+  padding-top: 65px;
+  font-size: 11px;
+  color: var(--soft-ink);
+}
+.sidebar-note p {
+  margin: 12px 0;
+}
+main {
+  padding: 0 48px;
+  max-width: 1440px;
+  width: 100%;
+  margin: auto;
+}
+.topbar {
+  height: 84px;
+  border-bottom: 1px solid var(--hairline);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+}
+.topbar b {
+  font-weight: 500;
+}
+.topbar .muted {
+  padding: 0 10px;
+}
+.badge {
+  font-size: 10px;
+  white-space: nowrap;
+  border-radius: 30px;
+  padding: 6px 10px;
+  background: var(--paper-deep);
+  color: var(--ink);
+  align-self: flex-start;
+}
+.badge.neutral {
+  background: var(--paper-deep);
+  color: var(--soft-ink);
+}
+.intro {
+  padding: 44px 0 24px;
+}
+.eyebrow {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  font-weight: 650;
+  color: var(--olive);
+  margin-bottom: 14px;
+}
+h1 {
+  font-family: var(--font-display);
+  font-size: 44px;
+  font-weight: 500;
+  letter-spacing: -0.8px;
+  line-height: 1.15;
+  margin-bottom: 16px;
+}
+h1 span {
+  color: var(--soft-ink);
+}
+.intro > p:last-child {
+  color: var(--soft-ink);
+  font-size: 13px;
+  max-width: 480px;
+}
+.question {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  background: var(--paper-deep);
+  padding: 17px 20px;
+  margin-bottom: 22px;
+}
+.avatar {
+  background: var(--paper);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+}
+.question small {
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--soft-ink);
+}
+.question p {
+  font-size: 13px;
+  margin: 3px 0 0;
+}
+.question .badge {
+  margin-left: auto;
+  align-self: center;
+}
+.evaluation {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 215px;
+  gap: 24px;
+}
+.evaluation > div {
+  min-width: 0;
+}
+.card {
+  background: var(--paper);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-card);
+  box-shadow: var(--edge-shadow);
+  overflow: hidden;
+  min-width: 0;
+}
+.card-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 24px 24px 16px;
+  margin-bottom: 16px; /* the body starts clear of the header's flush line */
+}
+.card-heading h2 {
+  font-size: 21px;
+}
+/* A host's control before the title (ADR-134), such as a lane's collapse: first in the row, its
+   glyph pulled back onto the heading's edge, and the title straight after it. A card with no
+   header carries it at its top. */
+.card-heading > .header-leading,
+.card.state > .header-leading {
+  display: flex;
+  flex-shrink: 0;
+  align-self: center;
+  margin-left: -7px;
+}
+/* In a heading, --leading-space from the card's edge to the fill and --leading-gap from the
+   fill to the title, as in a thread's title bar, so a card lane and a thread lane put their
+   collapse and their title in the same place. The heading's own start padding becomes the
+   space, whatever padding its context gives it (a card in a thread or a lane has 16px, a page's
+   card 24px or 18px), so the collapse never rests on a guess of it. */
+.card-heading > .header-leading {
+  margin-left: 0;
+  margin-right: calc(var(--leading-gap) - 14px);
+}
+/* The host's control at the far end (a lane's close): a card with no header carries it at its
+   top right, where the header's actions would have ended. */
+.card.state {
+  position: relative;
+}
+.card.state > .header-trailing {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+.card-heading > .header-leading + .card-heading-text {
+  min-width: 0;
+  margin-right: auto;
+}
+.card-heading .eyebrow {
+  font-size: 9px;
+  margin-bottom: 10px;
+}
+.measure {
+  font-size: 11px;
+  padding: 0 24px 10px;
+}
+.legend-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  background: var(--data); /* the legend key is the mark's own colour */
+  border-radius: 50%;
+  margin-right: 4px;
+}
+.chart {
+  height: 254px;
+  width: 100%;
+}
+/* Recharts learns a resized box a frame late (its ResizeObserver sets state, React draws after
+   the paint) and holds the drawing at the old width in the meantime, so dragging a pane or a
+   lane narrower clipped the bars at the card's edge on every frame of the drag (Ethan). Its
+   SVG already fills its parent and carries a viewBox, so its wrappers fill the chart instead
+   of keeping the old width inline, and the last drawing scales to the box until the redraw
+   lands. The !important beats the sizes Recharts writes inline. */
+.chart .recharts-responsive-container > div,
+.chart .recharts-wrapper {
+  width: 100% !important;
+  height: 100% !important;
+}
+.muted {
+  color: var(--soft-ink);
+}
+footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  border-top: 1px solid var(--hairline);
+  padding: 18px 24px;
+  font-size: 10px;
+  line-height: 1.8;
+}
+footer button {
+  font-size: 11px;
+  white-space: nowrap;
+}
+/* A card's footer is laid out in whole pixels (ADR-072): a 17px line for the button and the
+   source line alike, so the text sits exactly 7px inside the 31px button's height and both snap
+   to the same pixel rows whatever the scroll position. */
+.card footer .btn {
+  line-height: 17px;
+}
+/* A toggle keeps one width for both labels, centred, so it does not jump when it flips: 128px
+   fits the widest label ("View data table", 125.7px) in whole pixels, so its left edge never
+   lands between pixels (ADR-072). */
+.card-toggle {
+  min-width: 128px;
+  justify-content: center;
+  text-align: center;
+}
+.evaluation-notes {
+  padding: 20px 0;
+}
+.evaluation-notes > p:not(.eyebrow) {
+  font-size: 12px;
+  color: var(--soft-ink);
+}
+.evaluation-notes ul {
+  padding-left: 16px;
+  font-size: 11px;
+  line-height: 2.2;
+  color: var(--soft-ink);
+}
+hr {
+  border: 0;
+  border-top: 1px solid var(--hairline);
+  margin: 24px 0;
+}
+small {
+  font-size: 9px;
+  color: var(--soft-ink);
+  letter-spacing: 1px;
+}
+.catalog-entry {
+  font-size: 11px;
+}
+.catalog-entry b {
+  color: var(--ink);
+  margin-left: 10px;
+  font-weight: 500;
+}
+.catalog-entry span {
+  display: block;
+  margin-left: 25px;
+  font-size: 10px;
+}
+.contract {
+  margin: 16px 0;
+  color: var(--soft-ink);
+  font-size: 12px;
+}
+summary {
+  cursor: pointer;
+  padding: 8px 0;
+}
+pre {
+  background: var(--paper-deep);
+  padding: 18px;
+  overflow: auto;
+  font-size: 11px;
+  line-height: 1.6;
+  max-height: 320px;
+  border-radius: 8px;
+}
+textarea {
+  display: block;
+  min-height: 100px;
+  width: 100%;
+  margin: 8px 0;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  padding: 12px;
+}
+label {
+  display: block;
+  font-size: 11px;
+  margin-bottom: 8px;
+}
+.backlog {
+  border-top: 1px solid var(--hairline);
+  margin-top: 24px;
+  padding: 28px 0;
+  display: grid;
+  grid-template-columns: 1fr 290px;
+  gap: 24px;
+}
+.backlog h2 {
+  font-size: 20px;
+}
+.backlog p {
+  font-size: 11px;
+  color: var(--soft-ink);
+  max-width: 320px;
+}
+.backlog details {
+  grid-column: 1/-1;
+  min-width: 0;
+}
+.backlog input {
+  width: 100%;
+  border: 1px solid var(--hairline);
+  padding: 10px;
+  border-radius: 7px;
+  margin-bottom: 10px;
+}
+.primary {
+  background: var(--olive);
+  color: var(--on-accent);
+  border-color: var(--olive);
+}
+.primary:hover {
+  background: color-mix(in srgb, var(--olive) 75%, var(--yak-night)); /* paper 7.9:1 */
+}
+.backlog .muted {
+  margin-top: 9px;
+}
+.endnote {
+  font-size: 10px;
+  color: var(--soft-ink);
+  border-top: 1px solid var(--hairline);
+  padding: 20px 0;
+}
+.state {
+  padding: 32px;
+  min-height: 380px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.state p {
+  font-size: 13px;
+  color: var(--soft-ink);
+}
+.state-symbol {
+  font-size: 30px;
+  margin-bottom: 24px;
+  color: var(--olive);
+}
+.notice {
+  margin: 12px 24px;
+  padding: 10px;
+  background: var(--warn-bg);
+  color: var(--warn-ink);
+  font-size: 12px;
+  border-radius: 7px;
+}
+.table-wrap {
+  overflow: auto;
+  max-height: 290px;
+  padding: 0 24px 20px;
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12px;
+  text-align: left;
+}
+caption {
+  text-align: left;
+  color: var(--soft-ink);
+  padding: 12px 0;
+}
+th,
+td {
+  padding: 12px;
+  border-bottom: 1px solid var(--hairline);
+}
+th {
+  font-weight: 500;
+}
+td {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+thead {
+  background: var(--paper-deep);
+}
+@media (max-width: 1100px) {
+  main {
+    padding: 0 28px;
+  }
+  .evaluation {
+    grid-template-columns: 1fr;
+  }
+  .evaluation-notes {
+    display: none;
+  }
+  .app {
+    grid-template-columns: 210px 1fr;
+  }
+}
+@media (max-width: 700px) {
+  .app {
+    display: block;
+  }
+  aside {
+    padding: 18px;
+  }
+  nav {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .workspace,
+  .sidebar-label,
+  .sidebar-note {
+    display: none;
+  }
+  nav {
+    margin-top: 16px;
+  }
+  main {
+    padding: 0 18px;
+  }
+  .topbar {
+    height: 64px;
+  }
+  .topbar > .badge {
+    display: none;
+  }
+  h1 {
+    font-size: 34px;
+  }
+  .intro {
+    padding-top: 28px;
+  }
+  .question .badge {
+    display: none;
+  }
+  .backlog {
+    grid-template-columns: 1fr;
+  }
+  .card-heading {
+    padding: 18px;
+  }
+  .card-heading h2 {
+    font-size: 18px;
+  }
+  footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .chart {
+    height: 230px;
+  }
+}

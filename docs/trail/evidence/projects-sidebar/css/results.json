@@ -1,0 +1,17 @@
+[
+  {
+    "id": "P1",
+    "ok": true,
+    "detail": "whole title shown true, runs past the middle true; ink beside the grip 37 at rest, 162 on hover; grip 1 on the bar, 0 over the title"
+  },
+  {
+    "id": "P2",
+    "ok": true,
+    "detail": "rule 0px, decoration none, focused true"
+  },
+  {
+    "id": "P8",
+    "ok": true,
+    "detail": "hover fill inset 4px left, 4px right"
+  }
+]

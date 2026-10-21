@@ -1,0 +1,17 @@
+{
+  "image": {
+    "path": "81197066b1d940d9ff027c6e365577d3120d8d283c832a5b549f49883d8491ec.png",
+    "sha256": "81197066b1d940d9ff027c6e365577d3120d8d283c832a5b549f49883d8491ec"
+  },
+  "fingerprint": {
+    "environment": "linux-x64-debian-12",
+    "browser": "26.6",
+    "playwright": "1.63.0",
+    "width": 960,
+    "height": 640,
+    "dpr": 2,
+    "policy": 1
+  },
+  "source": "1a94d1fda82d14ec8e1b7cf5cef09bcec5622b9b781c6a9022b76514a5f498f2",
+  "run": "2026-09-29t09-17-22-143z-060ef65e"
+}

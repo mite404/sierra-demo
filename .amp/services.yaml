@@ -1,0 +1,11 @@
+# Long-running services for orb development; `amp orb services ensure` starts them.
+# The Worker serves the built site and the API on one origin (ADR-086), so the web build
+# must exist before wrangler starts; building inline keeps fresh orbs self-sufficient.
+# Needs apps/gateway/.dev.vars (git-ignored); the project pre-setup script generates it
+# from the orb's environment when the project Values provide both bindings.
+services:
+  gateway:
+    command: pnpm --filter web build && pnpm --filter gateway dev
+    port: 8787
+    health: /api/health
+    portal: true

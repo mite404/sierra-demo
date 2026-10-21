@@ -1,0 +1,86 @@
+.lab-gallery {
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+}
+.lab-gallery > aside {
+  padding-block: var(--space);
+}
+.lab-gallery > .lab-main {
+  min-width: 0;
+  padding: 0 calc(var(--space) * 2);
+  max-width: 1440px;
+  width: 100%;
+  margin: auto;
+  margin-top: 0;
+}
+.lab-gallery nav button {
+  width: 100%;
+}
+.lab-gallery .sidebar-label {
+  text-transform: uppercase;
+  margin-top: calc(var(--space) * 2 / 3);
+}
+.lab-preview {
+  padding-block: var(--space);
+}
+.lab-preview > h1 {
+  font-size: 34px;
+  margin-block: 0 var(--space);
+}
+.lab-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space);
+}
+.lab-fields,
+.lab-answers {
+  display: grid;
+  gap: var(--space);
+}
+.lab-reading-tools {
+  --thread-gutter: calc(var(--space) * 5 / 6);
+  display: grid;
+  justify-items: end;
+  max-width: calc(var(--space) * 20);
+}
+.lab-reading-tools .reading-tools {
+  opacity: 1;
+}
+.lab-reading-tools .reading-more {
+  grid-template-columns: 0fr;
+  visibility: hidden;
+}
+.lab-reading-tools
+  .reading-tools:is([data-unfolded], [data-open], :has([aria-expanded="true"]))
+  .reading-more,
+:root:not([data-input="pointer"])
+  .lab-reading-tools
+  .reading-tools:has(:focus-visible)
+  .reading-more {
+  grid-template-columns: 1fr;
+  visibility: visible;
+}
+.lab-fields {
+  max-width: 320px;
+}
+.lab-fields label {
+  display: grid;
+  gap: calc(var(--space) / 3);
+}
+.lab-modal-stage {
+  position: relative;
+  min-height: calc(var(--space) * 15);
+}
+.lab-modal-content {
+  padding: var(--space);
+}
+@media (max-width: 700px) {
+  .lab-gallery > .lab-main {
+    padding-inline: calc(var(--space) * 3 / 4);
+  }
+  .lab-gallery .sidebar-label {
+    display: block;
+  }
+}

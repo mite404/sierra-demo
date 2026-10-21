@@ -1,0 +1,112 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@source "../../../../apps/**/*.{ts,tsx}";
+@source "../**/*.{ts,tsx}";
+
+/* Dark mode is the root's data-theme, the way the catalog sets it (ADR-046). */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* Kay's tokens (packages/catalog/src/tokens.css) stay the source of truth (ADR-082). shadcn
+   reads its theme from the variables below, so every primitive comes out in Kay's paper, ink,
+   hairlines and 4px corners with no per-component restyling, and dark mode follows the tokens
+   because every value here is a reference, not a colour. */
+:root {
+  --background: var(--bg); /* the window around the app; surfaces are paper */
+  --foreground: var(--ink);
+  --card: var(--paper);
+  --card-foreground: var(--ink);
+  --popover: var(--compose-bg);
+  --popover-foreground: var(--ink);
+  --primary: var(--ink); /* green stays for hovers (ADR-058) */
+  --primary-foreground: var(--on-ink);
+  --secondary: var(--paper-deep);
+  --secondary-foreground: var(--ink);
+  --muted: var(--paper-deep);
+  --muted-foreground: var(--soft-ink);
+  --accent: var(--paper-deep); /* the hover fill; Kay's green is --olive, never this */
+  --accent-foreground: var(--ink);
+  --destructive: var(--record);
+  --border: var(--hairline);
+  --input: var(--rule);
+  --ring: var(--focus);
+  --radius: 4px; /* the site's button corners; the catalog card keeps --radius-card */
+  --sidebar: var(--paper);
+  --sidebar-foreground: var(--ink);
+  --sidebar-primary: var(--ink);
+  --sidebar-primary-foreground: var(--on-ink);
+  --sidebar-accent: var(--paper-deep);
+  --sidebar-accent-foreground: var(--ink);
+  --sidebar-border: var(--hairline);
+  --sidebar-ring: var(--focus);
+}
+
+@theme inline {
+  --font-sans: var(--font-text);
+  --font-serif: var(--font-display);
+  /* Kay's palette as Tailwind colours, so utilities stay on-brand: bg-paper, text-ink, ... */
+  --color-paper: var(--paper);
+  --color-paper-deep: var(--paper-deep);
+  --color-ink: var(--ink);
+  --color-soft-ink: var(--soft-ink);
+  --color-faint-ink: var(--faint-ink);
+  --color-moss: var(--moss);
+  --color-olive: var(--olive);
+  --color-hairline: var(--hairline);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply font-sans bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+/* A toast floats as a menu does, so it casts the menu's shadow, and speaks in the site's Inter
+   (design pillars, rule 7). Sonner's own sheet sets both, a system font stack and a lighter
+   shadow, outside any layer, where no utility can reach them, so each rule here carries one
+   more class to win. */
+[data-sonner-toaster].toaster {
+  font-family: var(--font-sans);
+}
+[data-sonner-toast][data-styled="true"].cn-toast {
+  box-shadow: var(--popup-shadow);
+}

@@ -1,0 +1,957 @@
+/* Kay's stylesheet styles bare elements, so it sits in its own layer: above Tailwind's
+   preflight, which would otherwise reset the catalog's buttons and headings, and below the
+   utilities, so a class on a shadcn primitive still wins (ADR-082). */
+@layer theme, base, catalog, components, utilities;
+@import "@yaklabs/ui/globals.css";
+@import "@yaklabs/catalog/tokens.css" layer(catalog);
+
+/* A loading row holds still under reduced motion. Outside every layer on purpose: shadcn's
+   skeleton pulses by a utility class, which a rule in the components layer cannot outrank. */
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="skeleton"] {
+    animation: none;
+  }
+}
+
+/* A focused control on the green bar shows the site's own ring (tokens.css): 2px of --focus,
+   cream there, 8.98:1 against the bar. shadcn's outline-none would leave only a 1px ring at half
+   strength, 3.6:1 at best and less on the painting, so this sits outside every layer too. */
+.chrome-surface :focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+/* The empty canvas's raised surface (ADR-136) draws a solid edge; the open space's own
+   `border-dashed` utility would win over a layered rule, so this one is unlayered too. */
+.open-space:has(> .splash) {
+  border-style: solid;
+}
+/* A tab draws its ring inside itself: the tab strip scrolls, and a scroller clips whatever lies
+   past its edge. On the active tab's pill the ring is the pill's own night ink (16.1:1). */
+.chrome-surface .tab:focus-visible {
+  outline-offset: -2px;
+  box-shadow: none; /* shadcn's half-strength ring outside the tab, which the strip clipped */
+}
+/* A tab's title field (ADR-138) shows its ring on the tab's box around it, like a focused tab,
+   so the field itself draws none. Outside every layer, to outrank the rule above. */
+.chrome-surface .tab-rename:focus-visible {
+  outline: none;
+}
+/* A lane's title clips with an ellipsis where it outgrows its bar (ADR-097). The rename button
+   holds the text, and the heading cannot put an ellipsis inside a button, which lays out as one
+   unbreakable box, so the button clips as a block of its own, held to the heading's width
+   since a button shrinks to its text even as a block. Outside every layer on purpose: the
+   catalog's thread.css resets the button with `all: unset` outside every layer too, which no
+   layered rule can outrank. */
+.lane .thread-header .thread-title {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* A lane thread's "⋯" (ADR-138) shows only while its title bar is hovered or holds focus, and
+   while its menu is open; Share and the close stay put. It is faded, never hidden, so it keeps
+   its place in the tab order and the accessibility tree. Only where a fine pointer can hover: a
+   touch screen has no hover to reveal it by, so it stays. It fades in and out over 150ms on the
+   strong ease-out; a keyboard arriving on it sees it at once, since a key press is not something
+   to animate. Outside every layer on purpose: the ghost button's own `transition-all` is a
+   utility, which a layered rule cannot outrank. */
+@media (hover: hover) and (pointer: fine) {
+  .lane .thread-header [data-thread-menu] {
+    opacity: 0;
+    transition: opacity 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+  .lane .thread-header:is(:hover, :focus-within) [data-thread-menu],
+  .lane .thread-header [data-thread-menu][aria-expanded="true"],
+  .lane .thread-header [data-thread-menu]:focus-visible {
+    opacity: 1;
+  }
+  .lane .thread-header [data-thread-menu]:focus-visible {
+    transition: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .lane .thread-header [data-thread-menu] {
+      transition: none;
+    }
+  }
+}
+
+/* The projects panel's motion (ADR-144, design pillars rule 26): one curve for the peek and the
+   pin, a fast acceleration into a long, smooth settle, fitted to the value graph of Ethan's After
+   Effects example (its handles at 17% and 58% of the time). Half the travel is done by 13% of the
+   time and 90% by 43%. The peek slides in 220ms, the pin by the toggle in 250ms (Ethan). */
+:root {
+  --workspace-radius: calc(var(--radius-card) - var(--btn-radius));
+  --panel-ease: cubic-bezier(0.17, 1.02, 0.58, 1);
+  --panel-peek: 220ms;
+  --panel-pin: 250ms;
+  /* The rows' fade as the panel closes: at 0 by the curve's 75% mark, 27% of the peek's 220ms. */
+  --rows-leave: 60ms;
+}
+/* shadcn's ghost button hovers at half strength in dark mode (dark:hover:bg-muted/50). The bar
+   draws its hover from its own tokens in either theme (ADR-110), so it is the full fill there too. */
+:root[data-theme="dark"] .chrome-surface .dark\:hover\:bg-muted\/50:hover {
+  background-color: var(--muted);
+}
+/* The pin and the unpin by the toggle: the gap that pushes the workspace and the panel sliding
+   behind the rail move on one clock with the title bar's lead that carries the tabs
+   (title-bar.tsx), so their edges meet on every frame. Only the duration and the curve: a key, a
+   drag and reduced motion still turn the transition off (transition-property, the utilities'). */
+/* A sidebar title too long for its row fades out over its last 24px (--space) rather than ending
+   in an ellipsis, so it reads as running on under the panel's edge (Ethan). Only a cut title
+   fades (`data-cut`, label-cut.ts): a short one keeps every letter at full ink. */
+[data-slot="sidebar"] [data-label][data-cut] {
+  mask-image: linear-gradient(to right, #000 calc(100% - var(--space)), transparent);
+}
+[data-slot="sidebar-gap"],
+[data-slot="sidebar-container"] {
+  transition-duration: var(--panel-pin);
+  transition-timing-function: var(--panel-ease);
+}
+/* A pin from a peek: the panel is already out, so only the workspace moves, sliding under the
+   panel to make room. The peek's edge, its hairline and shadow, holds for the pin's 250ms until
+   the workspace's own rounded border has arrived under it, where it had left a plain edge while
+   that border crept out from under the panel as the curve settled (Ethan). A pin from closed
+   changes no shadow, so nothing holds. Naming the properties outranks the utilities that turn the
+   transition off, so a key, a drag and reduced motion turn it off here again. */
+[data-slot="sidebar"][data-state="expanded"] > [data-slot="sidebar-container"] {
+  transition-property: left, right, width, box-shadow, clip-path;
+  transition-duration: var(--panel-pin), var(--panel-pin), var(--panel-pin), 0s, 0s;
+  transition-delay: 0s, 0s, 0s, var(--panel-pin), var(--panel-pin);
+}
+[data-slot="sidebar-wrapper"][data-instant] [data-slot="sidebar-container"] {
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="sidebar"][data-state="expanded"] > [data-slot="sidebar-container"] {
+    transition: none;
+  }
+}
+/* Docked by the toggle, a hint of a line parts the rail from the panel, as in Kay's own app: the
+   rail's right edge in the workspace's own hairline. It is the rail's, not the panel's, so it is
+   drawn from the first frame of a pin, the panel sliding out from behind it (on the panel's own
+   edge it stayed behind the clip until the last frame, and crept in like a fade, Ethan), and it
+   holds through an unpin until the panel is home behind it: the pin played backwards. A key's
+   change and reduced motion have no slide to wait for. A peek draws none, so it reads as a
+   glance, not a column. */
+[data-slot="rail"] {
+  transition: box-shadow 0s var(--panel-pin);
+}
+[data-slot="sidebar-wrapper"]:has([data-slot="sidebar"][data-state="expanded"]) [data-slot="rail"] {
+  box-shadow: inset -1px 0 0 var(--hairline);
+  transition: none;
+}
+[data-slot="sidebar-wrapper"][data-instant] [data-slot="rail"] {
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="rail"] {
+    transition: none;
+  }
+}
+
+/* The projects panel's peek (sidebar-peek.tsx, ADR-144): closed, the panel slides out over the
+   workspace from behind the rail's edge, the shell's own paper with a hairline at its right
+   edge and the softest shadow past it, and slides back the same way: both over 220ms on the
+   panel's curve (Ethan), one `--peek-slide`, so the two cannot drift apart. Transitions, so a
+   pointer that returns mid-way turns it back from where it is.
+   The stage's overflow clip is the gate at the rail's edge (design pillars, rule 22): the panel
+   passes behind it and never covers the rail, so the fade hides no motion. Out, it slides at full
+   strength from under the rail, as a pin does (Ethan): its edge's hairline and shadow are drawn
+   from the first frame, and the workspace's border beneath is covered at once, never seen
+   through a fading panel. Back, it holds full strength and fades over
+   the slide's last 120ms on that curve played backwards, ending with the slide: still 0.97 with
+   the edge 2px from home. The fade takes away only the soft shadow and the hairline across the
+   workspace's 10px corner, which would otherwise vanish in one frame as the panel lands; at home
+   the line is the workspace's own left border. The shadow is clipped to its right, off the
+   title bar. Under reduced motion it neither slides nor fades (rule 24): it is there, then it
+   is not. A key's close, and the step behind the rail once the slide ends, have no motion
+   (data-peek-instant).
+   Outside every layer on purpose: the container's own `transition-[left,right,width]` is a
+   utility, which a layered rule cannot outrank. */
+[data-slot="sidebar"][data-peek] > [data-slot="sidebar-container"] {
+  --peek-slide: transform var(--panel-peek) var(--panel-ease);
+  z-index: 20;
+  border-radius: 0 var(--workspace-radius) var(--workspace-radius) 0;
+  box-shadow:
+    1px 0 0 var(--hairline),
+    8px 0 24px -12px var(--shadow);
+  clip-path: inset(0 -40px 0 0);
+  transition:
+    var(--peek-slide),
+    opacity 120ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+/* The exposed peek corners match the docked workspace's curve; its rows clip inside the
+   paper, while the container's shadow remains free to fall past it. */
+[data-slot="sidebar"][data-peek] [data-slot="sidebar-inner"] {
+  border-radius: inherit;
+  overflow: clip;
+}
+[data-slot="sidebar"][data-peek="leaving"] > [data-slot="sidebar-container"] {
+  transition:
+    var(--peek-slide),
+    opacity 120ms cubic-bezier(0.68, 0, 0.77, 0) 100ms;
+}
+[data-slot="sidebar"]:is([data-peek="entering"], [data-peek="leaving"])
+  > [data-slot="sidebar-container"] {
+  transform: translateX(-100%);
+}
+[data-slot="sidebar"][data-peek="leaving"] > [data-slot="sidebar-container"] {
+  opacity: 0;
+}
+/* Closing, the rows leave before the panel does, as a title's type goes before its bar, on the
+   peek's way back and on an unpin alike: they fade from the first frame and are at 0 once the
+   panel has covered three quarters of its way home (--rows-leave), so no row, or row's end ("18",
+   an ellipsis, a "+"), is still there as the panel lands (Ethan). The paper, its edge and the
+   workspace's border stay solid, so the slide still reads. Opening, the rows are there from the
+   first frame, as the panel is; a pointer that returns mid-way brings them back on the peek's
+   fade-in. Closed, they rest at 0 behind the rail. */
+[data-slot="sidebar"][data-state="collapsed"] [data-slot="sidebar-inner"] > * {
+  opacity: 0;
+  transition: opacity var(--rows-leave) cubic-bezier(0.23, 1, 0.32, 1);
+}
+[data-slot="sidebar"][data-peek="entering"] [data-slot="sidebar-inner"] > * {
+  opacity: 1;
+  transition: none;
+}
+[data-slot="sidebar"][data-peek="open"] [data-slot="sidebar-inner"] > * {
+  opacity: 1;
+  transition: opacity 120ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+[data-slot="sidebar-wrapper"][data-instant] [data-slot="sidebar-inner"] > * {
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="sidebar"][data-peek] > [data-slot="sidebar-container"],
+  [data-slot="sidebar"] [data-slot="sidebar-inner"] > * {
+    transform: none;
+    transition: none;
+  }
+}
+[data-slot="sidebar"][data-peek="entering"] > [data-slot="sidebar-container"],
+[data-slot="sidebar-container"][data-peek-instant] {
+  transition: none;
+}
+/* While the sidebar's edge is dragged (sidebar-resize.tsx), the resize cursor holds over the
+   whole window, as the canvas divider's does, and nothing on the way is selected. Outside every
+   layer, to outrank a link's or a button's own cursor utility. */
+html[data-dragging="sidebar"],
+html[data-dragging="sidebar"] * {
+  cursor: col-resize;
+  user-select: none;
+}
+
+/* The window's decorative traffic lights (ADR-094): a desktop window's own colours, the one
+   place the app draws something that is not Kay's; the same in either theme, as the OS's are. */
+:root {
+  --traffic-close: #ff5f57;
+  --traffic-minimise: #febc2e;
+  --traffic-zoom: #28c840;
+}
+
+/* The tab strip's fade (tab-strip.tsx): registered so the scroll can animate the lengths. */
+@property --fade-start {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@property --fade-end {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+@layer components {
+  /* shadcn draws its controls with utilities on top of Tailwind's preflight, and the catalog
+     styles bare elements over that preflight (tokens.css): a button gets a paper fill, a
+     hairline border, 7px corners and padding, and a link turns olive. For an element shadcn
+     renders, which carries a data-slot, this puts preflight's values back, so it shows only
+     what its own classes say: a ghost button no box, a toggle no border of its own, a sidebar
+     link the sidebar's ink. This layer outranks the catalog's and yields to every utility. */
+  :where(button[data-slot]) {
+    border: 0 solid;
+    border-radius: 0;
+    background-color: transparent;
+    padding: 0;
+    color: inherit;
+    font-size: inherit;
+  }
+  :where(a[data-slot]) {
+    color: inherit;
+  }
+
+  /* A thread narrower than its widest line lays out at its width instead of spilling past its
+     own border: the panel's one grid column may shrink below its content's longest line, so
+     a chart, a card and the compose hint fit the column. thread.css leaves the column's floor
+     at its content, which a pane beside an open sidebar at 1024px is narrower than. */
+  .thread-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* A thread still opening says so only once the wait is long enough to notice: around 100ms
+     reads as instant (design-pillars.md rule 9, derived), so a quicker open goes from the bare
+     frame to its turns with no line flashing past. The line is in the tree from the first
+     frame, hidden, and steps in with no fade; a hold, not motion, so reduced motion keeps it. */
+  [data-pending-line] {
+    animation: pending-line 0s 100ms both;
+  }
+  @keyframes pending-line {
+    from {
+      visibility: hidden;
+    }
+  }
+
+  /* An edge of the tab strip with tabs past it fades out, so the tab the edge cuts reads as
+     one more to scroll to rather than a clipped label. The fade follows the scroll; a strip
+     whose tabs fit has no scroll timeline, so the animation is idle and nothing fades. */
+  .tab-scroller {
+    scroll-padding-inline: 32px;
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      #000 var(--fade-start),
+      #000 calc(100% - var(--fade-end)),
+      transparent
+    );
+    animation: tab-fade linear both;
+    animation-timeline: scroll(self inline);
+  }
+  @keyframes tab-fade {
+    from {
+      --fade-start: 0px;
+      --fade-end: 32px;
+    }
+    10%,
+    90% {
+      --fade-start: 32px;
+      --fade-end: 32px;
+    }
+    to {
+      --fade-start: 32px;
+      --fade-end: 0px;
+    }
+  }
+
+  /* A tab, or a pane inside one, that is kept but not shown (the deck, which makes it inert):
+     it skips rendering and keeps its layout and scroll, which display: none would drop. */
+  [data-retain][inert] {
+    content-visibility: hidden;
+  }
+
+  /* The painted bar (ADR-115): the painting under a subtle green wash, darkest at the ends
+     where the traffic lights and the account sit, over the painting's mean colour. Its soft ink
+     is a step brighter than the flat bar's, since the painting is lighter than the flat green. */
+  .chrome-surface[data-chrome="painting"] {
+    --soft-ink: var(--on-chrome-painting-soft);
+    --paper-deep: var(--chrome-painting-hover);
+    background:
+      linear-gradient(
+        to right,
+        var(--chrome-painting-wash),
+        transparent 30%,
+        transparent 70%,
+        var(--chrome-painting-wash)
+      ),
+      url("/chrome/painting.webp") center / cover no-repeat,
+      var(--chrome-painting);
+  }
+
+  /* The empty canvas's splash (ADR-113, ADR-136): a raised paper surface with the field's dots
+     on it, a clearing of plain paper behind the words that fades out in every direction, a
+     sheet of construction lines and Atlas with his globe ringing the words. The surface's
+     ground goes plain while the surface holds the dots, and the surface casts a shadow, so it
+     reads as raised above the thread. Bottom to top: the paper, the lit fill, the dots, the
+     lines, the clearing, Atlas. A :has() keeps the switch in CSS, off OpenSpace. The splash
+     fades in once, with no fade under reduced motion. */
+  .canvas:has(> .open-space > .splash) {
+    background-image: none;
+  }
+  .open-space:has(> .splash) {
+    --clearing: var(--paper);
+    background-color: var(--paper);
+    box-shadow:
+      0 1px 2px var(--shadow),
+      0 12px 40px var(--shadow-strong);
+  }
+  /* The clearing paints --clearing, which takes the carry's tint, so a carry lights the whole
+     surface and the fill below never hides behind a solid disc. */
+  .open-space[data-lit]:has(> .splash) {
+    --clearing: color-mix(in srgb, var(--paper-deep) 60%, var(--paper));
+  }
+  .splash {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: calc(var(--radius-card) - 1px); /* inside the open space's 1px border */
+    overflow: hidden; /* Atlas's faded feet run past the bottom edge */
+    container-type: size; /* the picture measures the surface in cq units */
+    /* Atlas stands 98% of the surface tall; his globe is 54.4% of that, its centre 28.4% down
+       his file. Everything else is placed off the globe. */
+    --atlas: 98cqh;
+    --globe: calc(var(--atlas) * 0.544);
+  }
+  .splash > * {
+    position: absolute;
+  }
+  /* The field's dots, on the surface rather than the ground. They start 1rem and 1px up and
+     left, the canvas's padding and the surface's border, so they fall on the field's grid. */
+  .splash-dots {
+    inset: 0;
+    background: radial-gradient(var(--hairline) 1px, transparent 1px) calc(-1rem - 1px)
+      calc(-1rem - 1px) / 18px 18px;
+  }
+  /* The clearing, over the dots and the lines: an ellipse of the surface's own proportions,
+     solid paper to 25% of its half width and height and gone by 75%, on a box floored at 36rem
+     by 20rem, so the two-line copy always sits on plain paper and the spokes' meeting point
+     never fights the words. */
+  .splash-clearing {
+    inset: 0;
+    background: radial-gradient(ellipse 50% 50% at center, var(--clearing) 25%, transparent 75%)
+      center / max(100%, 36rem) max(100%, 20rem) no-repeat;
+  }
+  /* The construction (draw-atlas-lines.mjs): circles concentric with the globe and spokes
+     through its centre, one screen pixel wide, in the splash line. The file is a square four
+     globes wide centred on the globe, which is the surface's centre, and a second mask fades the
+     lines out towards the surface's edges so they never meet a corner. */
+  .splash-lines {
+    inset: 0;
+    background: var(--splash-line);
+    mask-image:
+      url("/splash/atlas-lines.svg"),
+      radial-gradient(ellipse 50% 50% at center, black 30%, transparent 100%);
+    mask-size:
+      calc(var(--globe) * 4) calc(var(--globe) * 4),
+      100% 100%;
+    mask-position: center;
+    mask-repeat: no-repeat;
+    mask-composite: intersect;
+  }
+  /* Atlas: a stencil (black strokes on alpha) as a mask filled with --splash-figure, so he
+     themes with the ink and shows no bounds, centred with his globe's centre at the surface's
+     middle. A second mask, solid to 55% and gone at the bottom, takes his feet out before the
+     edge. */
+  .splash-drawing {
+    top: calc(50% - 0.284 * var(--atlas));
+    left: 50%;
+    height: var(--atlas);
+    aspect-ratio: 635 / 1081;
+    translate: -50% 0;
+    background: var(--splash-figure);
+    mask-image: url("/splash/atlas.webp"), linear-gradient(black 55%, transparent);
+    mask-size: 100% 100%;
+    mask-position: center;
+    mask-repeat: no-repeat;
+    mask-composite: intersect;
+  }
+  /* Under a 330px content box (a phone) the sheet and Atlas would crowd the button, so they
+     stay away. The query reads the splash layer, sized as the surface is. */
+  @container (max-width: 329px) {
+    .splash-lines,
+    .splash-drawing {
+      display: none;
+    }
+  }
+  /* The fade is the empty canvas's alone, for a sheet that arrives as the last lane leaves or
+     the canvas first shows. The welcome's sheet (below) has none: each new thread mounts a new
+     one, so the fade blinked the sheet out to paper and back on every "+". */
+  .open-space > .splash {
+    animation: splash-in 150ms ease-out;
+  }
+  @keyframes splash-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .open-space > .splash {
+      animation: none;
+    }
+  }
+
+  /* A new thread's welcome (ADR-136): Kay's own greeting over one of Ethan's paintings, the
+     landscape or the abstract strokes by <html data-splash> (splash.ts), under the same paper
+     wash and the same clearing of plain paper behind the words, fading out in every direction,
+     so the two read as one treatment with a different picture. A third look, Vitruvian, draws
+     the empty canvas's sheet instead (below). The greeting names the morning in the light theme
+     and the evening in the dark one, both in the DOM, one shown. The scroll area drops its
+     gutters for it (thread.css, data-empty), and the welcome fills it to centre the words. */
+  .welcome {
+    --clearing: var(--paper);
+    position: relative;
+    isolation: isolate;
+    display: grid;
+    min-height: 100%;
+    place-items: center;
+    padding: 24px;
+  }
+  .welcome-art {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+      linear-gradient(var(--splash-wash), var(--splash-wash)),
+      url("/splash/landscape.webp") center / cover no-repeat;
+  }
+  html[data-splash="abstract"] .welcome-art {
+    background:
+      linear-gradient(var(--splash-wash), var(--splash-wash)),
+      url("/splash/abstract.webp") center / cover no-repeat;
+  }
+  html[data-theme="dark"] .welcome [data-part="morning"],
+  html:not([data-theme="dark"]) .welcome [data-part="evening"] {
+    display: none;
+  }
+  .welcome-art::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 50% 50% at center, var(--paper) 25%, transparent 75%) center
+      / max(100%, 40rem) max(100%, 28rem) no-repeat;
+  }
+  /* The Vitruvian look draws the empty canvas's sheet (the .splash pieces above) across the
+     welcome's whole area on paper, as the canvas's raised surface is, square-cornered since the
+     welcome runs to the pane's edges. The clearing behind the words is sized to the canvas's
+     two-line copy, and this column is taller and wider, so the globe and Atlas's hands would run
+     behind the words (3.8:1 at worst). The column carries its own halo of paper, drawn over the
+     sheet and under the words, which follows the column's box however many projects it lists
+     and fades out at its edge, so the ring still shows above, below and to either side of it.
+     The sheet arrives with the words, unfaded, as the paintings do. */
+  .welcome .splash {
+    border-radius: 0;
+    background: var(--clearing);
+  }
+  .welcome-words {
+    position: relative;
+  }
+  .welcome .splash ~ .welcome-words::before {
+    content: "";
+    position: absolute;
+    inset: -0.75rem;
+    z-index: -1;
+    border-radius: 1.5rem;
+    background: var(--clearing);
+    box-shadow: 0 0 1.5rem 0.75rem var(--clearing);
+  }
+
+  /* The design tooling seal (ADR-160, design-tooling-seal.tsx): one drawing, the medal with an
+     ink ribbon across it that runs past it on either side, so medal, ribbon and words always
+     scale as one piece (Ethan). The ribbon is the site's ink carrying the paper's words,
+     notched at both ends like a medal's, and fills with moss over 150ms on hover, as the
+     outline button does (design pillars, rule 8). A key arriving on the link sees the site's
+     own ring. The ring's words on the gold take the brown ink of the orange pill (5.5:1). The
+     link sets its own width, so a flex column does not stretch it across. */
+  .seal-link {
+    position: relative;
+    display: inline-block;
+    width: max-content;
+    line-height: 0;
+    border-radius: 4px; /* the focus ring follows the site's corners */
+    color: inherit;
+    text-decoration: none;
+  }
+  .seal-words {
+    font-family: var(--font-text);
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    fill: var(--on-seal);
+  }
+  .seal-ribbon polygon,
+  .seal-ribbon-words {
+    transition: fill 150ms ease;
+  }
+  .seal-ribbon polygon {
+    fill: var(--ink);
+  }
+  .seal-ribbon-words {
+    fill: var(--on-ink);
+  }
+  .seal-link:hover .seal-ribbon polygon {
+    fill: var(--moss);
+  }
+  .seal-link:hover .seal-ribbon-words {
+    fill: var(--on-accent);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .seal-ribbon polygon,
+    .seal-ribbon-words {
+      transition: none;
+    }
+  }
+  /* On the welcome the seal is pinned above the greeting at the column's right, aligned
+     optically to Ethan's mockup: its ribbon's far tip in line with the projects' "+" as the eye
+     sees it, at the glyph's ink 8px inside the column (a 12px icon centred in its 24px button,
+     its bar reaching 9.5px with a half-pixel cap) rather than at the button's unseen edge, and
+     the ribbon's lowest corner 4px below the mark's circle, a hair under its baseline. Tilted 25deg with its left side up, as a medal sits on a lapel,
+     and at 73.5% of its drawn size, 5% up from 70% so the ring's smaller words read (Ethan).
+     The place is worked out from the drawing, not nudged by eye, so it holds if the tilt or the
+     size changes: the ribbon's right corners sit 115px right of the 230 by 112 link's centre and
+     13.5px either side of it, so tilted and scaled the top corner reaches
+     (115cos + 13.5sin) * scale to the right and the bottom one (115sin + 13.5cos) * scale down.
+     First in the column's DOM, since it is first on screen. On a narrow pane it has no room
+     beside the greeting, so it stays in the column's flow.
+     It says it can be pressed two ways (Ethan): a small hop every 4s, 6px up and back in 480ms
+     with a 2px second hop, then still for the rest of the cycle; and under the pointer or a
+     keyboard's focus it grows 10% over the button's 150ms ease, the hop held while it does.
+     The hop rides `transform`, under the tilt, so the seal hops along its own lean; the size
+     is its own `scale`, so the two never fight. Reduced motion keeps it still and the same
+     size (design pillars, rule 24). */
+  .welcome-seal {
+    --seal-tilt: 25deg;
+    --seal-size: 0.735;
+    --seal-mark: 2.5rem; /* the mark's circle, size-10 in welcome.tsx */
+    --seal-inset: 8px; /* the "+" glyph's ink inside the column's edge */
+    rotate: var(--seal-tilt);
+    scale: var(--seal-size);
+    transition: scale 150ms ease;
+    animation: seal-hop 4s ease-in-out infinite;
+  }
+  .welcome-seal:hover,
+  .welcome-seal:focus-visible {
+    scale: 0.8085;
+    animation-play-state: paused;
+  }
+  @keyframes seal-hop {
+    0%,
+    12%,
+    100% {
+      transform: translateY(0);
+    }
+    6% {
+      transform: translateY(-6px);
+    }
+    16% {
+      transform: translateY(-2px);
+    }
+    20% {
+      transform: translateY(0);
+    }
+  }
+  @media (min-width: 641px) {
+    .welcome-seal {
+      position: absolute;
+      top: calc(
+        var(--seal-mark) + 4px - (115px * sin(var(--seal-tilt)) + 13.5px * cos(var(--seal-tilt))) *
+          var(--seal-size)
+      );
+      right: calc(
+        (115px * cos(var(--seal-tilt)) + 13.5px * sin(var(--seal-tilt))) * var(--seal-size) -
+          115px + var(--seal-inset)
+      );
+      translate: 0 -50%;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .welcome-seal {
+      animation: none;
+      transition: none;
+    }
+    .welcome-seal:hover,
+    .welcome-seal:focus-visible {
+      scale: var(--seal-size);
+    }
+  }
+
+  /* The canvas is a dotted field (ADR-089): open ground that invites something to be put down. */
+  .canvas {
+    background-color: var(--bg);
+    /* One step of the dot grid. Everything on the row is a whole number of steps: the gap
+       between lanes is one, so it holds exactly one column of dots; a strip is two; the row
+       starts one in; a default lane is 31, or as many as fit a narrow pane, rounded down so a
+       laptop's pane never leaves a lane a fraction of a step wide and its gap's dots off centre.
+       The dots scroll with the row (`local`), so panning never slides them out of step with the
+       lanes. */
+    --canvas-grid: 18px;
+    container-type: inline-size;
+    --lane-default-width: round(
+      down,
+      min(calc(var(--canvas-grid) * 31), calc(100cqw - 48px)),
+      var(--canvas-grid)
+    );
+    background-image: radial-gradient(var(--hairline) 1px, transparent 1px);
+    background-size: var(--canvas-grid) var(--canvas-grid);
+    background-attachment: local;
+    /* The canvas fills the window's bottom right corner, which the window rounds at 12px
+       inside its 1px border from md up (window.tsx), so the canvas rounds that corner the same
+       way, and a carry's ring below follows the curve rather than being cut off by it. */
+    @variant md {
+      border-bottom-right-radius: calc(12px - 1px);
+    }
+  }
+  /* The row's scrollbar stays in view, thin, in the site's rule colour: the ground runs on past
+     the last lane, and the bar is how the eye knows. */
+  .canvas::-webkit-scrollbar {
+    height: 8px;
+  }
+  .canvas::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .canvas::-webkit-scrollbar-thumb {
+    background: var(--rule);
+    border-radius: 4px;
+  }
+  @supports not selector(::-webkit-scrollbar) {
+    .canvas {
+      scrollbar-width: thin;
+      scrollbar-color: var(--rule) transparent;
+    }
+  }
+  html[data-dragging="ground"],
+  html[data-dragging="ground"] .canvas {
+    cursor: grabbing;
+  }
+  /* Availability starts at lift; only hovering a slot changes the ground and adds a preview. */
+  html[data-carrying] .canvas,
+  html[data-dragging="lane"] .canvas {
+    box-shadow: inset 0 0 0 2px var(--olive);
+  }
+  .canvas[data-drop] {
+    background-color: color-mix(in srgb, var(--paper-deep) 55%, var(--bg));
+  }
+  [data-drop-preview] {
+    position: absolute;
+    inset: 16px auto 16px 0;
+    width: var(--lane-default-width);
+    pointer-events: none;
+    opacity: 0.35;
+  }
+  [data-drop-preview] .card {
+    margin: 0;
+  }
+  [data-drop-preview] * {
+    animation: none !important;
+  }
+  html[data-carrying] .drag-hint::before,
+  html[data-dragging="lane"] .drag-hint::before {
+    opacity: 0;
+  }
+  /* A focused child's lane says where it is once, as it comes into view. */
+  .lane[data-flash] :is(.thread-panel, .card, .lane-strip) {
+    animation: lane-flash 1.2s ease-out;
+  }
+  @keyframes lane-flash {
+    from {
+      box-shadow: 0 0 0 3px var(--olive);
+    }
+    to {
+      box-shadow: 0 0 0 3px transparent;
+    }
+  }
+  /* A show's Play says where to start while the show is not playing (ShowBar.tsx, Ethan: "on
+     loop so its blinking when not in play state"): the olive flash a focused lane gives, round
+     the button's own corners, then a beat of rest, every 2s. Under reduced motion the ring holds
+     still instead. */
+  [data-slot="demo-controls"] [data-callout] {
+    animation: play-callout 2s ease-out infinite;
+  }
+  @keyframes play-callout {
+    0% {
+      box-shadow: 0 0 0 3px var(--olive);
+    }
+    60%,
+    100% {
+      box-shadow: 0 0 0 3px transparent;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    [data-slot="demo-controls"] [data-callout] {
+      animation: none;
+      box-shadow: 0 0 0 3px var(--olive);
+    }
+  }
+  /* Which demo is on, in the title bar's own green (Ethan). The dark bar is Umbralkai's grey
+     (ADR-162), as dark as the paper under the title, so there it takes the ink. */
+  .demo-title {
+    color: var(--chrome);
+  }
+  html[data-theme="dark"] .demo-title {
+    color: var(--ink);
+  }
+
+  /* A divider that drags shows a hint of a line while the pointer is on it (ADR-089): full ink
+     for 40px either side of the pointer's height, fading to nothing by 70px (Ethan: "longer in
+     both directions by another 20px"), so the whole length reads as something to take hold of
+     without a line being drawn along all of it. The divider sets --hint-y from the pointer
+     (divider.ts); until it has, the line centres on the divider. */
+  .drag-hint {
+    --hint-y: 50%;
+    --hint-hold: 40px;
+    --hint-reach: 70px;
+  }
+  .drag-hint::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 50%;
+    width: 1px;
+    transform: translateX(-50%);
+    background: linear-gradient(
+      to bottom,
+      transparent calc(var(--hint-y) - var(--hint-reach)),
+      var(--ink) calc(var(--hint-y) - var(--hint-hold)),
+      var(--ink) calc(var(--hint-y) + var(--hint-hold)),
+      transparent calc(var(--hint-y) + var(--hint-reach))
+    );
+    opacity: 0;
+    transition: opacity 120ms ease;
+    pointer-events: none;
+  }
+  .drag-hint:hover::before,
+  .drag-hint:focus-visible::before,
+  .drag-hint[data-dragging]::before,
+  .drag-hint[data-separator="active"]::before {
+    opacity: 1;
+  }
+
+  /* A lane on its way to another slot (ADR-089): a hand over the grip on its title bar says it
+     can be taken; once lifted, a copy of it floats under the pointer with a shadow, the lane
+     itself waits dimmed in the slot it would take, and the lanes it passes slide aside. On a
+     phone the row is view-only (ADR-122), so every grip affordance below is scoped to a row
+     that still reorders: it never shows there, sticky hover after a tap included. The bar
+     itself keeps the ordinary pointer, a card lane's too (the catalog gives a carrying header
+     the hand), so the hand never shows on the way to its collapse, "⋯", Share or Close. */
+  [data-reorder="true"] .lane :is(.thread-header, .card-heading),
+  [data-reorder="true"] .lane .card-heading[data-carry]:active,
+  [data-reorder="true"] .lane .card-heading-text {
+    cursor: default;
+  }
+  :is([data-reorder="true"] .lane, .lane-ghost) :is(.thread-header, .card-heading) {
+    position: relative;
+  }
+  /* The grip: six dots that fade up in the middle of the bar only while the pointer is within
+     its circle, where the hand shows and a press takes the lane (lane-reorder.ts marks the bar
+     data-grip-near), so the dots never wake at the bar's edges or on the title (Ethan).
+     Beneath the dots a veil in the bar's own paper fades out the stretch of title they sit on,
+     so the whole title shows at rest and only yields its middle to the grip: 86px, solid for
+     its middle 47px, so the faded letters stop 16px either side of the 15px dots (Ethan). The
+     dots sit on the collapse's line, the title's capitals, 2px above the bar's middle, rather
+     than down on its baseline. The grip is the only place that takes the lane (Ethan): a 50px
+     circle about the dots, 25px every way from their centre (the catalog's gripZone.ts holds the same
+     radius for the press and the mark), shows the hand and takes the press; the veil only
+     paints. The floating copy of a lane in flight (lane-reorder.ts) keeps the grip up the
+     whole way, so the hand still holds what it took. */
+  :is([data-reorder="true"] .lane, .lane-ghost) :is(.thread-header, .card-heading)::before,
+  :is([data-reorder="true"] .lane, .lane-ghost) :is(.thread-header, .card-heading)::after {
+    content: "";
+    position: absolute;
+    opacity: 0;
+    transition: opacity 150ms ease;
+  }
+  :is([data-reorder="true"] .lane, .lane-ghost) :is(.thread-header, .card-heading)::before {
+    inset: 0 auto 0 50%;
+    width: 86px;
+    transform: translateX(-50%);
+    background: linear-gradient(
+      to right,
+      transparent,
+      var(--paper) calc(50% - 23.5px),
+      var(--paper) calc(50% + 23.5px),
+      transparent
+    );
+    pointer-events: none;
+  }
+  :is([data-reorder="true"] .lane, .lane-ghost) :is(.thread-header, .card-heading)::after {
+    top: calc(50% - 2px);
+    left: 50%;
+    box-sizing: border-box;
+    width: 50px;
+    height: 50px;
+    padding: 20px 17.5px; /* the 15px by 10px of dots, centred in the circle */
+    /* A clip, not a radius: a radius also rounds the dots' own box (25px less the padding) and
+       shaves the corner dots, where a clip cuts only the circle, for the eye and the hit alike. */
+    clip-path: circle(50%);
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle, var(--soft-ink) 1.25px, transparent 1.75px) 0 0 / 5px 5px;
+    background-origin: content-box;
+    background-clip: content-box;
+    cursor: grab;
+  }
+  [data-reorder="true"] .lane :is(.thread-header, .card-heading)[data-grip-near]::before,
+  [data-reorder="true"] .lane :is(.thread-header, .card-heading)[data-grip-near]::after,
+  .lane.lane-ghost :is(.thread-header, .card-heading)::before,
+  .lane.lane-ghost :is(.thread-header, .card-heading)::after {
+    opacity: 1;
+  }
+  /* The title hugs its text so the whole thing shows at rest; it only clips with an ellipsis
+     once it outgrows the bar itself (the rename button's own clip is at the top of this file). */
+  .lane .thread-header h2 {
+    width: fit-content;
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  /* A collapsed lane (ADR-133) is a strip, GitButler's collapsed stack: the grip always shows
+     at its head, the same six dots as the bar's, and the title reads top to bottom beneath,
+     clipped with an ellipsis where it outruns the strip. The whole strip takes hold of the lane,
+     so a hand shows over all of it but its expand. As with the bar, the grip is only drawn on a
+     row that still reorders (ADR-122). A collapsed card's strip is half the row's height (its
+     article is, in lane.tsx), so it reads as a card beside a thread's full-height one. */
+  [data-reorder="true"] .lane[data-collapsed="true"] {
+    cursor: grab;
+  }
+  /* A lane is as wide as it was left (--lane-width, set on the lane), and a strip when it is
+     collapsed, keeping that width for when it opens. */
+  .lane {
+    width: var(--lane-width);
+  }
+  .lane[data-collapsed="true"] {
+    width: calc(var(--canvas-grid) * 2);
+  }
+  /* The strip's title starts where an open lane's title bar ends: its first letter's ink just
+     under the bar's rule, 55.5px down, so the eye reads one line across open lanes and strips
+     alike (Ethan). Between the expand's glyph and that letter the grip sits with equal paper
+     either side, about 13.5px of ink to ink (Ethan: "equal distance b/t the toggle, drag dots and
+     ... name"): the strip's 8px gap less 2px above the dots, plus 4px below them. Measured from
+     ink at the thread bar's 17px serif title; a new bar height moves the rule, and these with it. */
+  .lane-strip-grip {
+    display: none;
+    flex-shrink: 0;
+    width: 15px;
+    height: 10px;
+    margin-top: -2px;
+    margin-bottom: 4px;
+    background: radial-gradient(circle, var(--soft-ink) 1.25px, transparent 1.75px) 0 0 / 5px 5px;
+  }
+  /* The floating copy of a lifted strip hangs off the body, outside the row, and keeps its grip:
+     a lane only lifts on a row that reorders. */
+  [data-reorder="true"] .lane-strip-grip,
+  .lane-ghost .lane-strip-grip {
+    display: block;
+  }
+  .lane-strip-title {
+    writing-mode: vertical-rl;
+    min-height: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1;
+    color: var(--ink);
+  }
+  html[data-dragging="lane"],
+  html[data-dragging="lane"] .lane {
+    cursor: grabbing;
+  }
+  .lane-shift {
+    transition: transform 150ms ease;
+  }
+  [data-lifted] {
+    opacity: 0.35;
+  }
+  .lane-ghost {
+    position: fixed;
+    z-index: 50;
+    opacity: 0.85;
+    filter: drop-shadow(0 8px 16px var(--shadow-strong));
+    pointer-events: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .drag-hint::before,
+    .lane-shift,
+    .lane :is(.thread-header, .card-heading)::before,
+    .lane :is(.thread-header, .card-heading)::after {
+      transition: none;
+    }
+  }
+}

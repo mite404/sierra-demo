@@ -1,0 +1,48 @@
+{
+  "name": "@yaklabs/catalog",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./agent": "./src/agent.ts",
+    "./awaiting": "./src/awaiting.ts",
+    "./carry": "./src/carry.ts",
+    "./catalog": "./src/catalog.ts",
+    "./gripZone": "./src/gripZone.ts",
+    "./icons": "./src/icons.tsx",
+    "./inputModality": "./src/inputModality.ts",
+    "./interactive": "./src/interactive.ts",
+    "./labAgent": "./src/labAgent.ts",
+    "./playground": "./src/playground.ts",
+    "./prose": "./src/prose.ts",
+    "./reply": "./src/reply.ts",
+    "./share": "./src/share.ts",
+    "./thread": "./src/thread.ts",
+    "./threadShare": "./src/threadShare.ts",
+    "./transcript": "./src/transcript.ts",
+    "./tokens.css": "./src/tokens.css"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
+    "@fontsource-variable/newsreader": "^5.3.0",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "recharts": "^3.0.0",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@storybook/react-vite": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "storybook": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  }
+}

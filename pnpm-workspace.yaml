@@ -1,0 +1,29 @@
+packages:
+  - apps/*
+  - packages/*
+  - tools/*
+allowBuilds:
+  esbuild: true
+  lefthook: true
+  workerd: true
+catalog:
+  "@storybook/addon-a11y": ^10.6.0
+  "@storybook/addon-vitest": ^10.6.0
+  "@storybook/react-vite": ^10.6.0
+  "@types/node": ^26.4.1
+  "@types/react": ^19.2.18
+  "@types/react-dom": ^19.2.7
+  "@vitejs/plugin-react": ^5.2.0
+  "@vitest/browser-playwright": ^4.1.11
+  "@vitest/coverage-v8": 4.1.11
+  lucide-react: ^1.41.0
+  playwright: ^1.63.0
+  react: ^19.2.8
+  react-dom: ^19.2.8
+  sonner: ^2.0.8
+  storybook: ^10.6.0
+  tailwindcss: ^4.3.3
+  typescript: ^6.0.3
+  vite: ^8.2.2
+  vitest: 4.1.11
+  zod: ^4.5.4

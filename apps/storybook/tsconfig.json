@@ -1,0 +1,9 @@
+{
+  "extends": "@yaklabs/config/tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ESNext", "DOM"],
+    "jsx": "react-jsx",
+    "noEmit": true
+  },
+  "include": [".storybook", "vite.config.ts"]
+}

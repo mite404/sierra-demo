@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" fill="none" stroke="#000" stroke-linecap="round" vector-effect="non-scaling-stroke">
+<g stroke-width="1" vector-effect="non-scaling-stroke">
+<circle cx="500" cy="500" r="185" stroke-dasharray="2 5"/>
+<circle cx="500" cy="500" r="61.3"/>
+<path d="M438.8 500H561.3"/>
+<path stroke-opacity=".7" d="M62.7 742.4L937.3 257.6M146.4 853.6L853.6 146.4M257.6 937.3L742.4 62.7M62.7 257.6L937.3 742.4M146.4 146.4L853.6 853.6M257.6 62.7L742.4 937.3"/>
+</g>
+</svg>

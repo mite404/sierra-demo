@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+pnpm install --frozen-lockfile
+
+if ! command -v but >/dev/null 2>&1; then
+  installer="$(mktemp)"
+  trap 'rm -f "$installer"' EXIT
+  curl -fsSL https://gitbutler.com/install.sh -o "$installer"
+  sh "$installer" 0.22.3
+fi

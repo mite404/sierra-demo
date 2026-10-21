@@ -1,0 +1,27 @@
+[
+  {
+    "id": "P1",
+    "ok": false,
+    "detail": "whole title shown false, runs past the middle true; ink beside the grip 239 at rest, 239 on hover; grip 1 on the bar, 0 over the title"
+  },
+  {
+    "id": "P2",
+    "ok": false,
+    "detail": "rule 1px, decoration none, focused true"
+  },
+  {
+    "id": "P3",
+    "ok": false,
+    "detail": "native drags 1; cursors default/auto/col-resize; canvas lit false; lanes First lane | Second lane | Last week's pr; Escape cancels true"
+  },
+  {
+    "id": "P3h",
+    "ok": false,
+    "detail": "native drags 1; cursor auto; draft \"> Here's last week's profit by day.\\n\\n\""
+  },
+  {
+    "id": "P8",
+    "ok": false,
+    "detail": "hover fill inset 0px left, 0px right"
+  }
+]

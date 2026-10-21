@@ -1,0 +1,127 @@
+/* Interactive catalog card (ADR-029): sentence, chart, and control read top to bottom,
+   with the control directly under what it changes, as in marimo's inline elements. */
+.interactive-card .card-heading {
+  margin-bottom: 10px;
+}
+
+/* The agent's sentence stays true while the user explores: live values update in place. */
+.live-sentence {
+  margin: 0;
+  padding: 0 16px;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.live-value {
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  animation: live-in 240ms ease-out;
+}
+@keyframes live-in {
+  from {
+    color: var(--olive);
+    background: color-mix(in srgb, var(--olive) 12%, transparent);
+  }
+}
+
+/* Stepped slider: stops are real positions, labels sit exactly under them. */
+.stepped {
+  padding: 4px 16px 12px;
+}
+.stepped label {
+  display: block;
+  font-size: 11px;
+  color: var(--soft-ink);
+  margin-bottom: 6px;
+}
+.stepped input[type="range"] {
+  appearance: none;
+  -webkit-appearance: none;
+  display: block;
+  width: 100%;
+  height: 6px;
+  margin: 0;
+  border-radius: 3px;
+  background: linear-gradient(to right, var(--olive) var(--fill), var(--hairline) var(--fill));
+  cursor: pointer;
+}
+.stepped input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--paper);
+  border: 2px solid var(--olive);
+  box-shadow: 0 1px 4px var(--shadow-strong);
+}
+.stepped input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--paper);
+  border: 2px solid var(--olive);
+}
+.stepped input[type="range"]:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 4px;
+}
+.stops {
+  position: relative;
+  height: 28px;
+  margin: 6px 0 0;
+}
+.stops button {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  padding: 4px 6px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--soft-ink);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.stops button[data-edge="start"] {
+  transform: none;
+  margin-left: -6px;
+}
+.stops button[data-edge="end"] {
+  transform: translateX(-100%);
+  margin-left: 6px;
+}
+.stops button:hover {
+  background: var(--paper-deep);
+  color: var(--ink);
+}
+.stops button[aria-pressed="true"] {
+  color: var(--ink);
+  font-weight: 650;
+}
+.stop-description {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--soft-ink);
+}
+
+/* "Show my work": the same card one layer deeper, collapsed by default (ADR-008, ADR-036). */
+.work-steps {
+  margin: 0 16px 12px;
+  padding: 10px 12px 10px 30px;
+  border-radius: 10px;
+  background: var(--paper-deep);
+  font-size: 12px;
+  /* Whole pixels (not 1.7, 20.4px), so the list's height is whole and the reveal scroll, which
+     moves in whole pixels, lands the footer on the same pixel it started on (ADR-073). */
+  line-height: 20px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-value {
+    animation: none;
+  }
+}
+@container thread (max-width: 480px) {
+  .stops button {
+    font-size: 11px;
+  }
+}

@@ -1,0 +1,283 @@
+.comparison-workbench {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 232px;
+  margin: calc(var(--space) * 2 / 3) 0;
+  border: 1px solid var(--hairline);
+  border-radius: var(--btn-radius);
+  overflow: hidden;
+}
+.comparison-viewer {
+  min-width: 0;
+}
+.comparison-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--hairline);
+}
+.comparison-toolbar label {
+  display: flex;
+  align-items: center;
+}
+.view-modes {
+  display: flex;
+  gap: 4px;
+}
+.comparison-viewport {
+  --viewer-height: calc(var(--space) * 17);
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  height: var(--viewer-height);
+  background: var(--bg);
+}
+.comparison-plane {
+  position: relative;
+  flex: none;
+  margin: auto;
+  isolation: isolate;
+  cursor: crosshair;
+  overflow: hidden;
+  background: repeating-conic-gradient(var(--paper-deep) 0% 25%, var(--paper) 0% 50%) 0 0 / 16px
+    16px;
+}
+.comparison-plane img {
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: none;
+  user-select: none;
+  pointer-events: none;
+}
+.baseline-layer {
+  position: absolute;
+  inset: 0;
+  background: inherit;
+}
+.verify-app .inspection-target {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  cursor: crosshair;
+  touch-action: none;
+}
+.verify-app .inspection-target:focus-visible {
+  outline-offset: -3px;
+}
+.wipe-divider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--ink);
+  box-shadow: 1px 0 var(--paper);
+  pointer-events: none;
+}
+.wipe-divider > span {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--ink);
+  border-radius: 50%;
+  background: var(--paper);
+  color: var(--ink);
+}
+.verify-app .wipe-slider {
+  position: absolute;
+  top: calc(50% - 20px);
+  left: -20px;
+  width: calc(100% + 40px);
+  height: 40px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  appearance: none;
+  cursor: default;
+  /* Only the visible handle (the thumb below) should intercept drags; the rest
+     of the track must stay click-through so it doesn't steal image inspection. */
+  pointer-events: none;
+}
+.wipe-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 40px;
+  height: 40px;
+  background: transparent;
+  border: 0;
+  pointer-events: auto;
+  cursor: ew-resize;
+}
+.wipe-slider::-moz-range-thumb {
+  width: 40px;
+  height: 40px;
+  background: transparent;
+  border: 0;
+  pointer-events: auto;
+  cursor: ew-resize;
+}
+.wipe-slider::-moz-range-track {
+  background: transparent;
+  border: 0;
+  pointer-events: none;
+}
+.comparison-plane:has(.wipe-slider:focus-visible) .wipe-divider > span {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+.comparison-labels {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--hairline);
+}
+.image-tag {
+  padding: 4px 8px;
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--hairline);
+  border-radius: var(--btn-radius);
+  font-size: 12px;
+}
+.inspection-marker {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  transform: translate(-50%, -50%);
+  border: 1px solid var(--ink);
+  box-shadow: 0 0 0 1px var(--paper);
+  pointer-events: none;
+}
+.comparison-caption,
+.capture-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  color: var(--soft-ink);
+  font-size: 12px;
+}
+.comparison-caption {
+  border-top: 1px solid var(--hairline);
+}
+.capture-links {
+  justify-content: start;
+  padding-top: 0;
+}
+.pixel-inspector {
+  min-width: 0;
+  border-left: 1px solid var(--hairline);
+  padding: 16px 19px;
+}
+.inspector-heading {
+  display: grid;
+  gap: 2px;
+  margin-bottom: 8px;
+}
+.pixel-inspector p,
+.pixel-inspector output,
+.inspector-heading span {
+  font-size: 12px;
+  color: var(--soft-ink);
+}
+.inspection-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 12px 0 6px;
+}
+.inspection-inputs input {
+  color: var(--ink);
+  cursor: ew-resize;
+  touch-action: none;
+  font-variant-numeric: tabular-nums;
+}
+.inspection-inputs input:focus {
+  cursor: text;
+}
+.pixel-crops {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+.pixel-crop figcaption {
+  font-size: 12px;
+  margin-bottom: 5px;
+}
+.crop-image {
+  position: relative;
+  width: 192px;
+  height: 112px;
+  background: repeating-conic-gradient(var(--paper-deep) 0% 25%, var(--paper) 0% 50%) 0 0 / 16px
+    16px;
+}
+.crop-image canvas {
+  display: block;
+  width: 192px;
+  height: 112px;
+  image-rendering: pixelated;
+}
+.crop-crosshair {
+  position: absolute;
+  left: 96px;
+  top: 56px;
+  width: 4px;
+  height: 4px;
+  border: 1px solid var(--ink);
+  box-shadow: 0 0 0 1px var(--paper);
+  pointer-events: none;
+}
+.crop-empty {
+  display: grid;
+  place-items: center;
+  width: 192px;
+  min-height: 64px;
+  border: 1px dashed var(--hairline);
+  padding: 12px;
+}
+.comparison-loading {
+  display: block;
+  padding: 48px 20px;
+  color: var(--soft-ink);
+}
+@media (max-width: 900px) {
+  .comparison-workbench {
+    grid-template-columns: 1fr;
+  }
+  .pixel-inspector {
+    border-left: 0;
+    border-top: 1px solid var(--hairline);
+  }
+  .pixel-crops {
+    grid-template-columns: repeat(3, 192px);
+    overflow: auto;
+  }
+  .inspection-inputs {
+    max-width: 240px;
+  }
+  .comparison-viewport {
+    --viewer-height: 420px;
+  }
+}
+@media (max-width: 500px) {
+  .comparison-toolbar {
+    flex-wrap: wrap;
+  }
+  .comparison-viewport {
+    --viewer-height: 300px;
+  }
+}

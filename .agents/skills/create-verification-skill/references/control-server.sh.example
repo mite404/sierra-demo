@@ -1,0 +1,117 @@
+#!/usr/bin/env bash
+# Skeleton for a verify-<app> launch/doctor/stop helper backing a long-running server.
+#
+# Copy to .agents/skills/verify-<app>/scripts/control-<app>.sh, fill the CONFIG block,
+# chmod +x. For a short-lived CLI or TUI there is no server to keep alive: drop launch
+# and stop, and make doctor assert the binary builds and reports the expected version.
+#
+# The four `..` in ROOT walk scripts -> verify-<app> -> skills -> .agents -> repo root.
+# .cursor/skills/<name>/scripts/ and .claude/skills/<name>/scripts/ sit at that same
+# depth, so the same walk resolves through a symlinked path. Keep the count at four.
+
+set -euo pipefail
+
+# ---------------------------------------------------------------- CONFIG
+APP="myapp"                              # names the state dir and every log line
+START_CMD=(./node_modules/.bin/next dev --port "%PORT%")   # %PORT% is substituted below
+DEFAULT_PORT="${VERIFY_PORT:-4317}"
+READY_PATH="/"                           # path polled until it answers 200
+DOCTOR_NEEDLE="Some string only this app serves"   # proves the port is OURS, not a stray server
+BOOT_TIMEOUT=60                          # seconds to wait for READY_PATH
+# ------------------------------------------------------------- END CONFIG
+
+ROOT="$(cd "$(dirname "$0")/../../../.." && pwd)"
+STATE_DIR="${VERIFY_STATE_DIR:-/tmp/${APP}-verify-${VERIFY_RUN_ID:-default}}"
+PID_FILE="$STATE_DIR/server.pid"
+PORT_FILE="$STATE_DIR/port"
+LOG_FILE="$STATE_DIR/dev.log"
+
+mkdir -p "$STATE_DIR"
+
+port_in_use() {
+  if command -v lsof >/dev/null 2>&1; then
+    lsof -nP -iTCP:"$1" -sTCP:LISTEN >/dev/null 2>&1
+  else
+    curl -fsS "http://127.0.0.1:${1}${READY_PATH}" >/dev/null 2>&1
+  fi
+}
+
+read_port() { [[ -f "$PORT_FILE" ]] && cat "$PORT_FILE" || echo "$DEFAULT_PORT"; }
+
+cmd_launch() {
+  local port="${VERIFY_PORT:-$DEFAULT_PORT}"
+
+  # Refusing beats double-driving: a second instance on a shared data dir corrupts
+  # the user's session, and an unowned pid is one nobody can clean up.
+  if [[ -f "$PID_FILE" ]] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
+    echo "$APP: already running (pid $(cat "$PID_FILE"), port $(read_port))" >&2; exit 1
+  fi
+  if port_in_use "$port"; then
+    echo "$APP: port $port already in use — set VERIFY_PORT to a free port" >&2; exit 1
+  fi
+
+  echo "$port" >"$PORT_FILE"
+  cd "$ROOT"
+  local cmd=("${START_CMD[@]//%PORT%/$port}")
+  nohup "${cmd[@]}" >"$LOG_FILE" 2>&1 &
+  echo $! >"$PID_FILE"
+
+  for _ in $(seq 1 "$BOOT_TIMEOUT"); do
+    if curl -fsS "http://127.0.0.1:${port}${READY_PATH}" >/dev/null 2>&1; then
+      echo "$APP: ready at http://127.0.0.1:${port}/ (pid $(cat "$PID_FILE"))"
+      echo "$APP: log $LOG_FILE"
+      exit 0
+    fi
+    sleep 1
+  done
+
+  echo "$APP: timed out waiting for http://127.0.0.1:${port}${READY_PATH}" >&2
+  tail -20 "$LOG_FILE" >&2 || true
+  exit 1
+}
+
+cmd_doctor() {
+  local port pid body
+  port="$(read_port)"
+  [[ -f "$PID_FILE" ]] || { echo "$APP doctor: FAIL — no pid file at $PID_FILE (run launch first)" >&2; exit 1; }
+  pid="$(cat "$PID_FILE")"
+  kill -0 "$pid" 2>/dev/null || { echo "$APP doctor: FAIL — pid $pid is not running" >&2; exit 1; }
+  port_in_use "$port" || { echo "$APP doctor: FAIL — nothing listening on port $port" >&2; exit 1; }
+  body="$(curl -fsS "http://127.0.0.1:${port}${READY_PATH}")" || {
+    echo "$APP doctor: FAIL — GET $READY_PATH did not return 200" >&2; exit 1; }
+
+  # Content assertion, not just a 200: proves this port serves OUR build rather than
+  # some other project's dev server that happened to claim it.
+  grep -q "$DOCTOR_NEEDLE" <<<"$body" || {
+    echo "$APP doctor: FAIL — page missing expected content ($DOCTOR_NEEDLE)" >&2; exit 1; }
+
+  echo "$APP doctor: OK"
+  echo "  url: http://127.0.0.1:${port}/"
+  echo "  pid: $pid (owned by this run)"
+  echo "  state: $STATE_DIR"
+  echo "  log: $LOG_FILE"
+}
+
+cmd_stop() {
+  [[ -f "$PID_FILE" ]] || { echo "$APP: no server pid file — nothing to stop"; exit 0; }
+  local pid; pid="$(cat "$PID_FILE")"
+  if kill -0 "$pid" 2>/dev/null; then
+    # Kill what we started, by recorded pid. Never `pkill next` or `killall node`:
+    # that takes down the user's own dev servers alongside ours.
+    kill "$pid" 2>/dev/null || true
+    for _ in $(seq 1 15); do kill -0 "$pid" 2>/dev/null || break; sleep 1; done
+    kill -0 "$pid" 2>/dev/null && kill -9 "$pid" 2>/dev/null || true
+    echo "$APP: stopped pid $pid"
+  else
+    echo "$APP: pid $pid was not running"
+  fi
+  rm -f "$PID_FILE"
+  # Artifacts live outside STATE_DIR and are never removed here.
+}
+
+case "${1:-}" in
+  launch) cmd_launch ;;
+  doctor) cmd_doctor ;;
+  stop)   cmd_stop ;;
+  *) echo "usage: $(basename "$0") {launch|doctor|stop}" >&2; exit 1 ;;
+esac

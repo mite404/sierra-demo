@@ -1,0 +1,138 @@
+#!/usr/bin/env bash
+# One external-vendor reviewer for pstack panels, via OpenRouter.
+#
+# Claude Code's Agent tool only reaches sonnet|opus|haiku|fable, so a panel run
+# through it is one vendor sampled N times. This is the seat that makes it a real
+# panel again: a different family, different failure modes, genuine disagreement.
+#
+#   echo "$PROMPT" | external-review                         # default model
+#   echo "$PROMPT" | external-review -m moonshotai/kimi-k3   # pick one
+#   external-review --list                                   # what's available
+#
+# Key: POTETO_OPENROUTER_KEY if set, else OPENROUTER_API_KEY. Use a dedicated key
+# for the first so panel spend is attributable and separate from app keys.
+# Prints the reply to stdout and nothing else, so a caller can capture it as one
+# panel member's verdict.
+
+set -euo pipefail
+
+MODEL="${EXTERNAL_REVIEW_MODEL:-moonshotai/kimi-k2.6}"
+TEMP="${EXTERNAL_REVIEW_TEMP:-0.2}"
+MAX_OUT="${EXTERNAL_REVIEW_MAX_OUT:-2000}"   # assumed reply length, for --estimate only
+ESTIMATE=0
+API="https://openrouter.ai/api/v1"
+
+# A dedicated key keeps panel spend separate from app keys of the same name
+# (a24-puzzle/.env.local defines its own OPENROUTER_API_KEY, for instance).
+KEY="${POTETO_OPENROUTER_KEY:-${OPENROUTER_API_KEY:-}}"
+KEY_SOURCE="${POTETO_OPENROUTER_KEY:+POTETO_OPENROUTER_KEY}"
+KEY_SOURCE="${KEY_SOURCE:-OPENROUTER_API_KEY}"
+
+usage() { sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit "${1:-0}"; }
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -m|--model) MODEL="$2"; shift 2 ;;
+    -t|--temp)  TEMP="$2";  shift 2 ;;
+    --list)
+      curl -fsS "$API/models" | python3 -c '
+import json, sys
+for m in sorted(json.load(sys.stdin)["data"], key=lambda x: x["id"]):
+    p = m.get("pricing") or {}
+    ident, ctx = m["id"], m.get("context_length")
+    print("%-46s ctx=%-8s in=%s out=%s" % (ident, ctx, p.get("prompt"), p.get("completion")))'
+      exit 0 ;;
+    --estimate) ESTIMATE=1; shift ;;
+    -h|--help) usage 0 ;;
+    *) echo "unknown argument: $1" >&2; usage 1 ;;
+  esac
+done
+
+if [[ -z "$KEY" ]]; then
+  cat >&2 <<'EOF'
+external-review: no API key. Set POTETO_OPENROUTER_KEY (preferred, so panel spend is
+  attributable) or OPENROUTER_API_KEY.
+
+  Put it in ~/.zshenv, which zsh sources for non-interactive shells too, unlike
+  ~/.zshrc. Edit the file directly. Never paste a key into a prompt, a chat, a
+  skill body, or anything under version control.
+EOF
+  exit 1
+fi
+
+PROMPT_FILE="$(mktemp -t external-review)"
+trap 'rm -f "$PROMPT_FILE"' EXIT
+cat >"$PROMPT_FILE"
+[[ -s "$PROMPT_FILE" ]] || { echo "external-review: empty prompt on stdin" >&2; exit 1; }
+
+if [[ "$ESTIMATE" == 1 ]]; then
+  # Cost before spend, so an approval prompt can quote a number. Token count is
+  # chars/4, which is an estimate and labelled as one: no local tokenizer matches
+  # Moonshot's, and being wrong by 20% does not change an approval decision.
+  MODELS="$(curl -fsS "$API/models")"
+  CREDIT="$(curl -fsS "$API/key" -H "Authorization: Bearer $KEY" 2>/dev/null || echo '{}')"
+  KEY_SOURCE="$KEY_SOURCE" MODEL="$MODEL" MAX_OUT="$MAX_OUT" PROMPT_FILE="$PROMPT_FILE" MODELS="$MODELS" CREDIT="$CREDIT" python3 -c '
+import json, os
+model = os.environ["MODEL"]
+prompt = open(os.environ["PROMPT_FILE"], encoding="utf-8", errors="replace").read()
+max_out = int(os.environ["MAX_OUT"])
+row = next((m for m in json.loads(os.environ["MODELS"])["data"] if m["id"] == model), None)
+if row is None:
+    raise SystemExit("external-review: unknown model %s (try --list)" % model)
+price = row.get("pricing") or {}
+tin = max(1, len(prompt) // 4)
+cost = tin * float(price["prompt"]) + max_out * float(price["completion"])
+print("key       %s" % os.environ.get("KEY_SOURCE", "?"))
+print("model     %s" % model)
+print("context   %s tokens" % row.get("context_length"))
+print("prompt    ~%d tokens (chars/4 estimate)" % tin)
+print("reply     %d tokens assumed (EXTERNAL_REVIEW_MAX_OUT)" % max_out)
+print("cost      ~$%.4f" % cost)
+if tin > (row.get("context_length") or 0):
+    print("WARNING   prompt exceeds this model context; pick a larger one")
+try:
+    d = (json.loads(os.environ["CREDIT"]) or {}).get("data") or {}
+except Exception:
+    d = {}
+used, limit = d.get("usage"), d.get("limit")
+if used is not None and limit is not None:
+    print("credit    $%.4f used of $%.2f, $%.2f left" % (used, limit, limit - used))
+elif used is not None:
+    print("credit    $%.4f used, no cap set" % used)
+'
+  exit 0
+fi
+
+# Build the payload in python so the prompt is JSON-encoded rather than
+# interpolated into a shell string. Review text is untrusted input; it routinely
+# contains quotes, backticks, and newlines.
+PAYLOAD_FILE="$(mktemp -t external-review-payload)"
+trap 'rm -f "$PROMPT_FILE" "$PAYLOAD_FILE"' EXIT
+MODEL="$MODEL" TEMP="$TEMP" PROMPT_FILE="$PROMPT_FILE" OUT="$PAYLOAD_FILE" python3 -c '
+import json, os
+body = open(os.environ["PROMPT_FILE"], encoding="utf-8", errors="replace").read()
+with open(os.environ["OUT"], "w", encoding="utf-8") as f:
+    json.dump({
+        "model": os.environ["MODEL"],
+        "temperature": float(os.environ["TEMP"]),
+        "messages": [{"role": "user", "content": body}],
+    }, f)' 
+
+RESPONSE="$(curl -fsS "$API/chat/completions" \
+  -H "Authorization: Bearer $KEY" \
+  -H "Content-Type: application/json" \
+  -d @"$PAYLOAD_FILE")" || { echo "external-review: request to $API failed" >&2; exit 1; }
+
+python3 -c '
+import json, sys
+r = json.load(sys.stdin)
+if "error" in r:
+    sys.exit("external-review: %s" % (r["error"].get("message", r["error"]),))
+choices = r.get("choices") or []
+if not choices:
+    sys.exit("external-review: no choices in response")
+print(choices[0]["message"]["content"].strip())
+u = r.get("usage") or {}
+if u:
+    sys.stderr.write("\n[%s  in=%s out=%s]\n" % (r.get("model", "?"), u.get("prompt_tokens"), u.get("completion_tokens")))
+' <<<"$RESPONSE"

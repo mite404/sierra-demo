@@ -1,0 +1,9 @@
+{
+  "extends": "@yaklabs/config/tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ESNext"],
+    "types": ["@cloudflare/workers-types"],
+    "noEmit": true
+  },
+  "include": ["src", "vitest.config.ts"]
+}
