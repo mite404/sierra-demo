@@ -325,7 +325,8 @@ script below. Make incomplete verification or missing model access explicit.
 Use existing Vitest and browser workflows. Start with targeted simulation tests, then run the
 repository's applicable checks: `pnpm typecheck`, `pnpm lint`, `pnpm format:check`,
 `pnpm test:unit`, and `pnpm build`. Run Storybook verification if shared catalog components change.
-On the Small orb, run heavy suites sequentially rather than increasing resources or dropping gates.
+Start on a Small orb and run heavy suites sequentially. Ethan permits upgrading to a Medium orb
+if resources become a blocker; keep the agent in Medium mode and do not drop verification gates.
 
 Keep automated business assertions separate from live-model and human-review evidence. Offline
 tests prove the code's contract; live runs demonstrate actual model behavior; the recording proves

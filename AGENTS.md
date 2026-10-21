@@ -13,6 +13,9 @@ Use synthetic accounts and payments. Keep the agent helpful while enforcing auth
 executor. Existing YakLabs deployments, WorkOS configuration, and credentials are not demo
 resources.
 
+Use vanilla Git for all version control in this project. Do not use GitButler (`but`), including
+when an inherited or global skill recommends it. This is Ethan's explicit project preference.
+
 ## General Guidelines
 
 - Never use the em dash "--". Use plain dash "-" instead.
