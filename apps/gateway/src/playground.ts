@@ -75,17 +75,7 @@ const answered = (state: TurnState): Decision =>
     ? { kind: "stop", end: { type: "end", reason: "answered" } }
     : stoppedShort("upstream", NO_ANSWER);
 
-const decide = (
-  { state, round, results, asked, broken }: RoundEnd,
-  messages: Messages,
-): Decision => {
-  if (broken) return stoppedShort("upstream", NO_RESPONSE);
-  if (state.policy === "stopped") return stoppedShort("limit", CUT_SHORT);
-  if (asked) return { kind: "stop", end: { type: "end", reason: "asked" } };
-  if (round.stop === null) return stoppedShort("upstream", NO_RESPONSE);
-  if (round.stop === "max_tokens") return stoppedShort("limit", CUT_SHORT);
-  if (state.policy === "proseOnly")
-    return round.stop === "tool_use" ? stoppedShort("limit", CUT_SHORT) : answered(state);
+const continueWithResults = ({ state, round, results }: RoundEnd, messages: Messages): Decision => {
   if (round.stop !== "tool_use" || results.length === 0) return answered(state);
   if (state.round >= MAX_ROUNDS) return stoppedShort("limit", CUT_SHORT);
   const next: Messages = [
@@ -98,6 +88,18 @@ const decide = (
     messages: next,
     state: toolsFor(state).length === 0 ? { ...state, policy: "proseOnly" } : state,
   };
+};
+
+const decide = (end: RoundEnd, messages: Messages): Decision => {
+  const { state, round, asked, broken } = end;
+  if (broken) return stoppedShort("upstream", NO_RESPONSE);
+  if (state.policy === "stopped") return stoppedShort("limit", CUT_SHORT);
+  if (asked) return { kind: "stop", end: { type: "end", reason: "asked" } };
+  if (round.stop === null) return stoppedShort("upstream", NO_RESPONSE);
+  if (round.stop === "max_tokens") return stoppedShort("limit", CUT_SHORT);
+  if (state.policy === "proseOnly")
+    return round.stop === "tool_use" ? stoppedShort("limit", CUT_SHORT) : answered(state);
+  return continueWithResults(end, messages);
 };
 
 // Sends one round upstream with the tools the turn still offers; resolves once the upstream

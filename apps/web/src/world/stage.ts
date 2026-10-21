@@ -9,7 +9,7 @@ import {
 import { coveredBy, recast, removal, restored, type Edit, type Slice, type Tomb } from "./edits";
 import { leaseIn, type Lease, type LeaseDeps } from "./lease";
 
-export type { Lease, Turned } from "./lease";
+export type { Lease } from "./lease";
 
 /** What a stage opens on: the workspace, every thread's turns, and the instants minted so far. */
 export type Seed = {
