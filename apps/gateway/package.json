@@ -10,7 +10,8 @@
   "scripts": {
     "build": "wrangler deploy --dry-run --outdir dist",
     "dev": "wrangler dev",
-    "dev:simulation": "wrangler dev --config wrangler.simulation.jsonc --local",
+    "dev:simulation": "pnpm migrate:simulation && wrangler dev --config wrangler.simulation.jsonc --local --persist-to .wrangler/simulation-state",
+    "migrate:simulation": "wrangler d1 migrations apply SIMULATION_DB --config wrangler.simulation.jsonc --local --persist-to .wrangler/simulation-state",
     "deploy": "wrangler deploy",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",

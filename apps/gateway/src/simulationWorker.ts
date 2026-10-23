@@ -1,22 +1,32 @@
 import type { Anthropic } from "@anthropic-ai/sdk";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
-import type { z } from "zod";
+import { HTTPException } from "hono/http-exception";
+import { z } from "zod";
 import { liveAgent } from "./simulationAgent";
 import {
+  compatibleSimulationDefinition,
+  simulationDraftRequest,
   simulationRequest,
+  simulationSaveRequest,
   type customerSession,
+  type SimulationDraft,
   type SimulationResult,
   type SimulationSelection,
   type WorkflowConfig,
 } from "./simulationContract";
 import { runSimulation, toolProbe } from "./simulation";
 import { SIMULATION_MODEL } from "./simulationModel";
+import {
+  listSimulationDefinitions,
+  readSimulationDefinition,
+  saveSimulationDefinition,
+} from "./simulationStorage";
 import { simulationStream } from "./simulationStream";
 import { createWorkflowApp } from "./simulationWorkflow";
 import { openRouterClient } from "./upstream";
 
-type SimulationEnv = { OPENROUTER_API_KEY?: string };
+type SimulationEnv = { OPENROUTER_API_KEY?: string; SIMULATION_DB?: D1Database };
 type Session = {
   selection: SimulationSelection;
   workflowId: string;
@@ -34,16 +44,149 @@ type Session = {
 export function createSimulationApp(clientFor: (key: string) => Anthropic = openRouterClient) {
   // ponytail: browser handles restore these 24-hour sessions; Worker restarts require explicit reset.
   const sessions = new Map<string, Session>();
+  const drafts = new Map<string, SimulationDraft>();
   const workflows = createWorkflowApp(clientFor);
   const app = new Hono<{ Bindings: SimulationEnv }>();
-  app.use("/api/*", bodyLimit({ maxSize: 8192 }));
   app.use("/api/*", async (c, next) => {
+    c.header("Cache-Control", "no-store");
     if (c.req.header("sec-fetch-site") === "cross-site")
       return c.json({ error: "Same-origin requests only" }, 403);
-    c.header("Cache-Control", "no-store");
     return next();
   });
+  app.use("/api/*", bodyLimit({ maxSize: 8192 }));
+  app.use("/api/workflow/:id", async (c, next) => {
+    if (c.req.method === "DELETE") {
+      for (const [id, draft] of drafts)
+        if (draft.workflow.id === c.req.param("id") && draft.expectedRevision === 0)
+          drafts.delete(id);
+    }
+    return next();
+  });
+  app.onError((error, c) => {
+    if (error instanceof HTTPException) return error.getResponse();
+    return c.json(
+      {
+        error:
+          "Request failed. If saving, no save was acknowledged. Read the library before trying again.",
+      },
+      503,
+    );
+  });
   app.route("/", workflows.app);
+  app.get("/api/simulation-definitions", async (c) => {
+    if (!c.env.SIMULATION_DB)
+      return c.json({ error: "Simulation storage is not configured." }, 503);
+    return c.json(await listSimulationDefinitions(c.env.SIMULATION_DB));
+  });
+  app.get("/api/simulation-definitions/:id", async (c) => {
+    if (!z.uuid().safeParse(c.req.param("id")).success)
+      return c.json({ error: "Invalid definition ID." }, 400);
+    if (!c.env.SIMULATION_DB)
+      return c.json({ error: "Simulation storage is not configured." }, 503);
+    const saved = await readSimulationDefinition(c.env.SIMULATION_DB, c.req.param("id"));
+    return saved ? c.json(saved) : c.json({ error: "Saved simulation not found." }, 404);
+  });
+  app.get("/api/simulation-definitions/:id/revisions/:revision", async (c) => {
+    const revision = z.coerce.number().int().positive().safeParse(c.req.param("revision"));
+    if (!z.uuid().safeParse(c.req.param("id")).success || !revision.success)
+      return c.json({ error: "Invalid definition or revision." }, 400);
+    if (!c.env.SIMULATION_DB)
+      return c.json({ error: "Simulation storage is not configured." }, 503);
+    const saved = await readSimulationDefinition(
+      c.env.SIMULATION_DB,
+      c.req.param("id"),
+      revision.data,
+    );
+    return saved ? c.json(saved) : c.json({ error: "Saved simulation not found." }, 404);
+  });
+  app.post("/api/simulation-drafts", async (c) => {
+    const parsed = simulationDraftRequest.safeParse(await c.req.json<unknown>().catch(() => null));
+    if (!parsed.success)
+      return c.json(
+        {
+          error:
+            "Provide a complete named simulation with supported checks; authority and settings cannot be posted.",
+        },
+        400,
+      );
+    const input = parsed.data;
+    const { name, case: customer, instructions, checks, humanGuidance } = input;
+    const definition = { name, case: customer, instructions, checks, humanGuidance };
+    let base: Pick<SimulationDraft, "definitionId" | "expectedRevision" | "workflow" | "createdAt">;
+    if ("workflowId" in input) {
+      const config = workflows.accepted(input.workflowId);
+      if (!config)
+        return c.json({ error: "Accept a complete workflow before creating a simulation." }, 409);
+      base = {
+        definitionId: crypto.randomUUID(),
+        expectedRevision: 0,
+        workflow: { id: input.workflowId, config: structuredClone(config) },
+        createdAt: new Date().toISOString(),
+      };
+    } else {
+      if (!c.env.SIMULATION_DB)
+        return c.json({ error: "Simulation storage is not configured." }, 503);
+      const saved = await readSimulationDefinition(c.env.SIMULATION_DB, input.definitionId);
+      if (!saved || saved.revision !== input.expectedRevision)
+        return c.json({ error: "Reopen the latest saved revision before editing." }, 409);
+      base = {
+        definitionId: saved.id,
+        expectedRevision: saved.revision,
+        workflow: saved.workflow,
+        createdAt: saved.createdAt,
+      };
+    }
+    if (!compatibleSimulationDefinition(definition, base.workflow.config))
+      return c.json(
+        { error: "Selected checks do not match the customer or accepted approval policy." },
+        400,
+      );
+    for (const [id, draft] of drafts)
+      if (Date.parse(draft.expiresAt) <= Date.now()) drafts.delete(id);
+    if (drafts.size >= 24)
+      return c.json({ error: "Draft limit reached. Clear a draft or try later." }, 429);
+    const draft: SimulationDraft = {
+      ...base,
+      id: crypto.randomUUID(),
+      definition,
+      expiresAt: new Date(Date.now() + 86400000).toISOString(),
+    };
+    drafts.set(draft.id, draft);
+    return c.json(draft, 201);
+  });
+  app.get("/api/simulation-drafts/:id", (c) => {
+    const draft = drafts.get(c.req.param("id"));
+    return draft && Date.parse(draft.expiresAt) > Date.now()
+      ? c.json(draft)
+      : c.json({ error: "Proposal expired or cleared. Create a new draft explicitly." }, 410);
+  });
+  app.delete("/api/simulation-drafts/:id", (c) => {
+    drafts.delete(c.req.param("id"));
+    return c.body(null, 204);
+  });
+  app.post("/api/simulation-drafts/:id/save", async (c) => {
+    const parsed = simulationSaveRequest.safeParse(await c.req.json<unknown>().catch(() => null));
+    if (!parsed.success)
+      return c.json({ error: "Save only the reviewed proposal and its expected revision." }, 400);
+    const draft = drafts.get(c.req.param("id"));
+    if (
+      !draft ||
+      Date.parse(draft.expiresAt) <= Date.now() ||
+      draft.expectedRevision !== parsed.data.expectedRevision
+    )
+      return c.json(
+        { error: "Proposal cleared, expired, or stale. Review a new proposal before saving." },
+        409,
+      );
+    if (!c.env.SIMULATION_DB)
+      return c.json({ error: "Simulation storage is not configured." }, 503);
+    // Claim approval synchronously before any storage await. Reset cannot revive this consumed draft.
+    drafts.delete(draft.id);
+    const saved = await saveSimulationDefinition(c.env.SIMULATION_DB, draft);
+    return saved
+      ? c.json(saved, 201)
+      : c.json({ error: "A newer revision was saved. Reopen it before editing." }, 409);
+  });
   app.get("/api/health", (c) =>
     c.json({ ok: true, synthetic: true, liveConfigured: Boolean(c.env.OPENROUTER_API_KEY) }),
   );

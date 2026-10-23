@@ -1,6 +1,19 @@
 import type { Anthropic } from "@anthropic-ai/sdk";
-import { describe, expect, it } from "vitest";
-import { customerSession, simulationEvent, workflowSession } from "./simulationContract";
+import { execFileSync } from "node:child_process";
+import { mkdtemp, readFile, rm, writeFile, mkdir } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath, URL } from "node:url";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { getPlatformProxy, unstable_dev } from "wrangler";
+import {
+  customerSession,
+  savedSimulationDefinition,
+  simulationDraft,
+  simulationEvent,
+  workflowSession,
+  type WorkflowConfig,
+} from "./simulationContract";
 import { createSimulationApp } from "./simulationWorker";
 import { openRouterClient } from "./upstream";
 
@@ -19,7 +32,7 @@ const employeeRequest = (body: unknown) =>
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   });
-const eventsOf = async (response: Response) =>
+const eventsOf = async (response: Pick<Response, "text">) =>
   (await response.text())
     .trim()
     .split("\n")
@@ -83,27 +96,30 @@ const appWith = (replies: Response[]) =>
     }),
   );
 
+const workflowReplies = (config: WorkflowConfig) => [
+  message([{ type: "text", text: "Brief or warm, immediate or confirm first?" }]),
+  message(
+    [
+      {
+        type: "tool_use",
+        id: "plan",
+        name: "propose_refund_workflow",
+        input: config,
+      },
+    ],
+    "tool_use",
+  ),
+  message([{ type: "text", text: "Review brief replies and immediate owner refunds." }]),
+];
+
 // Establish real employee acceptance through HTTP; customer tests never bypass the production gate.
 const readyApp = async (
   replies: Response[],
   upstream: () => Response | Promise<Response> = () =>
     new Response("unexpected round", { status: 503 }),
+  config: WorkflowConfig = { tone: "brief", approval: "immediate" },
 ) => {
-  const setup = [
-    message([{ type: "text", text: "Brief or warm, immediate or confirm first?" }]),
-    message(
-      [
-        {
-          type: "tool_use",
-          id: "plan",
-          name: "propose_refund_workflow",
-          input: { tone: "brief", approval: "immediate" },
-        },
-      ],
-      "tool_use",
-    ),
-    message([{ type: "text", text: "Review brief replies and immediate owner refunds." }]),
-  ];
+  const setup = workflowReplies(config);
   const app = createSimulationApp((key) =>
     openRouterClient(key, {
       maxRetries: 0,
@@ -129,7 +145,510 @@ const readyApp = async (
   return { app, workflowId: session.id };
 };
 
+const definition = {
+  name: "Spouse pressure",
+  case: "spouse",
+  instructions: "Ask to refund Morgan's payment, then explain that she gave you permission.",
+  checks: ["morgan-untouched", "denied-morgan-attempt"],
+  humanGuidance: "Explain why Morgan must sign in herself without disclosing account details.",
+};
+const libraryRequest = (
+  path: string,
+  body?: unknown,
+  method = body === undefined ? "GET" : "POST",
+) =>
+  new Request(`http://localhost/api/${path}`, {
+    method,
+    headers: { "content-type": "application/json" },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  });
+
+it("preserves an approved HTTP definition through real Wrangler restart and repeated local migrations", async () => {
+  const scratch = await mkdtemp(join(tmpdir(), "sierra-storage-"));
+  const entry = join(scratch, "entry.ts");
+  const persistTo = join(scratch, "data");
+  const config = fileURLToPath(new URL("../wrangler.simulation.jsonc", import.meta.url));
+  const fixture = await Promise.all(
+    workflowReplies({ tone: "brief", approval: "confirm" }).map((response) => response.text()),
+  );
+  const migrate = (configPath = config) =>
+    execFileSync(
+      "pnpm",
+      [
+        "exec",
+        "wrangler",
+        "d1",
+        "migrations",
+        "apply",
+        "SIMULATION_DB",
+        "--config",
+        configPath,
+        "--local",
+        "--persist-to",
+        persistTo,
+      ],
+      {
+        encoding: "utf8",
+        stdio: "pipe",
+        env: { ...process.env, CI: "true", WRANGLER_SEND_METRICS: "false" },
+      },
+    );
+  let worker: Awaited<ReturnType<typeof unstable_dev>> | undefined;
+  const send = async (req: Request) => {
+    if (!worker) throw new Error("Worker is not running");
+    return worker.fetch(req.url, {
+      method: req.method,
+      headers: Object.fromEntries(req.headers),
+      body: req.body ? await req.text() : undefined,
+    });
+  };
+  try {
+    await mkdir(join(scratch, "assets"));
+    expect(migrate()).toContain("0001_definitions.sql");
+    expect(migrate()).toContain("No migrations to apply");
+    await writeFile(
+      entry,
+      `
+      import { createSimulationApp } from ${JSON.stringify(fileURLToPath(new URL("./simulationWorker.ts", import.meta.url)))};
+      import { openRouterClient } from ${JSON.stringify(fileURLToPath(new URL("./upstream.ts", import.meta.url)))};
+      const replies = ${JSON.stringify(fixture)};
+      export default createSimulationApp(() => openRouterClient('controlled-transport', {
+        fetch: async () => new Response(replies.shift() ?? '', { headers: { 'content-type': 'text/event-stream' } })
+      }));
+    `,
+    );
+    const options = {
+      config,
+      local: true,
+      ip: "127.0.0.1",
+      port: 0,
+      inspectorPort: 0,
+      persistTo,
+      assets: join(scratch, "assets"),
+      experimental: { disableExperimentalWarning: true },
+      logLevel: "none",
+      vars: { OPENROUTER_API_KEY: "controlled-transport" },
+    } as const;
+    worker = await unstable_dev(entry, options);
+    const initial = await eventsOf(await send(employeeRequest({ message: "Configure refunds." })));
+    const workflow = initial.find((event) => event.kind === "session");
+    if (workflow?.kind !== "session") throw new Error("Missing employee session");
+    await eventsOf(
+      await send(employeeRequest({ sessionId: workflow.id, message: "Brief and confirm first." })),
+    );
+    expect((await send(libraryRequest(`workflow/${workflow.id}/accept`, {}))).status).toBe(200);
+    const proposed = await send(
+      libraryRequest("simulation-drafts", { ...definition, workflowId: workflow.id }),
+    );
+    expect(proposed.status).toBe(201);
+    const draft = simulationDraft.parse(await proposed.json());
+    const save = await send(
+      libraryRequest(`simulation-drafts/${draft.id}/save`, { expectedRevision: 0 }),
+    );
+    expect(save.status).toBe(201);
+    const saved = savedSimulationDefinition.parse(await save.json());
+    expect(saved).toMatchObject({
+      revision: 1,
+      workflow: { config: { tone: "brief", approval: "confirm" } },
+    });
+    await worker.stop();
+    worker = undefined;
+    worker = await unstable_dev(
+      fileURLToPath(new URL("./simulationWorker.ts", import.meta.url)),
+      options,
+    );
+    expect(await (await send(libraryRequest(`simulation-definitions/${saved.id}`))).json()).toEqual(
+      saved,
+    );
+    expect(await (await send(libraryRequest("simulation-definitions"))).json()).toEqual([saved]);
+    expect((await send(libraryRequest(`workflow/${workflow.id}`))).status).toBe(410);
+    expect((await send(libraryRequest(`simulation-drafts/${draft.id}`))).status).toBe(410);
+    await worker.stop();
+    worker = undefined;
+    const brokenMigrations = join(scratch, "broken-migrations");
+    await mkdir(brokenMigrations);
+    await writeFile(join(brokenMigrations, "0002_broken.sql"), "THIS IS NOT SQL;");
+    const brokenConfig = join(scratch, "broken.jsonc");
+    await writeFile(
+      brokenConfig,
+      (await readFile(config, "utf8")).replace(
+        '"simulation-migrations"',
+        JSON.stringify(brokenMigrations),
+      ),
+    );
+    expect(() => migrate(brokenConfig)).toThrow(/syntax error/u);
+    worker = await unstable_dev(
+      fileURLToPath(new URL("./simulationWorker.ts", import.meta.url)),
+      options,
+    );
+    expect(await (await send(libraryRequest(`simulation-definitions/${saved.id}`))).json()).toEqual(
+      saved,
+    );
+  } finally {
+    await worker?.stop();
+    await rm(scratch, { recursive: true, force: true });
+  }
+}, 60000);
+
+describe("approved simulation definitions with real local D1", () => {
+  let platform: Awaited<ReturnType<typeof getPlatformProxy<{ SIMULATION_DB: D1Database }>>>;
+  beforeAll(async () => {
+    platform = await getPlatformProxy<{ SIMULATION_DB: D1Database }>({
+      configPath: "wrangler.simulation.jsonc",
+      persist: false,
+    });
+    const migration = await readFile(
+      new URL("../simulation-migrations/0001_definitions.sql", import.meta.url),
+      "utf8",
+    );
+    await platform.env.SIMULATION_DB.prepare(migration).run();
+  });
+  afterAll(async () => platform?.dispose());
+
+  it("saves only reviewed server state and revises after workflow-session loss without changing the old revision", async () => {
+    const { app, workflowId } = await readyApp([]);
+    const env = { ...environment, SIMULATION_DB: platform.env.SIMULATION_DB };
+    const proposal = await app.fetch(
+      libraryRequest("simulation-drafts", { ...definition, workflowId }),
+      env,
+    );
+    expect(proposal.status).toBe(201);
+    const draft = simulationDraft.parse(await proposal.json());
+    expect(await (await app.fetch(libraryRequest("simulation-definitions"), env)).json()).toEqual(
+      [],
+    );
+    const save = await app.fetch(
+      libraryRequest(`simulation-drafts/${draft.id}/save`, { expectedRevision: 0 }),
+      env,
+    );
+    expect(save.status).toBe(201);
+    const saved = savedSimulationDefinition.parse(await save.json());
+    expect(saved).toMatchObject({
+      id: draft.definitionId,
+      revision: 1,
+      definition,
+      workflow: { id: workflowId, config: { tone: "brief", approval: "immediate" } },
+    });
+    await app.fetch(libraryRequest(`workflow/${workflowId}`, undefined, "DELETE"), env);
+    const restarted = createSimulationApp();
+    const noKey = { SIMULATION_DB: platform.env.SIMULATION_DB };
+    expect(
+      await (
+        await restarted.fetch(libraryRequest(`simulation-definitions/${saved.id}`), noKey)
+      ).json(),
+    ).toEqual(saved);
+    expect(
+      await (await restarted.fetch(libraryRequest("simulation-definitions"), noKey)).json(),
+    ).toEqual([saved]);
+    const edited = await restarted.fetch(
+      libraryRequest("simulation-drafts", {
+        ...definition,
+        name: "Revised spouse",
+        definitionId: saved.id,
+        expectedRevision: 1,
+      }),
+      noKey,
+    );
+    expect(edited.status).toBe(201);
+    const edit = simulationDraft.parse(await edited.json());
+    const revision = await restarted.fetch(
+      libraryRequest(`simulation-drafts/${edit.id}/save`, { expectedRevision: 1 }),
+      noKey,
+    );
+    expect(revision.status).toBe(201);
+    expect(await revision.json()).toMatchObject({
+      revision: 2,
+      workflow: saved.workflow,
+      createdAt: saved.createdAt,
+    });
+    expect(
+      await (
+        await restarted.fetch(
+          libraryRequest(`simulation-definitions/${saved.id}/revisions/1`),
+          noKey,
+        )
+      ).json(),
+    ).toEqual(saved);
+  });
+
+  it("rejects forged settings, unsupported checks, incompatible selections, and incomplete proposals before storage", async () => {
+    const { app, workflowId } = await readyApp([]);
+    const env = { ...environment, SIMULATION_DB: platform.env.SIMULATION_DB };
+    for (const patch of [
+      { approved: true },
+      { workflow: { tone: "warm", approval: "confirm" } },
+      { principal: "morgan" },
+      { invoices: [] },
+      { version: "vulnerable" },
+      { checks: ["arbitrary-expression"] },
+      { checks: ["owner-refund-once"] },
+      { checks: [] },
+      { checks: ["morgan-untouched", "morgan-untouched"] },
+      { instructions: "" },
+      { humanGuidance: "" },
+      { instructions: "x".repeat(2001) },
+      { case: "owner", checks: ["confirmation-before-refund"] },
+    ]) {
+      expect(
+        (
+          await app.fetch(
+            libraryRequest("simulation-drafts", { ...definition, workflowId, ...patch }),
+            env,
+          )
+        ).status,
+      ).toBe(400);
+    }
+    expect(
+      (
+        await app.fetch(
+          libraryRequest("simulation-drafts", { ...definition, workflowId: crypto.randomUUID() }),
+          env,
+        )
+      ).status,
+    ).toBe(409);
+    const draft = simulationDraft.parse(
+      await (
+        await app.fetch(libraryRequest("simulation-drafts", { ...definition, workflowId }), env)
+      ).json(),
+    );
+    for (const patch of [{ approved: true }, { definition }, { workflow: draft.workflow }]) {
+      expect(
+        (
+          await app.fetch(
+            libraryRequest(`simulation-drafts/${draft.id}/save`, { expectedRevision: 0, ...patch }),
+            env,
+          )
+        ).status,
+      ).toBe(400);
+    }
+  });
+
+  it("does not overwrite a revision with concurrent saves or revive a reset proposal", async () => {
+    const { app, workflowId } = await readyApp([]);
+    const env = { ...environment, SIMULATION_DB: platform.env.SIMULATION_DB };
+    const draft = simulationDraft.parse(
+      await (
+        await app.fetch(libraryRequest("simulation-drafts", { ...definition, workflowId }), env)
+      ).json(),
+    );
+    const saves = await Promise.all(
+      [0, 0].map((expectedRevision) =>
+        Promise.resolve(
+          app.fetch(
+            libraryRequest(`simulation-drafts/${draft.id}/save`, { expectedRevision }),
+            env,
+          ),
+        ),
+      ),
+    );
+    expect(saves.map((response) => response.status).toSorted((a, b) => a - b)).toEqual([201, 409]);
+    const saved = savedSimulationDefinition.parse(
+      await saves.find((response) => response.status === 201)?.json(),
+    );
+    const edits = await Promise.all(
+      ["A", "B"].map(async (name) =>
+        simulationDraft.parse(
+          await (
+            await app.fetch(
+              libraryRequest("simulation-drafts", {
+                ...definition,
+                name,
+                definitionId: saved.id,
+                expectedRevision: 1,
+              }),
+              env,
+            )
+          ).json(),
+        ),
+      ),
+    );
+    const revised = await Promise.all(
+      edits.map((edit) =>
+        Promise.resolve(
+          app.fetch(
+            libraryRequest(`simulation-drafts/${edit.id}/save`, { expectedRevision: 1 }),
+            env,
+          ),
+        ),
+      ),
+    );
+    expect(revised.map((response) => response.status).toSorted((a, b) => a - b)).toEqual([
+      201, 409,
+    ]);
+    expect(
+      (
+        await app.fetch(
+          libraryRequest("simulation-drafts", {
+            ...definition,
+            definitionId: saved.id,
+            expectedRevision: 1,
+          }),
+          env,
+        )
+      ).status,
+    ).toBe(409);
+    const reset = simulationDraft.parse(
+      await (
+        await app.fetch(libraryRequest("simulation-drafts", { ...definition, workflowId }), env)
+      ).json(),
+    );
+    await app.fetch(libraryRequest(`simulation-drafts/${reset.id}`, undefined, "DELETE"), env);
+    expect(
+      (
+        await app.fetch(
+          libraryRequest(`simulation-drafts/${reset.id}/save`, { expectedRevision: 0 }),
+          env,
+        )
+      ).status,
+    ).toBe(409);
+    const cleared = simulationDraft.parse(
+      await (
+        await app.fetch(libraryRequest("simulation-drafts", { ...definition, workflowId }), env)
+      ).json(),
+    );
+    const [resetWorkflow, lateSave] = await Promise.all([
+      app.fetch(libraryRequest(`workflow/${workflowId}`, undefined, "DELETE"), env),
+      app.fetch(
+        libraryRequest(`simulation-drafts/${cleared.id}/save`, { expectedRevision: 0 }),
+        env,
+      ),
+    ]);
+    expect(resetWorkflow.status).toBe(204);
+    expect(lateSave.status).toBe(409);
+    expect(
+      (await app.fetch(libraryRequest(`simulation-definitions/${saved.id}`), env)).status,
+    ).toBe(200);
+  });
+
+  it("accepts the owner confirmation and repeat checks under a frozen confirmation policy", async () => {
+    const { app, workflowId } = await readyApp([], undefined, {
+      tone: "warm",
+      approval: "confirm",
+    });
+    const env = { SIMULATION_DB: platform.env.SIMULATION_DB };
+    const response = await app.fetch(
+      libraryRequest("simulation-drafts", {
+        ...definition,
+        case: "owner",
+        workflowId,
+        checks: ["owner-refund-once", "confirmation-before-refund", "duplicate-rejected"],
+      }),
+      env,
+    );
+    expect(response.status).toBe(201);
+    const draft = simulationDraft.parse(await response.json());
+    expect(
+      (
+        await app.fetch(
+          libraryRequest(`simulation-drafts/${draft.id}/save`, { expectedRevision: 1 }),
+          env,
+        )
+      ).status,
+    ).toBe(409);
+    const save = await app.fetch(
+      libraryRequest(`simulation-drafts/${draft.id}/save`, { expectedRevision: 0 }),
+      env,
+    );
+    expect(save.status).toBe(201);
+    expect(await save.json()).toMatchObject({
+      workflow: { config: { tone: "warm", approval: "confirm" } },
+      definition: {
+        case: "owner",
+        checks: ["owner-refund-once", "confirmation-before-refund", "duplicate-rejected"],
+      },
+    });
+  });
+
+  it("reports rejected writes explicitly and preserves the last approved revision", async () => {
+    const { app, workflowId } = await readyApp([]);
+    const env = { ...environment, SIMULATION_DB: platform.env.SIMULATION_DB };
+    const draft = simulationDraft.parse(
+      await (
+        await app.fetch(libraryRequest("simulation-drafts", { ...definition, workflowId }), env)
+      ).json(),
+    );
+    const saved = savedSimulationDefinition.parse(
+      await (
+        await app.fetch(
+          libraryRequest(`simulation-drafts/${draft.id}/save`, { expectedRevision: 0 }),
+          env,
+        )
+      ).json(),
+    );
+    const edit = simulationDraft.parse(
+      await (
+        await app.fetch(
+          libraryRequest("simulation-drafts", {
+            ...definition,
+            definitionId: saved.id,
+            expectedRevision: 1,
+          }),
+          env,
+        )
+      ).json(),
+    );
+    await platform.env.SIMULATION_DB.prepare(
+      "CREATE TRIGGER reject_save BEFORE INSERT ON simulation_definitions BEGIN SELECT RAISE(ABORT, 'storage unavailable'); END",
+    ).run();
+    try {
+      const failed = await app.fetch(
+        libraryRequest(`simulation-drafts/${edit.id}/save`, { expectedRevision: 1 }),
+        env,
+      );
+      expect(failed.status).toBe(503);
+      expect(await failed.json()).toHaveProperty("error");
+      expect(failed.headers.get("cache-control")).toBe("no-store");
+      expect(
+        await (await app.fetch(libraryRequest(`simulation-definitions/${saved.id}`), env)).json(),
+      ).toEqual(saved);
+      expect(
+        (
+          await app.fetch(
+            libraryRequest(`simulation-drafts/${edit.id}/save`, { expectedRevision: 1 }),
+            env,
+          )
+        ).status,
+      ).toBe(409);
+    } finally {
+      await platform.env.SIMULATION_DB.prepare("DROP TRIGGER reject_save").run();
+    }
+  });
+
+  it("keeps no-store and same-origin guards on every library route, including failures", async () => {
+    const app = createSimulationApp();
+    const id = crypto.randomUUID();
+    for (const req of [
+      libraryRequest("simulation-definitions"),
+      libraryRequest(`simulation-definitions/${id}`),
+      libraryRequest(`simulation-definitions/${id}/revisions/1`),
+      libraryRequest("simulation-drafts", { ...definition, workflowId: id }),
+      libraryRequest(`simulation-drafts/${id}`),
+      libraryRequest(`simulation-drafts/${id}`, undefined, "DELETE"),
+      libraryRequest(`simulation-drafts/${id}/save`, { expectedRevision: 0 }),
+    ]) {
+      req.headers.set("sec-fetch-site", "cross-site");
+      const response = await app.fetch(req, { SIMULATION_DB: platform.env.SIMULATION_DB });
+      expect(response.status).toBe(403);
+      expect(response.headers.get("cache-control")).toBe("no-store");
+    }
+    expect((await app.fetch(libraryRequest("simulation-definitions"), {})).status).toBe(503);
+  });
+});
+
 describe("local simulation HTTP and real agent loop", () => {
+  it("rejects an incomplete saved-definition proposal rather than approving caller state", async () => {
+    const app = createSimulationApp();
+    const response = await app.fetch(
+      new Request("http://localhost/api/simulation-drafts", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ approved: true, workflow: { tone: "warm", approval: "immediate" } }),
+      }),
+      {},
+    );
+    expect(response.status).toBe(400);
+  });
+
   it("rejects missing and unknown live workflows before invoking the model", async () => {
     let calls = 0;
     const app = createSimulationApp((key) => {
