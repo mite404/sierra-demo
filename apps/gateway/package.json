@@ -9,6 +9,7 @@
   },
   "scripts": {
     "build": "wrangler deploy --dry-run --outdir dist",
+    "check:simulation-runs": "node scripts/simulation-run-check.mjs",
     "dev": "wrangler dev",
     "dev:simulation": "pnpm migrate:simulation && wrangler dev --config wrangler.simulation.jsonc --local --persist-to .wrangler/simulation-state",
     "migrate:simulation": "wrangler d1 migrations apply SIMULATION_DB --config wrangler.simulation.jsonc --local --persist-to .wrangler/simulation-state",

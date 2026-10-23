@@ -18,6 +18,7 @@ import {
 } from "./simulationContract";
 import { runSimulation, toolProbe } from "./simulation";
 import { SIMULATION_MODEL } from "./simulationModel";
+import { createSimulationRunApp } from "./simulationRuns";
 import {
   listSimulationDefinitions,
   readSimulationDefinition,
@@ -83,6 +84,7 @@ export function createSimulationApp(clientFor: (key: string) => Anthropic = open
   });
   app.route("/", workflows.app);
   app.route("/", authors.app);
+  app.route("/", createSimulationRunApp(clientFor));
   app.get("/api/simulation-definitions", async (c) => {
     if (!c.env.SIMULATION_DB)
       return c.json({ error: "Simulation storage is not configured." }, 503);

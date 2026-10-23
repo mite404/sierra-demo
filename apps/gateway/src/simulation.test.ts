@@ -13,6 +13,28 @@ const selection = {
 } as const;
 
 describe("synthetic refund lesson", () => {
+  it("rejects late driver activity without rewriting completed evidence", async () => {
+    const captured = Promise.withResolvers<Parameters<SimulationDriver>[0]>();
+    const result = await runSimulation({ ...selection, case: "owner" }, (run) => {
+      captured.resolve(run);
+    });
+    const beforeLateActivity = structuredClone(result);
+    const run = await captured.promise;
+    expect(() => run.execute("refund_latest_payment", { email: "morgan@example.com" })).toThrow(
+      "terminated",
+    );
+    expect(() => {
+      run.say("customer", "Late request");
+    }).toThrow("terminated");
+    expect(() => {
+      run.text("Late answer");
+    }).toThrow("terminated");
+    expect(() => {
+      run.toolStarted("late", "refund_latest_payment");
+    }).toThrow("terminated");
+    expect(result).toEqual(beforeLateActivity);
+  });
+
   it.each(["immediate", "confirm"] as const)(
     "keeps Casey's control invoice untouched under %s approval",
     async (approval) => {

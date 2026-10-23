@@ -1,18 +1,22 @@
-import type { SimulationEvent } from "./simulationContract";
+import type { SimulationEvent, SimulationRunEvent } from "./simulationContract";
 
 /** Sends bounded lesson events as NDJSON; closing the reader aborts the real upstream request. */
 export function simulationStream(
   incoming: AbortSignal,
-  run: (emit: (event: SimulationEvent) => void, signal: AbortSignal) => Promise<void>,
+  run: (
+    emit: (event: SimulationEvent | SimulationRunEvent) => void,
+    signal: AbortSignal,
+  ) => Promise<void>,
   onCancel: () => void,
+  deadlineMs = 45000,
 ): Response {
   const stop = new AbortController();
-  const signal = AbortSignal.any([incoming, stop.signal, AbortSignal.timeout(45000)]);
+  const signal = AbortSignal.any([incoming, stop.signal, AbortSignal.timeout(deadlineMs)]);
   let cancelled = false;
   const encoder = new TextEncoder();
   const body = new ReadableStream<Uint8Array>({
     start(controller) {
-      const emit = (event: SimulationEvent) => {
+      const emit = (event: SimulationEvent | SimulationRunEvent) => {
         if (!cancelled) controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
       };
       void run(emit, signal)
