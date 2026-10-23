@@ -957,6 +957,7 @@ export function ChatThreadPanel({
   empty,
   bare = false,
   footnote,
+  textOnly = false,
   ref,
 }: {
   thread: Thread;
@@ -975,6 +976,8 @@ export function ChatThreadPanel({
   empty?: ReactNode;
   bare?: boolean;
   footnote?: ReactNode;
+  /** Keep the existing composer and history, without file or dictation features. */
+  textOnly?: boolean;
   ref?: Ref<ThreadHandle>;
 }) {
   const { source, open, note } = dictationSetup(dictation);
@@ -1216,6 +1219,7 @@ export function ChatThreadPanel({
           {...pointer.compose}
         >
           <ComposeBox
+            textOnly={textOnly}
             draft={draft}
             onDraftChange={editDraft}
             onSend={send}

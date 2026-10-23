@@ -6,6 +6,11 @@
       "dependsOn": ["^build"],
       "outputs": ["build/**", "dist/**"]
     },
+    // All web dependencies ship source; Vite bundles them, including the gateway schema.
+    // Waiting for gateway#build would cycle through the Worker's static-asset build below.
+    "web#build": {
+      "dependsOn": []
+    },
     // The Worker's dry run bundles the web build as its static assets (ADR-086).
     "gateway#build": {
       "dependsOn": ["web#build"],

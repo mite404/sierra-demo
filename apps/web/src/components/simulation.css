@@ -1,0 +1,302 @@
+/* Layout uses --space (24px) and its fractions. Thread, composer, turns, work details and sidebar
+   keep their catalog/shadcn styling. No replacement theme, bubbles, or message animations. */
+.simulation-lab {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  color: var(--ink);
+  background: var(--paper);
+}
+.lab-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space);
+  padding: calc(var(--space) / 2) var(--space);
+  border-bottom: 1px solid var(--hairline);
+}
+.lab-header h1 {
+  font: 500 24px/1.2 var(--font-display);
+  margin: 0;
+}
+.lab-header span {
+  font: 12px/20px var(--font-text);
+  color: var(--soft-ink);
+}
+.lab-header-actions {
+  display: flex;
+  gap: calc(var(--space) / 3);
+}
+.lab-workspace {
+  display: block;
+  min-height: 0;
+  flex: 1;
+}
+.lab-stage {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+}
+.lab-stage[hidden] {
+  display: none;
+}
+.lab-conversation {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.lab-conversation .thread-panel {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  flex: 1;
+  min-height: 0;
+}
+.lab-role {
+  font: 12px/20px var(--font-text);
+  color: var(--soft-ink);
+}
+.lab-welcome {
+  max-width: 60ch;
+  padding: calc(var(--space) * 2) 0;
+  margin: auto;
+  color: var(--soft-ink);
+}
+.lab-welcome h2 {
+  font: 500 32px/1.1 var(--font-display);
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  margin: var(--space) 0;
+}
+.lab-welcome p {
+  font-size: 15px;
+  line-height: 24px;
+  margin: 0 0 var(--space);
+}
+.lab-shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 0 var(--space) calc(var(--space) / 3);
+  font-size: 12px;
+  color: var(--soft-ink);
+}
+.lab-shortcuts button {
+  font-size: 12px;
+}
+.lab-sidebar {
+  width: calc(var(--space) * 21);
+  min-width: 0;
+  border-left: 1px solid var(--hairline);
+  background: var(--paper-deep);
+}
+.lab-sidebar [data-slot="sidebar-header"] {
+  padding: calc(var(--space) * 2 / 3);
+  gap: calc(var(--space) / 3);
+  border-bottom: 1px solid var(--hairline);
+}
+.lab-sidebar h2 {
+  font: 500 20px/24px var(--font-display);
+  margin: 0;
+}
+.lab-sidebar-content {
+  padding: 0 calc(var(--space) * 2 / 3) calc(var(--space) * 2 / 3);
+}
+.lab-inspection {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.lab-goals {
+  flex: 0 0 auto;
+  min-height: calc(var(--space) * 5);
+}
+.lab-execution {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: calc(var(--space) * 8);
+}
+.lab-execution .lab-json {
+  flex: 1;
+  min-height: 0;
+}
+.lab-sidebar [data-slot="sidebar-footer"] {
+  padding: calc(var(--space) / 2) calc(var(--space) * 2 / 3);
+  border-top: 1px solid var(--hairline);
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--soft-ink);
+}
+.lab-sidebar [data-slot="sidebar-footer"] p {
+  margin: 0;
+}
+.lab-muted {
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--soft-ink);
+  margin: calc(var(--space) / 3) 0;
+}
+.lab-group-title {
+  font: 600 13px/20px var(--font-text);
+  color: var(--ink);
+  margin: calc(var(--space) / 3) 0 calc(var(--space) / 6);
+}
+.lab-event-row {
+  display: flex;
+  align-items: baseline;
+  gap: calc(var(--space) / 3);
+  font-size: 12px;
+  line-height: 18px;
+  padding: calc(var(--space) / 6) 0;
+}
+.lab-event-row > svg {
+  flex-shrink: 0;
+  align-self: center;
+}
+.lab-event-row strong {
+  font-weight: 500;
+  flex: 1;
+}
+.lab-event-row > span {
+  color: var(--soft-ink);
+}
+.lab-status {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space) / 6);
+  white-space: nowrap;
+  font-size: 11px;
+}
+.lab-event-detail {
+  margin-left: var(--space);
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--soft-ink);
+}
+.lab-event-detail p {
+  margin: 0;
+}
+.lab-goal {
+  border-bottom: 1px solid var(--hairline);
+  padding-bottom: calc(var(--space) / 6);
+}
+.lab-goal[data-status="pass"] .lab-status {
+  color: var(--moss);
+}
+.lab-goal[data-status="fail"] .lab-status {
+  color: var(--warn-ink);
+}
+.lab-review,
+.lab-fixed {
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--soft-ink);
+}
+.lab-review svg,
+.lab-fixed svg {
+  display: inline;
+  vertical-align: text-bottom;
+  margin-right: calc(var(--space) / 6);
+}
+.lab-review-actions {
+  display: grid;
+  gap: calc(var(--space) / 2);
+  margin-top: var(--space);
+}
+.lab-outcome {
+  display: block;
+  margin-top: calc(var(--space) / 2);
+}
+.lab-outcome h3 {
+  font: 500 15px/24px var(--font-text);
+  margin: 0;
+}
+.lab-outcome p {
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--soft-ink);
+  margin: 0;
+}
+.lab-persona {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: calc(var(--space) / 3);
+}
+.lab-persona label {
+  flex: 1;
+  font: 12px/18px var(--font-text);
+}
+.lab-persona select {
+  width: 100%;
+  display: block;
+  font: inherit;
+  border: 1px solid var(--hairline);
+  border-radius: var(--btn-radius);
+  padding: calc(var(--space) / 4);
+  color: var(--ink);
+  background: var(--paper);
+}
+.lab-json {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  overflow-y: auto;
+  max-height: calc(var(--space) * 16);
+  margin: calc(var(--space) / 3) 0;
+  padding: calc(var(--space) / 2);
+  border: 1px solid var(--hairline);
+  border-radius: var(--btn-radius);
+  background: var(--paper);
+  font: 12px/18px monospace;
+  color: var(--ink);
+}
+.lab-probe-trigger {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font: 500 12px/20px var(--font-text);
+  color: var(--soft-ink);
+  text-align: left;
+}
+.lab-probe button {
+  font-size: 12px;
+}
+@media (max-width: 800px) {
+  .simulation-lab {
+    height: auto;
+    min-height: 100dvh;
+  }
+  .lab-header {
+    align-items: start;
+    flex-direction: column;
+    gap: calc(var(--space) / 3);
+    padding: calc(var(--space) * 2 / 3);
+  }
+  .lab-header-actions {
+    flex-wrap: wrap;
+  }
+  .lab-stage {
+    flex-direction: column;
+  }
+  .lab-conversation {
+    height: 70dvh;
+    flex: none;
+  }
+  .lab-sidebar {
+    width: 100%;
+    height: auto;
+    border-left: 0;
+    border-top: 1px solid var(--hairline);
+  }
+  .lab-welcome {
+    padding: var(--space) 0;
+  }
+  .lab-welcome h2 {
+    font-size: 24px;
+    line-height: 1.2;
+  }
+}

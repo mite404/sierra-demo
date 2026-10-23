@@ -204,6 +204,9 @@ importers:
       '@yaklabs/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      gateway:
+        specifier: workspace:*
+        version: link:../gateway
       isbot:
         specifier: ^5
         version: 5.2.2

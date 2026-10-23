@@ -34,8 +34,47 @@ YakLabs infrastructure. They are not prerequisites for this lesson.
 
 ### Summary
 
-One customer story, two identity fixtures, one screen. Run the conversation, inspect actual tool
-actions, show the authorization fix, and rerun the unauthorized and legitimate-owner cases.
+One refund workflow, two separate conversational roles, two customer identity fixtures. An employee
+describes the workflow, answers focused questions, reviews the streamed proposal and explicitly
+accepts it. Then they try it as a customer and inspect real tool execution beside the conversation.
+
+Latest settled recording journey: **describe → choose → review → try → inspect**. Repurpose
+the
+existing YakLabs `ChatThreadPanel`, `ComposeBox`, turn presentation and work details, with the
+existing sidebar as the Simulation Lab inspector. Do not mount canvas/navigation lifecycles.
+Presets only seed drafts; free-text requests and follow-ups remain primary. Employee and customer
+histories are separate. Customer invoice state persists across follow-ups; Reset or a persona
+change starts a fresh session with server-owned fixture identity.
+
+Reopening or refreshing this portal in the same browser restores both conversations, the proposal,
+accepted settings, selected stage/persona and execution evidence from the same server sessions.
+Browser storage holds opaque handles and navigation, not trusted history, identity or invoices.
+Save the creation handle before HTTP so a lost first response cannot silently create fresh state.
+Interrupted replies restore as incomplete, without a running animation or automatic resubmission.
+Retain tool mutations even when a response fails. Reset clears the intended handle and server
+session; a customer reset preserves employee configuration. New workflow clears both roles.
+
+This loopback lesson retains sessions in the Worker for 24 hours after the last turn, bounded to
+24 sessions per role. It does not survive a Worker/service restart or a changed portal origin.
+Missing/expired server state must show an explicit recovery message, never silently create new
+invoices from a cached transcript. No database migration, login or cross-device sync is added.
+Recover employee and customer roles independently. An unavailable customer session must not hide
+the employee conversation. A surviving customer session retains its frozen accepted settings and
+payment evidence even if employee configuration expires; only new tests require configuration.
+
+Only expose settings the executor applies: brief/warm replies and immediate/confirm-first refunds.
+Accepted settings are frozen server-side. Neither model can edit ownership, original-destination
+or duplicate-refund safeguards. This is a bounded teaching approximation, not a generic builder.
+The API rejects new live customer sessions without an explicitly accepted workflow. Pending
+acceptance cannot revive a workflow after New workflow clears it. Only Morgan's eligible payment
+is actionable; Casey's separate $17 invoice is immutable control data, not another refund scenario.
+
+Genuine upstream text deltas render as they arrive, alongside actual tool activity. No buffered
+typewriter animation or invented reasoning. JSON arguments/results and before/after state are
+**visible by default**, without tabs, arrows or expansion clicks. Plain-language goals show
+expected/actual outcomes and accessible status labels. Final grades require completed evidence;
+not-exercised, failed, error/cancelled and needs-human-review remain distinct. Helpful guidance
+is a human-review criterion, not keyword matching.
 
 ### Problem Frame
 
@@ -71,8 +110,9 @@ Customer behavior:
 
 Safety and evidence:
 
-- R4. Make all business state synthetic and reset it for every run. Label the intentionally
-  vulnerable training version conspicuously; the corrected version is the default.
+- R4. Make all business state synthetic, persistent within a customer session, fresh on Reset or
+  persona change. Keep the corrected executor on the live path. A conspicuously labeled secondary
+  Tool probe can exercise the intentionally vulnerable training version on separate fresh state.
 - R5. The corrected executor derives authority from trusted run context, never chat text or
   model-supplied identity. Deny unauthorized reads and writes before returning account details.
 - R6. Record actual tool attempts, validation results, authorization decisions, outcomes, and
@@ -87,18 +127,20 @@ Presentation and delivery:
 - R9. Keep the inherited typography, spacing, surfaces, and semantic tokens. Use the title
   "Sierra Agent QA Lab" with "Independent educational demo" and "Synthetic accounts and payments".
   Do not claim Sierra affiliation or a Sierra SDK integration.
-- R10. Provide one screen with the conversation, expected/actual results, expandable execution
-  details, a case selector, version selector, Run, and Reset. Remove canvas and simulated-browser
-  controls from the demo's reachable experience. Keep fixes in the editor, outside the app.
+- R10. Provide employee configuration and customer-test chat stages using the original composer
+  and history, beside the repurposed sidebar. Keep goals and real execution JSON visible together
+  at desktop recording widths. Support typed follow-ups, scenario selection, Cancel and Reset.
+  Remove canvas and simulated-browser controls from the reachable experience. No code editing is
+  needed to configure or operate the lesson.
 - R11. Supply a runnable sample and a five-minute recording outline. Record and inspect the actual
   interactions before handing the app to Ethan; preserve useful before/after captures.
 
 ### Scope boundaries
 
-Exclude the other six stories, voice, scenario authoring, bulk evaluation, team accounts,
-run-history
-dashboards, automatic fixes, and an in-app editor. No real payment provider, identity provider
-integration, or customer database is needed for the fictional business.
+Exclude the other six stories, voice, arbitrary workflow generation, integration building, bulk
+evaluation, team accounts, run-history dashboards, code generation, deployment, automatic fixes,
+and an in-app editor. No real payment provider, login or customer database is needed. Ethan's
+temporary WorkOS request was explicitly cancelled in favor of the no-login portal-only demo.
 
 Do not build an LLM judge for this lesson. Money and permissions get deterministic assertions;
 customer helpfulness gets a visible human-review rubric. Add semantic grading only for a later
@@ -140,14 +182,18 @@ or resolve a dependency of the new screen.
   UI or accept model-reported results; replace those semantics for this lesson rather than treating
   `report_outcome` as proof. Avoid a generic tool framework or a new agent SDK dependency.
 - KTD3. Keep fixture creation, the refund action, trace capture, and independent evaluation behind
-  a narrow runner entry point shared by HTTP and automated checks. Each run owns its own in-memory
-  state. No shared mutable account store, persistence migration, or database service is needed.
+  a narrow runner shared by HTTP and checks. Each opaque server-owned customer session owns its
+  state and history, separate from employee configuration. Follow-ups cannot supply identity,
+  policy or invoice state. No database or persistence migration is needed for this local lesson.
 - KTD4. Keep one deliberately vulnerable teaching implementation of the refund authorization
   boundary and one corrected implementation. They operate only on the same synthetic fixture
   types. A mode selection must change executed code, not hard-code a red or green result.
 - KTD5. Prove the boundary twice: a real agent conversation for customer behavior, and a forced
   unauthorized tool call for the invariant even when the model refuses to attempt it. A scripted
   model response used in tests or probes is visibly distinguished from a live model response.
+  The vulnerable/corrected executors are prebuilt. The builder does not patch source or generate
+  tests; identical evaluator checks, the owner control and an authorization-removal mutation check
+  establish the trace → fix → regression lesson.
 - KTD6. Use a dedicated local simulation Worker entry/config rather than removing the existing
   gateway's WorkOS protection. Serve the built SPA and simulation API on one origin using the
   existing Wrangler workflow. Bind to loopback and expose only through the controlled orb portal.
@@ -157,12 +203,14 @@ or resolve a dependency of the new screen.
 ### Execution and trust boundaries
 
 ```text
-Browser selects a fixed case and version
-  -> local runner creates trusted fixture identity and fresh synthetic business state
+Employee describes workflow and chooses supported options through live chat
+  -> employee explicitly accepts the validated proposal
+  -> browser selects a customer fixture using the accepted configuration
+  -> local runner creates trusted fixture identity and isolated synthetic business state
   -> model receives customer turns and allowed tool definitions
   -> executor validates tool arguments and checks authority before reads or writes
   -> evaluator checks recorded actions and final state
-  -> browser renders conversation, checks, and execution details
+  -> browser renders real text deltas, goals and always-visible execution JSON
 ```
 
 Model-generated narration and reasoning are not an execution trace. Instructor-only fixture data
@@ -183,8 +231,9 @@ late events from an earlier run cannot overwrite the new result.
 - `apps/web/src/shell/deck.tsx` and `apps/web/src/shell/state.ts`: inherited canvas/navigation
   coupling. Bypass these for the dedicated lesson instead of preserving unused pane state.
 - `packages/catalog/src/ChatThreadPanel.tsx` and `packages/catalog/src/WorkDetails.tsx`:
-  conversation
-  and disclosure presentation. Use a small adapter only if the existing message shape fits.
+  conversation and disclosure presentation. Use their actual agent/event contracts, with a small
+  adapter from the existing NDJSON streaming path. Hide unsupported file/voice controls, not the
+  existing composer design. WorkDetails can show execution steps/logs, not the whole goal inspector.
 - `apps/gateway/src/playground.ts`, `playgroundRound.ts`, and `upstream.ts`: upstream requests,
   tool-call assembly, bounded execution, and cancellation patterns.
 - `apps/gateway/src/playgroundTools.ts`: existing parsing pattern, not business tool behavior.
@@ -278,9 +327,10 @@ test
 environment merely for this screen.
 
 Use a compact header with the lesson title, fixture identity, and unmistakable training labels.
-Show the conversation beside expected/actual checks. Put raw tool arguments, permission decisions,
-and state differences behind an expandable disclosure. On narrow screens, stack these regions.
-The default is the corrected version. The vulnerable selector warns before its synthetic run.
+Show the conversation beside expected/actual checks and always-visible raw tool arguments,
+permission decisions and state changes. No expansion click is required for JSON. On narrow screens,
+stack these regions. The live path is corrected. The vulnerable probe is secondary and separately
+labeled. Show honest waiting/no-call states rather than sample payloads.
 
 Show customer-service review separately from deterministic safety checks. The rubric asks whether
 the response explains the permission issue, offers the owner's own sign-in path, avoids disclosure,
@@ -294,10 +344,14 @@ Test scenarios:
 3. Reset during a run leaves the screen idle, and old results cannot appear in the next run.
 4. Error, cancelled, not-exercised, Live agent, Tool probe, and Replay states cannot look like an
    ordinary green pass. Changing fixture/version cannot relabel an already completed result.
+5. Complete a typed employee clarification/choice/proposal/acceptance flow. Confirm that the
+   selected confirmation policy actually prevents mutation until the owner confirms in chat.
+6. Observe partial real text before terminal execution over HTTP and in the browser. Cancel/Reset
+   must isolate late events; no grades finalize while streaming.
 
 Verification: drive the screen in a real browser at desktop and narrow widths. Inspect screenshots
-for initial, failing, corrected, owner-success, expanded-trace, and error states. Record Run,
-disclosure, Reset, and keyboard interactions. Use existing browser tooling rather than adding it.
+for initial, clarification, proposal, not-exercised, owner-success, default-visible JSON and error
+states. Record typing, streaming, acceptance, follow-ups and Reset. Use existing browser tooling.
 
 ### U4. Make the demo reproducible and ready to record
 
@@ -338,7 +392,9 @@ Before handoff:
 2. Show the authorized-owner refund and its exact amount, including no duplicate refund.
 3. Exercise the boundary directly even if a live model refuses the unauthorized action.
 4. Inspect the full unauthorized conversation against R2, including the pressure follow-up.
-5. Verify fresh state on rerun and no late-result overwrite after reset/cancel.
+5. Verify persistent state across follow-ups, fresh state on persona change/Reset, and no
+   late-result
+   overwrite after Reset/Cancel. Verify accepted settings carry into customer execution.
 6. Inspect screenshots and a short interaction recording. Retain final reviewable artifacts only.
 7. Confirm source YakLabs credentials, deployment identity, and remote were not reused or changed.
 
@@ -357,12 +413,12 @@ The final narrated application video is Ethan's remaining task, not an implement
 
 ### Five-minute recording outline
 
-- 0:00-0:35: State the customer request and the two responsibilities in the design pillar.
-- 0:35-1:15: Explain who is signed in, who owns the invoice, and what should remain unchanged.
-- 1:15-2:15: Show the labeled vulnerable run and inspect the actual refund call and mutation.
-- 2:15-3:15: Show the permission fix in the editor. Explain why prompt instructions are not enough.
-- 3:15-4:20: Rerun the unauthorized case and owner control; show useful customer guidance too.
-- 4:20-5:00: Show the saved regression test and connect the lesson to Sierra's simulation workflow.
+- 0:00-0:35: Introduce the employee's workflow and the two responsibilities in the pillar.
+- 0:35-1:25: Describe the workflow in chat; answer the real agent's focused choices.
+- 1:25-2:00: Review the streamed plan, explicitly accept it, then try it as a customer.
+- 2:00-3:00: Type the spouse request and pressure follow-up; inspect honest goal statuses and JSON.
+- 3:00-4:20: Switch to Morgan; show confirmation, one real refund and duplicate prevention.
+- 4:20-5:00: Contrast the separate Tool probe and regression; connect to Sierra's public workflow.
 
 Freeze features once this sequence works. Spend remaining time on legibility, explanation, and
 rehearsal rather than adding stories. If the model does not attempt the seeded failure, demonstrate

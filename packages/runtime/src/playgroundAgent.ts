@@ -1,5 +1,6 @@
 import type { Agent, AgentEvent } from "@yaklabs/catalog/agent";
 import type { Failure, ReplyChunk } from "@yaklabs/catalog/reply";
+import { linesOf } from "./ndjson";
 import { COPY } from "./playgroundCopy";
 import { endShort, newReply, readLine, receive } from "./playgroundReply";
 import { historyBefore, planRequest } from "./playgroundRequest";
@@ -54,30 +55,6 @@ async function post(
     return { kind: "streaming", body: response.body };
   await response.body?.cancel(); // the body may hold details the reader must never see
   return refused(refusalOf(response.status));
-}
-
-// The body's lines as they arrive, blank ones dropped; a last line with no newline is kept,
-// and reads as unreadable if it was cut off mid-way. Leaving early cancels the body, which
-// stops the gateway's rounds.
-async function* linesOf(body: ReadableStream<Uint8Array>): AsyncGenerator<string> {
-  const reader = body.getReader();
-  const decoder = new TextDecoder();
-  let buffered = "";
-  try {
-    for (;;) {
-      // oxlint-disable-next-line eslint/no-await-in-loop -- a stream is read in order
-      const chunk = await reader.read(); // → { done, value: Uint8Array }
-      if (chunk.done) break;
-      const read = buffered + decoder.decode(chunk.value, { stream: true });
-      const lines = read.split("\n"); // → string[], the last one maybe partial
-      buffered = lines.pop() ?? "";
-      yield* lines.filter((line) => line.trim() !== "");
-    }
-    buffered += decoder.decode();
-    if (buffered.trim() !== "") yield buffered;
-  } finally {
-    await reader.cancel().catch(() => {});
-  }
 }
 
 // The reply's chunks, folded from the stream. A line that is not an event, a body that closes

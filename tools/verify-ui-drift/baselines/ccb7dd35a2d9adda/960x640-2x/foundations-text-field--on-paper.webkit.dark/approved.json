@@ -1,7 +1,7 @@
 {
   "image": {
-    "path": "3eb8d8b9281ee330515ff1a7e6b8113e6455a87a284e4851b66def79bf637f8f.png",
-    "sha256": "3eb8d8b9281ee330515ff1a7e6b8113e6455a87a284e4851b66def79bf637f8f"
+    "path": "2be348256772ebd728b14b65b2ed669fba4d5f109797b6d0e89ea0ab5efe52ff.png",
+    "sha256": "2be348256772ebd728b14b65b2ed669fba4d5f109797b6d0e89ea0ab5efe52ff"
   },
   "fingerprint": {
     "environment": "linux-x64-debian-12",
@@ -12,6 +12,6 @@
     "dpr": 2,
     "policy": 1
   },
-  "source": "1a94d1fda82d14ec8e1b7cf5cef09bcec5622b9b781c6a9022b76514a5f498f2",
-  "run": "2026-09-29t09-17-22-143z-060ef65e"
+  "source": "ba1799adb425a7ee42bf506c5c829c69bbc9aa86cf4373512fd04bb5a3548552",
+  "run": "2026-10-23t02-14-10-796z-1e6cf27e"
 }

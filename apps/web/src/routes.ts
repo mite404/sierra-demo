@@ -1,4 +1,7 @@
-import { type RouteConfig } from "@react-router/dev/routes";
-import { flatRoutes } from "@react-router/fs-routes";
+import { index, route, type RouteConfig } from "@react-router/dev/routes";
 
-export default flatRoutes() satisfies RouteConfig;
+// This independent demo never mounts the inherited shell, canvas, or simulated browser.
+export default [
+  index("routes/simulation.tsx"),
+  route("*", "routes/simulation-redirect.tsx"),
+] satisfies RouteConfig;

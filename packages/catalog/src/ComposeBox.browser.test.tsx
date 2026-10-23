@@ -41,6 +41,36 @@ afterEach(() => {
   host.remove();
 });
 
+it("offers only text input and stop when a host has no file or voice support", async () => {
+  let sent = false;
+  let stopped = false;
+  flushSync(() => {
+    root.render(
+      <ComposeBox
+        draft="Refund my payment"
+        onDraftChange={() => {}}
+        onSend={() => {
+          sent = true;
+        }}
+        textOnly
+        busy
+        onStop={() => {
+          stopped = true;
+        }}
+      />,
+    );
+  });
+  expect(host.querySelector('[aria-label="Attach"]')).toBeNull();
+  expect(host.querySelector('[aria-label="Dictate"]')).toBeNull();
+  const stop = host.querySelector<HTMLButtonElement>('[aria-label="Stop"]');
+  const send = host.querySelector<HTMLButtonElement>('[aria-label="Send"]');
+  if (!stop || !send) throw new Error("Missing text composer controls");
+  await userEvent.click(stop);
+  expect(stopped).toBe(true);
+  await userEvent.click(send);
+  expect(sent).toBe(true);
+});
+
 it("grows upward on typing and paste, caps at six lines, and shrinks on deletion and send", async () => {
   flushSync(() => {
     root.render(<Composer />);

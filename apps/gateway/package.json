@@ -4,11 +4,13 @@
   "type": "module",
   "exports": {
     "./app": "./src/app.ts",
-    "./contract": "./src/contract.ts"
+    "./contract": "./src/contract.ts",
+    "./simulation-contract": "./src/simulationContract.ts"
   },
   "scripts": {
     "build": "wrangler deploy --dry-run --outdir dist",
     "dev": "wrangler dev",
+    "dev:simulation": "wrangler dev --config wrangler.simulation.jsonc --local",
     "deploy": "wrangler deploy",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
