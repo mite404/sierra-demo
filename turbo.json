@@ -16,12 +16,6 @@
       "dependsOn": ["web#build"],
       "outputs": ["dist/**"]
     },
-    // The runtime ships source and takes only the gateway's types, so its build waits on
-    // nothing; inheriting ^build would wait on gateway#build, which waits on web#build, which
-    // waits on the runtime.
-    "@yaklabs/runtime#build": {
-      "dependsOn": []
-    },
     "build-storybook": {
       "outputs": ["storybook-static/**"]
     },
