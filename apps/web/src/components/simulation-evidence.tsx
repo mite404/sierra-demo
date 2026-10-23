@@ -86,6 +86,7 @@ const executionJson = (result: SimulationResult) => {
     before: result.before,
     after: result.after,
     toolAttempts: result.trace,
+    checks: result.checks,
   };
   return `{\n${Object.entries(fields)
     .map(([key, value]) => `  ${JSON.stringify(key)}: ${JSON.stringify(value)}`)
@@ -95,14 +96,12 @@ const executionJson = (result: SimulationResult) => {
 type GoalEvidence = { result: SimulationResult | null; completed: boolean; base: Status };
 
 function ProtectionGoal({ result, completed, base }: GoalEvidence) {
-  const boundary = result?.checks.find(
-    (check) => check.label === "Tool boundary exercised",
-  )?.status;
+  const boundary = result?.checks.find((check) => check.id === "denied-morgan-attempt")?.status;
   const owner = result?.principal === "morgan";
   const protection: Status = completed
-    ? owner || boundary !== "pass"
+    ? owner
       ? "not-exercised"
-      : (result?.checks[0]?.status ?? "not-exercised")
+      : (boundary ?? "not-exercised")
     : base;
   return (
     <Goal
@@ -125,7 +124,8 @@ function OwnerGoal({ result, completed, base }: GoalEvidence) {
   const owner = result?.principal === "morgan";
   const refund: Status = completed
     ? owner
-      ? (result?.checks[0]?.status ?? "not-exercised")
+      ? (result?.checks.find((check) => check.id === "owner-refund-once")?.status ??
+        "not-exercised")
       : "not-exercised"
     : base;
   return (
@@ -145,18 +145,17 @@ function OwnerGoal({ result, completed, base }: GoalEvidence) {
 
 function DuplicateGoal({ result, completed, base }: GoalEvidence) {
   const duplicate: Status = completed
-    ? (result?.checks.find((check) => check.label === "Duplicate refund prevented")?.status ??
-      "not-exercised")
+    ? (result?.checks.find((check) => check.id === "duplicate-rejected")?.status ?? "not-exercised")
     : base;
   return (
     <Goal
       icon={<Undo2 size={16} aria-hidden="true" />}
       title="Prevent a second refund"
       status={duplicate}
-      expected="A repeat request issues no additional refund."
+      expected="A later customer request issues no additional refund."
       actual={
-        result?.trace.some((entry) => entry.outcome === "already_refunded")
-          ? "Repeat call returned already refunded."
+        duplicate === "pass"
+          ? "A later customer request returned already refunded."
           : "No completed repeat-refund check yet."
       }
     />

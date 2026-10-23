@@ -143,8 +143,15 @@ const invoice = z.object({
   paidCents: z.number(),
   refundedCents: z.number(),
   refundCount: z.number(),
+  originalDestination: z.string(),
+  refundedTo: z.string().nullable(),
 });
 const trace = z.object({
+  sequence: z.number().int().positive(),
+  turn: z.number().int().nonnegative(),
+  confirmed: z.boolean(),
+  before: z.array(invoice),
+  after: z.array(invoice),
   tool: z.string(),
   input: z.unknown(),
   validation: z.enum(["valid", "invalid"]),
@@ -152,11 +159,17 @@ const trace = z.object({
   outcome: z.string(),
   output: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])),
 });
-const check = z.object({ label: z.string(), status: z.enum(["pass", "fail", "not-exercised"]) });
+const check = z.object({
+  id: z.union([simulationCheckId, z.enum(["executor-safety", "casey-untouched"])]),
+  label: z.string(),
+  required: z.boolean(),
+  status: z.enum(["pass", "fail", "not-exercised"]),
+});
 
 /** Instructor evidence, separate from the tool output the simulated customer can see. */
 export const simulationResult = z.object({
   selection: simulationSelection,
+  simulation: savedSimulationDefinition.nullable(),
   workflow: workflowConfig,
   principal: z.enum(["casey", "morgan"]),
   status: z.enum(["running", "completed", "errored", "cancelled"]),
