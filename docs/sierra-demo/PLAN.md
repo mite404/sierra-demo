@@ -329,10 +329,8 @@ required entry behavior.
 
 The web Vitest configuration runs Node tests named `*.test.ts`, not component tests named
 `*.test.tsx`. Test observable run-state transitions there; exercise DOM behavior through the
-existing
-browser lever pattern in `apps/web/scripts/web-check.mjs` and `harness.mjs`. Do not add a new DOM
-test
-environment merely for this screen.
+existing browser lever pattern in `apps/web/scripts/simulation-check.mjs` and `harness.mjs`. Do
+not add a new DOM test environment merely for this screen.
 
 Use a compact header with the lesson title, fixture identity, and unmistakable training labels.
 Show the conversation beside expected/actual checks and always-visible raw tool arguments,

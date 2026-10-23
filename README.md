@@ -114,8 +114,7 @@ keeps the scaffold's metadata for `pnpm dlx create-better-t-stack@latest add`):
   components in the catalog.
 - `apps/gateway`: the one Cloudflare Worker, Hono under `/api` and the web build as its static
   files; it checks WorkOS sign-ins and streams the model's reply (ADR-085, ADR-086).
-- `packages/runtime`: the Web Worker that runs the agent loop and keeps conversations in SQLite in
-  the browser's private file system (ADR-076, ADR-081).
+- `packages/runtime`: the NDJSON line reader used by the simulation client.
 - `packages/catalog`: the data-view catalog, `@yaklabs/catalog`: components, stories, schemas
   and tests in one place, so they cannot drift apart.
 - `packages/ui`: shadcn/ui primitives, `@yaklabs/ui`, themed by Kay's tokens (ADR-082).

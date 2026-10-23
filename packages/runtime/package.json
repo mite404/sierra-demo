@@ -3,28 +3,14 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
     "./ndjson": "./src/ndjson.ts"
   },
   "scripts": {
-    "test": "vitest run",
-    "test:unit": "vitest run",
-    "test:security": "node --test scripts/observe-csp.test.mjs && node scripts/verify-security.mjs",
     "typecheck": "tsc --noEmit"
-  },
-  "dependencies": {
-    "@sqlite.org/sqlite-wasm": "^3.53.4-build1",
-    "@yaklabs/catalog": "workspace:*",
-    "zod": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "@vitest/browser-playwright": "catalog:",
     "@yaklabs/config": "workspace:*",
-    "gateway": "workspace:*",
-    "playwright": "catalog:",
-    "typescript": "catalog:",
-    "vite": "catalog:",
-    "vitest": "catalog:"
+    "typescript": "catalog:"
   }
 }
