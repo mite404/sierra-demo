@@ -303,12 +303,6 @@ export function createSimulationApp(clientFor: (key: string) => Anthropic = open
       c.req.raw.signal,
       async (emit, signal) => {
         emit({ kind: "session", id });
-        const pending = session.previous?.trace.some(
-          (entry) => entry.outcome === "confirmation_required",
-        );
-        const confirmed = Boolean(
-          pending && /^yes,? refund it[.!]?$/iu.test(input.message?.trim() ?? ""),
-        );
         const result = await runSimulation(selection, driver, signal, {
           emit(event) {
             if (event.kind === "snapshot") session.previous = event.result;
@@ -317,7 +311,6 @@ export function createSimulationApp(clientFor: (key: string) => Anthropic = open
           },
           previous: session.previous,
           workflow: session.workflow,
-          confirmed,
         });
         result.model = selection.source === "live" ? SIMULATION_MODEL : null;
         if (!key && selection.source === "live")

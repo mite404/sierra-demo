@@ -22,7 +22,7 @@ describe("synthetic refund lesson", () => {
           execute("refund_latest_payment", { email: "casey@example.com" });
         },
         undefined,
-        { workflow: { tone: "brief", approval }, confirmed: true },
+        { workflow: { tone: "brief", approval } },
       );
       expect(result.after.map((invoice) => [invoice.refundedCents, invoice.refundCount])).toEqual([
         [0, 0],
