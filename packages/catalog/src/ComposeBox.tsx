@@ -131,6 +131,7 @@ export function ComposeBox({
   onAttachFiles,
   busy = false,
   onStop,
+  textOnly = false,
 }: {
   draft: string;
   onDraftChange: (value: string) => void;
@@ -143,6 +144,8 @@ export function ComposeBox({
   onAttachFiles?: (files: File[]) => void;
   busy?: boolean;
   onStop?: () => void;
+  /** Hide file and voice controls where the host supports text requests only. */
+  textOnly?: boolean;
 }) {
   const files = useRef<HTMLInputElement>(null);
 
@@ -153,7 +156,7 @@ export function ComposeBox({
 
   // ⌘U (Ctrl+U elsewhere) adds files, as the menu's shortcut hint says.
   function shortcut(event: KeyboardEvent) {
-    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "u") {
+    if (!textOnly && (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "u") {
       event.preventDefault();
       files.current?.click();
     }
@@ -202,39 +205,43 @@ export function ComposeBox({
         }}
       />
       <div className="compose-bar">
-        <Menu
-          label="Attach"
-          placement="above-start"
-          items={[
-            {
-              label: "Add images & files",
-              icon: <FilesIcon />,
-              shortcut: "⌘U",
-              onSelect: () => files.current?.click(),
-            },
-            {
-              label: "Take screenshot",
-              icon: <ScreenIcon />,
-              disabled: !canCaptureScreen(),
-              hint: canCaptureScreen() ? undefined : "This browser cannot capture the screen",
-              onSelect: () => void screenshot(),
-            },
-          ]}
-          trigger={renderAttachTrigger}
-          disabled={disabled}
-        />
-        <input
-          ref={files}
-          type="file"
-          multiple
-          hidden
-          tabIndex={-1}
-          onChange={(event) => {
-            const picked = Array.from(event.target.files ?? []);
-            if (picked.length > 0) onAttachFiles?.(picked);
-            event.target.value = "";
-          }}
-        />
+        {!textOnly && (
+          <>
+            <Menu
+              label="Attach"
+              placement="above-start"
+              items={[
+                {
+                  label: "Add images & files",
+                  icon: <FilesIcon />,
+                  shortcut: "⌘U",
+                  onSelect: () => files.current?.click(),
+                },
+                {
+                  label: "Take screenshot",
+                  icon: <ScreenIcon />,
+                  disabled: !canCaptureScreen(),
+                  hint: canCaptureScreen() ? undefined : "This browser cannot capture the screen",
+                  onSelect: () => void screenshot(),
+                },
+              ]}
+              trigger={renderAttachTrigger}
+              disabled={disabled}
+            />
+            <input
+              ref={files}
+              type="file"
+              multiple
+              hidden
+              tabIndex={-1}
+              onChange={(event) => {
+                const picked = Array.from(event.target.files ?? []);
+                if (picked.length > 0) onAttachFiles?.(picked);
+                event.target.value = "";
+              }}
+            />
+          </>
+        )}
         {attachments.length > 0 ? (
           <div className="compose-context" aria-label="Sent with your next message">
             {attachments.map((item) => (
@@ -254,16 +261,18 @@ export function ComposeBox({
         ) : (
           <span className="compose-hint muted">Enter to send · Shift+Enter for a new line</span>
         )}
-        <button
-          type="button"
-          className="compose-icon"
-          aria-label="Dictate"
-          title="Dictate"
-          disabled={disabled}
-          onClick={onDictate}
-        >
-          <MicIcon />
-        </button>
+        {!textOnly && (
+          <button
+            type="button"
+            className="compose-icon"
+            aria-label="Dictate"
+            title="Dictate"
+            disabled={disabled}
+            onClick={onDictate}
+          >
+            <MicIcon />
+          </button>
+        )}
         {busy && (
           <button
             type="button"

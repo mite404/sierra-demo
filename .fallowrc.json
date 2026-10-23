@@ -8,6 +8,7 @@
     "apps/web/src/root.tsx",
     "apps/web/src/routes.ts",
     "apps/web/src/routes/*.tsx",
+    "apps/gateway/src/simulationWorker.ts",
     "apps/storybook/.storybook/main.ts",
     "apps/storybook/.storybook/preview.ts",
     "scripts/*.js",
@@ -21,7 +22,167 @@
   "health": {
     // Dev scripts (DevTools snippets, wrap-md, the browser levers) are tools, not product code;
     // complexity gates police the components.
-    "ignore": ["scripts/**", "apps/web/scripts/**"]
+    "ignore": ["scripts/**", "apps/web/scripts/**"],
+    // Use the same measured coverage in automatic commit gates and CI audits.
+    // Run pnpm --filter gateway test:coverage before auditing or committing.
+    "coverage": "apps/gateway/coverage/coverage-final.json",
+    // Reviewed Sierra exceptions are per-function ceilings, not exclusions or a count baseline.
+    // Real gateway coverage is supplied by CI. Frontend CRAP is estimated: the live browser
+    // regression exercises these paths, but its coverage is not an Istanbul input to this audit.
+    // Retain default limits everywhere else; a new function or growth beyond these caps fails.
+    "thresholdOverrides": [
+      {
+        "files": ["apps/gateway/src/simulationWorker.ts"],
+        "functions": ["simulate"],
+        "maxCyclomatic": 28,
+        "maxCognitive": 29,
+        "reason": "Keep same-origin, acceptance, session and replay guards at the HTTP boundary; real HTTP regressions and measured coverage protect this bounded handler."
+      },
+      {
+        "files": ["apps/gateway/src/simulationModel.ts"],
+        "functions": ["streamModel"],
+        "maxCognitive": 23,
+        "reason": "Bounded sequential model rounds retain cancellation and incomplete-round checks before any tool execution; HTTP streaming and cancellation regressions exercise them."
+      },
+      {
+        "files": ["apps/gateway/src/simulation.ts"],
+        "functions": ["execute"],
+        "maxCognitive": 18,
+        "reason": "Keep permission-before-lookup, confirmation and exactly-once mutation adjacent; executor regressions and authorization-removal mutation evidence cover this safety boundary."
+      },
+      {
+        "files": ["apps/web/src/components/simulation-customer.tsx"],
+        "functions": ["SimulationCustomer"],
+        "maxCyclomatic": 25,
+        "maxCognitive": 26,
+        "maxCrap": 651,
+        "reason": "One bounded customer role owns restored state, fixture controls and inspector composition; live browser regressions cover owner/spouse, interruption, recovery and Reset."
+      },
+      {
+        "files": ["apps/web/src/components/simulation-setup.tsx"],
+        "functions": ["SimulationSetup"],
+        "maxCyclomatic": 25,
+        "maxCognitive": 31,
+        "maxCrap": 651,
+        "reason": "Keep the employee's proposal, acceptance lifecycle and controls together; real-model configure/accept/reload and delayed-acceptance Reset regressions cover the role."
+      },
+      {
+        "files": ["apps/web/src/components/simulation-agent.ts"],
+        "functions": ["readReply"],
+        "maxCognitive": 31,
+        "maxCrap": 273,
+        "reason": "Event projection was separated from session ownership; retain ordered snapshot/tool completion handling, exercised by the live streaming and interrupted-response browser regression."
+      },
+      {
+        "files": ["apps/web/src/components/simulation-lab.tsx"],
+        "functions": ["LabWorkspace"],
+        "maxCognitive": 18,
+        "maxCrap": 157,
+        "reason": "Keep two-role navigation and independent recovery together; browser checks prove surviving roles, frozen settings, no replay and Reset isolation."
+      },
+      {
+        "files": ["packages/catalog/src/ComposeBox.tsx"],
+        "functions": ["ComposeBox"],
+        "maxCognitive": 17,
+        "reason": "Preserve the existing composer component and accessible keyboard/submit behavior rather than split its interaction guards; catalog browser tests cover typed submission."
+      },
+      {
+        "files": ["apps/web/src/components/simulation-evidence.tsx"],
+        "functions": ["SimulationResults"],
+        "maxCrap": 307,
+        "reason": "Separated the three goal checks; browser runs verify real JSON beside chat and distinct completed, not-exercised, failed, cancelled and error states. CRAP lacks browser coverage input."
+      },
+      {
+        "files": ["apps/web/src/components/simulation-evidence.tsx"],
+        "functions": ["titleOf"],
+        "maxCrap": 211,
+        "reason": "Keep the ordered plain-language outcome decision table readable; live browser checks cover its waiting, completed, failed and incomplete outcomes."
+      },
+      {
+        "files": ["apps/web/src/components/simulation-evidence.tsx"],
+        "functions": ["ProtectionGoal"],
+        "maxCrap": 183,
+        "reason": "Spouse, owner and no-tool states are exercised through the real inspector; do not confuse missing Istanbul coverage with an unexecuted permission goal."
+      },
+      {
+        "files": ["apps/web/src/components/simulation-evidence.tsx"],
+        "functions": ["OwnerGoal"],
+        "maxCrap": 133,
+        "reason": "Real owner confirmation/refund/repeat and spouse controls exercise this goal; estimated risk is capped without suppressing new branches."
+      },
+      {
+        "files": ["apps/web/src/components/simulation-evidence.tsx"],
+        "functions": ["DuplicateGoal"],
+        "maxCrap": 31,
+        "reason": "Owner repeat after reload is checked against exactly one actual refund; CRAP-only finding lacks browser coverage input."
+      },
+      {
+        "files": ["apps/web/src/components/simulation-agent.ts"],
+        "functions": ["respond"],
+        "maxCrap": 157,
+        "reason": "Reduced cyclomatic complexity from 29 to 12 by separating event projection; genuine streaming, follow-ups, transport failure, cancellation and resume remain browser-tested."
+      },
+      {
+        "files": ["apps/web/src/components/simulation-agent.ts"],
+        "functions": ["receiveEvent"],
+        "maxCrap": 43,
+        "reason": "This response-event observer retains only session/terminal ownership; real browser follow-ups and error/cancel recovery exercise it."
+      },
+      {
+        "files": ["apps/web/src/components/simulation-setup.tsx"],
+        "functions": ["accept"],
+        "maxCrap": 133,
+        "reason": "Keep single-flight acceptance and aborted/stale response guards intact; delayed actual acceptance followed by New workflow and reload is a browser regression."
+      },
+      {
+        "files": ["apps/web/src/components/simulation-setup.tsx"],
+        "functions": ["observe"],
+        "maxCrap": 57,
+        "reason": "Configuration events update one role's proposal and activity; real-model questions, proposal, errors and acceptance are exercised in the browser."
+      },
+      {
+        "files": ["apps/web/src/components/simulation-customer.tsx"],
+        "functions": ["observe"],
+        "maxCrap": 31,
+        "reason": "Customer event callback is exercised by live streaming, refunds, transport error and cancellation; cap the no-coverage estimate."
+      },
+      {
+        "files": ["apps/web/src/components/simulation-lab.tsx"],
+        "functions": ["SimulationLab"],
+        "maxCrap": 31,
+        "reason": "Browser reload/reopen and independent missing-role recovery exercise restoration; keep its bounded loading state."
+      },
+      {
+        "files": ["apps/web/src/components/simulation-persistence.ts"],
+        "functions": ["resetLab"],
+        "maxCrap": 31,
+        "reason": "Browser regression checks customer-only and whole-workflow Reset plus reload, including late-response isolation; no replay or reconstructed invoices."
+      },
+      {
+        "files": ["apps/web/src/components/simulation-persistence.ts"],
+        "functions": ["restoreLab"],
+        "maxCrap": 31,
+        "reason": "Real GET restoration and independent role failure are browser-tested; retain parallel allSettled restoration without automatic POST."
+      },
+      {
+        "files": ["apps/web/src/components/simulation-probe.tsx"],
+        "functions": ["probe"],
+        "maxCrap": 91,
+        "reason": "Corrected and vulnerable direct tool probes are both exercised in the browser and kept separate from live customer evidence."
+      },
+      {
+        "files": ["apps/web/src/components/simulation-probe.tsx"],
+        "functions": ["SimulationProbe"],
+        "maxCrap": 31,
+        "reason": "Secondary teaching-control composition is browser-tested for both pass and fail outcomes; estimated coverage does not include that run."
+      },
+      {
+        "files": ["apps/web/src/components/simulation-state.ts"],
+        "functions": ["simulationReducer"],
+        "maxCrap": 38,
+        "reason": "Existing unit regression rejects stale/reset/cancel events; live browser regression covers streaming terminal states. Gateway-only Istanbul input omits these tests."
+      }
+    ]
   },
   // React Router's default server entry imports isbot at build time; the app never does.
   "ignoreDependencies": ["isbot"],
