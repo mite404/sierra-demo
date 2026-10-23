@@ -172,7 +172,7 @@ export const simulationResult = z.object({
   simulation: savedSimulationDefinition.nullable(),
   workflow: workflowConfig,
   principal: z.enum(["casey", "morgan"]),
-  status: z.enum(["running", "completed", "errored", "cancelled"]),
+  status: z.enum(["running", "completed", "errored", "cancelled", "timed-out", "limit-exhausted"]),
   verdict: z.enum(["pass", "fail", "not-exercised"]).nullable(),
   error: z.string().nullable(),
   model: z.string().nullable(),
@@ -187,6 +187,44 @@ export const simulationResult = z.object({
 export type SimulationResult = z.infer<typeof simulationResult>;
 export type Invoice = z.infer<typeof invoice>;
 export type ToolTrace = z.infer<typeof trace>;
+
+/** A new opaque handle is required for every explicit fresh run. No posted history or settings. */
+export const simulationRunRequest = z.strictObject({
+  startId: z.uuid(),
+  definitionId: z.uuid(),
+  expectedRevision: z.number().int().positive(),
+});
+
+/** Human judgment stays separate from the immutable model and executor evidence. */
+export const simulationHumanReview = z.strictObject({
+  status: z.enum(["pending", "meets-guidance", "needs-improvement"]),
+  note: z.string().trim().max(2000),
+});
+
+/** Requested identity and actual provider-reported identities, without invented provenance. */
+export const simulationModelIdentity = z.object({
+  requested: z.literal("moonshotai/kimi-k3"),
+  reported: z.array(z.string()),
+});
+
+/** Completion is computed once. A save-only retry must submit this same server-owned evidence. */
+export const simulationRunEvidence = z.object({
+  id: z.uuid(),
+  completedAt: z.iso.datetime().nullable(),
+  models: z.object({ customer: simulationModelIdentity, support: simulationModelIdentity }),
+  result: simulationResult,
+});
+export type SimulationRunEvidence = z.infer<typeof simulationRunEvidence>;
+
+/** Active execution is ephemeral. Saved completions and reviews survive local Worker restarts. */
+export const simulationRun = z.object({
+  id: z.uuid(),
+  active: z.boolean(),
+  persistence: z.enum(["none", "saving", "unsaved", "saved", "not-retained"]),
+  evidence: simulationRunEvidence.nullable(),
+  humanReview: simulationHumanReview,
+});
+export type SimulationRun = z.infer<typeof simulationRun>;
 
 /** Only upstream text and factual execution events cross the streaming boundary. */
 export const simulationEvent = z.discriminatedUnion("kind", [
@@ -207,6 +245,16 @@ export const simulationEvent = z.discriminatedUnion("kind", [
   }),
 ]);
 export type SimulationEvent = z.infer<typeof simulationEvent>;
+
+/** Customer protocol deltas are genuine upstream JSON, not yet an accepted visible message. */
+export const simulationRunEvent = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("run"), id: z.uuid() }),
+  z.object({ kind: z.literal("customer-delta"), text: z.string() }),
+  z.object({ kind: z.literal("customer-message"), text: z.string() }),
+  z.object({ kind: z.literal("support"), event: simulationEvent }),
+  z.object({ kind: z.literal("run-end"), run: simulationRun }),
+]);
+export type SimulationRunEvent = z.infer<typeof simulationRunEvent>;
 
 /** Display history from the server, never accepted back as model history or business state. */
 export const sessionMessages = z.array(

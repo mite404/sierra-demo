@@ -51,6 +51,18 @@ const fixtures = (): Invoice[] => [
   },
 ];
 
+const failureStatus = (
+  signal: AbortSignal,
+  error: unknown,
+  scenario: boolean,
+): SimulationResult["status"] => {
+  const reason: unknown = signal.aborted ? signal.reason : error;
+  const name = reason instanceof Error ? reason.name : "";
+  if (scenario && ["TimeoutError", "APIConnectionTimeoutError"].includes(name)) return "timed-out";
+  if (scenario && name === "QuotaExceededError") return "limit-exhausted";
+  return signal.aborted ? "cancelled" : "errored";
+};
+
 /**
  * Starts fresh or continues server-held evidence; chat cannot supply the prior state.
  * Errors and cancellation preserve evidence but never receive a verdict.
@@ -107,11 +119,16 @@ export async function runSimulation(
     result.after = previous.after;
   }
   let turn = result.conversation.filter((message) => message.role === "customer").length;
+  let finished = false;
+  const assertActive = () => {
+    signal.throwIfAborted();
+    if (finished) throw new Error("Run already terminated");
+  };
   const snapshot = () => options.emit?.({ kind: "snapshot", result: structuredClone(result) });
   snapshot();
   const execute = (tool: string, input: unknown): ToolTrace["output"] => {
-    signal.throwIfAborted();
-    if (result.trace.length >= 8) throw new Error("Tool limit");
+    assertActive();
+    if (result.trace.length >= 8) throw new DOMException("Tool limit", "QuotaExceededError");
     const parsed = argsSchema.safeParse(input);
     const entry: ToolTrace = {
       sequence: result.trace.length + 1,
@@ -179,30 +196,33 @@ export async function runSimulation(
     await driver({
       execute,
       say: (role, text) => {
-        signal.throwIfAborted();
+        assertActive();
         if (role === "customer") turn++;
         result.conversation.push({ role, text });
+        if (simulation) snapshot();
       },
       text: (text) => {
-        signal.throwIfAborted();
+        assertActive();
         const message = result.conversation.at(-1);
         if (message?.role !== "agent") throw new Error("Missing agent turn");
         message.text += text;
         options.emit?.({ kind: "text", text });
       },
-      toolStarted: (id, tool) => options.emit?.({ kind: "tool-start", id, tool }),
+      toolStarted: (id, tool) => {
+        assertActive();
+        options.emit?.({ kind: "tool-start", id, tool });
+      },
       selection,
       signal,
     });
     signal.throwIfAborted();
     result.status = "completed";
     Object.assign(result, assessSimulation(result));
-  } catch {
-    result.status = signal.aborted ? "cancelled" : "errored";
-    result.error = signal.aborted
-      ? "Run cancelled. No verdict."
-      : "Run incomplete. Check model credentials, upstream availability, or execution limits. No verdict.";
+  } catch (error) {
+    result.status = failureStatus(signal, error, simulation !== null);
+    result.error = `Run ${result.status}. No verdict. Check model availability or execution limits before starting a fresh run.`;
   }
+  finished = true;
   result.elapsedMs = Date.now() - started;
   return result;
 }

@@ -35,6 +35,7 @@ export const liveAgent =
     messages: Anthropic.MessageParam[] = [],
     message?: string,
     workflow: WorkflowConfig = { tone: "warm", approval: "immediate" },
+    onModel?: (model: string) => void,
   ): SimulationDriver =>
   async (run) => {
     const turns = [
@@ -57,6 +58,6 @@ Accepted refund approval: ${workflow.approval === "confirm" ? "the executor requ
       run.say("agent", "");
       messages.push({ role: "user", content: turn });
       // oxlint-disable-next-line no-await-in-loop -- customer turns share model history
-      await streamModel(client, { system: instructions, tools, messages }, run);
+      await streamModel(client, { system: instructions, tools, messages, onModel }, run);
     }
   };
