@@ -46,9 +46,12 @@ the orb environment. For a non-orb launch, put the same binding in the ignored
 `apps/gateway/.dev.vars` file. Never put the key in a `VITE_` variable or commit it.
 
 The chats use the existing Anthropic-format OpenRouter client and
-`moonshotai/kimi-k2.6`, with at most four rounds per customer turn, eight tool calls per run, and
-a 45-second turn deadline. Customer sessions are limited to named fixtures and six typed turns.
+`moonshotai/kimi-k3`, with no model fallback. Each call allows 1,400 output tokens and 20 seconds,
+with at most four rounds per customer turn, eight tool calls per run, and a 45-second turn deadline.
+Customer sessions are limited to named fixtures and six typed turns.
 Missing credentials and upstream failures produce **Execution error**, never a passing verdict.
+Live replies vary. A reply that describes a refund without calling the tool does not change payments
+or prove success. Inspect the actual tool result and payment state, not the agent's claim.
 
 Refresh/reopen in the same browser restores both chats, workflow acceptance, stage/persona and
 execution evidence from their existing server sessions. Local storage contains only opaque handles

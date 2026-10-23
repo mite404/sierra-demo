@@ -3,7 +3,7 @@ import { assistantContent, newRound, readEvent } from "./playgroundRound";
 import type { SimulationDriver } from "./simulation";
 
 /** Existing gateway model for both isolated employee and customer conversations. */
-export const SIMULATION_MODEL = "moonshotai/kimi-k2.6";
+export const SIMULATION_MODEL = "moonshotai/kimi-k3";
 
 /** Streams real upstream text and tool activity, ignoring provider thinking. Incomplete rounds never execute tools.
  * @throws When upstream fails, execution is aborted, or the bounded round limit is exhausted.
