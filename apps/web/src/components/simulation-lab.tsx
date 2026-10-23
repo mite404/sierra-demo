@@ -64,6 +64,7 @@ function restartWorkflow() {
 }
 
 function LibraryScreen({ lab }: { lab: ReturnType<typeof useLab> }) {
+  const [locked, setLocked] = useState(false);
   return (
     <main className="simulation-lab lab-library">
       <header className="lab-header">
@@ -74,6 +75,7 @@ function LibraryScreen({ lab }: { lab: ReturnType<typeof useLab> }) {
         <div className="lab-header-actions">
           <Button
             variant="ghost"
+            disabled={locked}
             onClick={() => {
               saveLab({ phase: "configure" });
               lab.setLibrary(false);
@@ -81,7 +83,7 @@ function LibraryScreen({ lab }: { lab: ReturnType<typeof useLab> }) {
           >
             Back to workflow
           </Button>
-          <Button variant="outline" className="btn" onClick={restartWorkflow}>
+          <Button variant="outline" className="btn" onClick={restartWorkflow} disabled={locked}>
             New workflow
           </Button>
         </div>
@@ -98,6 +100,8 @@ function LibraryScreen({ lab }: { lab: ReturnType<typeof useLab> }) {
                 : null
             }
             unavailable={lab.restored?.authorUnavailable ?? false}
+            locked={locked}
+            onLock={setLocked}
           />
         </div>
       </SidebarProvider>
