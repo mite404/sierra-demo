@@ -2,7 +2,7 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
   // One Worker serves the static React Router build and the API, so the site has one origin
   // (ADR-086).
-  "name": "yaklabs",
+  "name": "sierra-demo-gateway",
   "main": "src/worker.ts",
   "compatibility_date": "2026-09-25",
   "compatibility_flags": ["nodejs_compat"],
