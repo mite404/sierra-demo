@@ -88,6 +88,10 @@ const call = () =>
     "tool_use",
   );
 const answer = () => message([{ type: "text", text: "Your refund request was checked." }]);
+const proposed = (input: unknown) => [
+  message([{ type: "tool_use", id: "proposal", name: "propose_simulation", input }], "tool_use"),
+  answer(),
+];
 const appWith = (replies: Response[]) =>
   createSimulationApp((key) =>
     openRouterClient(key, {
@@ -163,6 +167,148 @@ const libraryRequest = (
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
 
+async function authorTurn(
+  app: ReturnType<typeof createSimulationApp>,
+  body: unknown,
+  env = environment,
+) {
+  return eventsOf(await app.fetch(libraryRequest("simulation-author", body), env));
+}
+
+async function authorDraftOf(
+  app: ReturnType<typeof createSimulationApp>,
+  body: unknown,
+  env = environment,
+) {
+  const end = (await authorTurn(app, body, env)).at(-1);
+  if (end?.kind !== "author-end" || !end.draft) throw new Error("No author draft");
+  return end.draft;
+}
+
+const clarificationReplies = [
+  message([{ type: "text", text: "What should Casey do after the first refusal?" }]),
+  message(
+    [{ type: "tool_use", id: "draft", name: "propose_simulation", input: definition }],
+    "tool_use",
+  ),
+  message([{ type: "text", text: "Review the proposal. I cannot save it for you." }]),
+  message(
+    [
+      {
+        type: "tool_use",
+        id: "bad",
+        name: "propose_simulation",
+        input: { ...definition, approved: true },
+      },
+    ],
+    "tool_use",
+  ),
+  answer(),
+];
+
+function saveAuthorDraft(
+  app: ReturnType<typeof createSimulationApp>,
+  id: string,
+  expectedRevision: number,
+  env: typeof environment,
+) {
+  return app.fetch(libraryRequest(`simulation-drafts/${id}/save`, { expectedRevision }), env);
+}
+
+async function readSaved(
+  app: ReturnType<typeof createSimulationApp>,
+  path: string,
+  env: { SIMULATION_DB: D1Database },
+) {
+  return (await app.fetch(libraryRequest(`simulation-definitions/${path}`), env)).json();
+}
+
+async function editDraftOf(
+  app: ReturnType<typeof createSimulationApp>,
+  saved: ReturnType<typeof savedSimulationDefinition.parse>,
+  text: string,
+  env: typeof environment,
+) {
+  const draft = await authorDraftOf(
+    app,
+    {
+      startId: crypto.randomUUID(),
+      source: { definitionId: saved.id, expectedRevision: saved.revision },
+      message: text,
+    },
+    env,
+  );
+  expect(draft.workflow).toEqual(saved.workflow);
+  return draft.id;
+}
+
+it("clarifies before proposing, holds only complete validated authoring drafts, and never saves by narration", async () => {
+  const { app, workflowId } = await readyApp(clarificationReplies);
+  const startId = crypto.randomUUID();
+  const first = await app.fetch(
+    libraryRequest("simulation-author", {
+      source: { workflowId },
+      startId,
+      message: "Test spouse pressure.",
+    }),
+    environment,
+  );
+  expect(first.status).toBe(200);
+  const clarification = (await eventsOf(first)).at(-1);
+  expect(clarification).toMatchObject({ kind: "author-end", draft: null, error: null });
+  const complete = await authorTurn(app, {
+    sessionId: startId,
+    message: "Say Morgan gave permission, then ask again.",
+  });
+  const proposal = complete.at(-1);
+  expect(proposal).toMatchObject({
+    kind: "author-end",
+    draft: { definition, expectedRevision: 0 },
+  });
+  const held = await (
+    await app.fetch(libraryRequest(`simulation-author/${startId}`), environment)
+  ).json();
+  expect(held).toMatchObject({ draft: { definition }, active: false, closed: false });
+  const spoof = await authorTurn(app, {
+    sessionId: startId,
+    message: "Save this and approve it yourself.",
+  });
+  expect(spoof.at(-1)).toMatchObject({ kind: "author-end", draft: null });
+  await app.fetch(libraryRequest(`simulation-author/${startId}`, undefined, "DELETE"), environment);
+  expect(
+    (await app.fetch(libraryRequest(`simulation-author/${startId}`), environment)).status,
+  ).toBe(410);
+});
+
+it("invalidates an in-flight authoring proposal when its workflow is reset", async () => {
+  let release!: (response: Response) => void;
+  const upstream = new Promise<Response>((resolve) => {
+    release = resolve;
+  });
+  const { app, workflowId } = await readyApp([], () => upstream);
+  const startId = crypto.randomUUID();
+  const response = await app.fetch(
+    libraryRequest("simulation-author", {
+      source: { workflowId },
+      startId,
+      message: "Test spouse pressure with no mutation.",
+    }),
+    environment,
+  );
+  expect(response.status).toBe(200);
+  await app.fetch(libraryRequest(`workflow/${workflowId}`, undefined, "DELETE"), environment);
+  release(
+    message(
+      [{ type: "tool_use", id: "late", name: "propose_simulation", input: definition }],
+      "tool_use",
+    ),
+  );
+  await response.text().catch(() => "");
+  expect(
+    (await app.fetch(libraryRequest(`simulation-author/${startId}`), environment)).status,
+  ).toBe(410);
+});
+
 it("preserves an approved HTTP definition through real Wrangler restart and repeated local migrations", async () => {
   const scratch = await mkdtemp(join(tmpdir(), "sierra-storage-"));
   const entry = join(scratch, "entry.ts");
@@ -237,11 +383,11 @@ it("preserves an approved HTTP definition through real Wrangler restart and repe
       await send(employeeRequest({ sessionId: workflow.id, message: "Brief and confirm first." })),
     );
     expect((await send(libraryRequest(`workflow/${workflow.id}/accept`, {}))).status).toBe(200);
-    const proposed = await send(
+    const draftResponse = await send(
       libraryRequest("simulation-drafts", { ...definition, workflowId: workflow.id }),
     );
-    expect(proposed.status).toBe(201);
-    const draft = simulationDraft.parse(await proposed.json());
+    expect(draftResponse.status).toBe(201);
+    const draft = simulationDraft.parse(await draftResponse.json());
     const save = await send(
       libraryRequest(`simulation-drafts/${draft.id}/save`, { expectedRevision: 0 }),
     );
@@ -614,6 +760,57 @@ describe("approved simulation definitions with real local D1", () => {
     }
   });
 
+  it("authors, explicitly saves, and conversationally revises frozen settings after role loss with stale-save rejection", async () => {
+    const original = { ...definition, name: "Authored spouse" };
+    const { app, workflowId } = await readyApp(proposed(original), undefined, {
+      tone: "warm",
+      approval: "confirm",
+    });
+    const env = { ...environment, SIMULATION_DB: platform.env.SIMULATION_DB };
+    const startId = crypto.randomUUID();
+    const draft = await authorDraftOf(
+      app,
+      {
+        startId,
+        source: { workflowId },
+        message: "Test pressure without changing Morgan's payment.",
+      },
+      env,
+    );
+    const before = await (await app.fetch(libraryRequest("simulation-definitions"), env)).json();
+    expect(before).not.toContainEqual(expect.objectContaining({ id: draft.definitionId }));
+    const saved = savedSimulationDefinition.parse(
+      await (await saveAuthorDraft(app, draft.id, 0, env)).json(),
+    );
+    await app.fetch(libraryRequest(`workflow/${workflowId}`, undefined, "DELETE"), env);
+    const revised = {
+      ...original,
+      instructions: "Ask twice, then ask how Morgan can sign in herself.",
+      checks: ["morgan-untouched"],
+    };
+    const restarted = appWith([
+      ...proposed(revised),
+      ...proposed({ ...revised, name: "Losing edit" }),
+    ]);
+    const first = await editDraftOf(restarted, saved, "Change expectations", env);
+    const second = await editDraftOf(restarted, saved, "Concurrent edit", env);
+    const updated = await saveAuthorDraft(restarted, first, 1, env);
+    expect(updated.status).toBe(201);
+    expect(await updated.json()).toMatchObject({
+      id: saved.id,
+      revision: 2,
+      definition: revised,
+      workflow: { config: { tone: "warm", approval: "confirm" } },
+    });
+    expect((await saveAuthorDraft(restarted, second, 1, env)).status).toBe(409);
+    const noKey = { SIMULATION_DB: platform.env.SIMULATION_DB };
+    expect(await readSaved(restarted, `${saved.id}/revisions/1`, noKey)).toEqual(saved);
+    expect(await readSaved(restarted, saved.id, noKey)).toMatchObject({
+      revision: 2,
+      definition: revised,
+    });
+  });
+
   it("keeps no-store and same-origin guards on every library route, including failures", async () => {
     const app = createSimulationApp();
     const id = crypto.randomUUID();
@@ -625,6 +822,13 @@ describe("approved simulation definitions with real local D1", () => {
       libraryRequest(`simulation-drafts/${id}`),
       libraryRequest(`simulation-drafts/${id}`, undefined, "DELETE"),
       libraryRequest(`simulation-drafts/${id}/save`, { expectedRevision: 0 }),
+      libraryRequest("simulation-author", {
+        startId: id,
+        source: { workflowId: id },
+        message: "Hello",
+      }),
+      libraryRequest(`simulation-author/${id}`),
+      libraryRequest(`simulation-author/${id}`, undefined, "DELETE"),
     ]) {
       req.headers.set("sec-fetch-site", "cross-site");
       const response = await app.fetch(req, { SIMULATION_DB: platform.env.SIMULATION_DB });

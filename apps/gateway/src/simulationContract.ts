@@ -82,6 +82,23 @@ export const simulationDraft = z.strictObject({
 });
 export type SimulationDraft = z.infer<typeof simulationDraft>;
 
+/** An author edits one frozen revision or creates against an accepted workflow. */
+export const simulationAuthorSource = z.union([
+  z.strictObject({ workflowId: z.uuid() }),
+  z.strictObject({ definitionId: z.uuid(), expectedRevision: z.number().int().positive() }),
+]);
+export type SimulationAuthorSource = z.infer<typeof simulationAuthorSource>;
+
+/** Browser words and opaque handles only; proposals and approval cannot be supplied as history. */
+export const simulationAuthorRequest = z.union([
+  z.strictObject({ sessionId: z.uuid(), message: z.string().trim().min(1).max(2000) }),
+  z.strictObject({
+    source: simulationAuthorSource,
+    startId: z.uuid(),
+    message: z.string().trim().min(1).max(2000),
+  }),
+]);
+
 /** Human save receipt and immutable revision; no model-supplied approval flag is accepted. */
 export const savedSimulationDefinition = z.strictObject({
   id: z.uuid(),
@@ -170,6 +187,11 @@ export const simulationEvent = z.discriminatedUnion("kind", [
     plan: workflowConfig.nullable(),
     error: z.string().nullable(),
   }),
+  z.object({
+    kind: z.literal("author-end"),
+    draft: simulationDraft.nullable(),
+    error: z.string().nullable(),
+  }),
 ]);
 export type SimulationEvent = z.infer<typeof simulationEvent>;
 
@@ -189,6 +211,17 @@ export const workflowSession = z.object({
   messages: sessionMessages,
   plan: workflowConfig.nullable(),
   accepted: workflowConfig.nullable(),
+  closed: z.boolean(),
+  active: z.boolean(),
+});
+
+/** Author history is ephemeral. Restoring never resubmits an interrupted request. */
+export const simulationAuthorSession = z.object({
+  id: z.uuid(),
+  source: simulationAuthorSource,
+  workflow: acceptedWorkflow,
+  messages: sessionMessages,
+  draft: simulationDraft.nullable(),
   closed: z.boolean(),
   active: z.boolean(),
 });
