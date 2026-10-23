@@ -9,6 +9,14 @@ execution: code
 
 # Sierra agent safety lesson - Plan
 
+The [conversational simulation
+plan](../plans/2026-10-23-0042-feat-conversational-simulations-plan.md)
+extends this lesson with human-approved test authoring, automated customers, Kimi K3, and local
+persistence for saved tests and completed results. Its requirements supersede this document's
+no-migration and ephemeral-only restrictions for those records. Existing manual sessions remain
+ephemeral. The synthetic domain, executor safeguards, human language review, and no-deployment
+boundaries below remain in force.
+
 ## Goal Capsule
 
 Give Ethan a working, recordable teaching demo for a Sierra Developer Relations application within
