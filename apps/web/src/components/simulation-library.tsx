@@ -12,6 +12,7 @@ type LibraryProps = {
     load: () => Promise<unknown>;
   };
   unavailable: boolean;
+  locked: boolean;
 };
 
 /** Recovery does not gate access to the durable library or replay expired role requests. */
@@ -67,9 +68,11 @@ export function LibraryWelcome({ workflow, start }: Pick<LibraryProps, "workflow
 function LibraryItem({
   saved,
   open,
+  locked,
 }: {
   saved: SavedSimulationDefinition;
   open: LibraryProps["open"];
+  locked: boolean;
 }) {
   return (
     <section className="lab-library-item">
@@ -82,6 +85,7 @@ function LibraryItem({
         variant="outline"
         className="btn"
         aria-label={`Open ${saved.definition.name}`}
+        disabled={locked}
         onClick={() => {
           open(saved.id);
         }}
@@ -96,7 +100,8 @@ function LibraryContents({
   library,
   open,
   unavailable,
-}: Pick<LibraryProps, "library" | "open" | "unavailable">) {
+  locked,
+}: Pick<LibraryProps, "library" | "open" | "unavailable" | "locked">) {
   return (
     <>
       {library.items === null && library.error === null && (
@@ -109,7 +114,7 @@ function LibraryContents({
         </p>
       )}
       {library.items?.map((saved) => (
-        <LibraryItem key={saved.id} saved={saved} open={open} />
+        <LibraryItem key={saved.id} saved={saved} open={open} locked={locked} />
       ))}
       {library.error !== null && <p role="alert">{library.error}</p>}
       {unavailable && (
@@ -123,7 +128,14 @@ function LibraryContents({
 }
 
 /** Saved-test reads and explicit reload remain available without live credentials. */
-export function LibrarySidebar({ workflow, start, open, library, unavailable }: LibraryProps) {
+export function LibrarySidebar({
+  workflow,
+  start,
+  open,
+  library,
+  unavailable,
+  locked,
+}: LibraryProps) {
   return (
     <Sidebar collapsible="none" side="right" className="lab-sidebar" aria-label="Saved simulations">
       <SidebarHeader>
@@ -132,7 +144,7 @@ export function LibrarySidebar({ workflow, start, open, library, unavailable }: 
       </SidebarHeader>
       <SidebarContent className="lab-sidebar-content">
         <div className="lab-review-actions">
-          <Button variant="outline" className="btn" disabled={!workflow} onClick={start}>
+          <Button variant="outline" className="btn" disabled={!workflow || locked} onClick={start}>
             Create another simulation
           </Button>
           <Button
@@ -144,7 +156,7 @@ export function LibrarySidebar({ workflow, start, open, library, unavailable }: 
             Reload library
           </Button>
         </div>
-        <LibraryContents library={library} open={open} unavailable={unavailable} />
+        <LibraryContents library={library} open={open} unavailable={unavailable} locked={locked} />
       </SidebarContent>
     </Sidebar>
   );

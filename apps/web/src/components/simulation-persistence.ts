@@ -10,6 +10,8 @@ const savedLab = z.object({
   employeeId: z.uuid().optional(),
   customerId: z.uuid().optional(),
   authorId: z.uuid().optional(),
+  definitionId: z.uuid().optional(),
+  runHandles: z.record(z.string(), z.uuid()).optional(),
   phase: z.enum(["configure", "customer", "library"]).default("configure"),
   persona: z.enum(["spouse", "owner"]).default("spouse"),
 });

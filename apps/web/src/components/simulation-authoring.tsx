@@ -6,9 +6,9 @@ import {
 } from "gateway/simulation-contract";
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { AuthorChat } from "./simulation-author-chat";
-import { SavedReview } from "./simulation-definition";
+import { SimulationRunView } from "./simulation-run-view";
 import { LibrarySidebar, LibraryWelcome } from "./simulation-library";
-import { clearAuthor, type RestoredAuthor } from "./simulation-persistence";
+import { clearAuthor, readLab, saveLab, type RestoredAuthor } from "./simulation-persistence";
 
 type View =
   | { kind: "browse" }
@@ -24,6 +24,8 @@ type AuthoringProps = {
   create: boolean;
   restored: RestoredAuthor | null;
   unavailable: boolean;
+  locked: boolean;
+  onLock: (locked: boolean) => void;
 };
 
 async function readLibrary(signal: AbortSignal) {
@@ -77,6 +79,20 @@ function useDefinitionView(
   const recovering = useRef(!create);
   useEffect(() => () => opening.current?.abort(), [opening]);
   useEffect(() => {
+    const id = readLab().definitionId;
+    if (!create && id !== undefined && recovering.current) {
+      recovering.current = false;
+      void openDefinition(
+        id,
+        opening,
+        (saved) => {
+          setView({ kind: "saved", saved });
+        },
+        () => {},
+      );
+    }
+  }, [create, opening]);
+  useEffect(() => {
     if (restored && recovering.current) {
       recovering.current = false;
       setView({ kind: "chat", source: restored.source, workflow: restored.workflow, restored });
@@ -86,6 +102,7 @@ function useDefinitionView(
     recovering.current = false;
     opening.current?.abort();
     clearAuthor();
+    saveLab({ definitionId: next.kind === "saved" ? next.saved.id : undefined });
     setEpoch((value) => value + 1);
     setView(next);
   };
@@ -123,6 +140,7 @@ function LibraryView({
   workflow,
   start,
   onSaved,
+  onLock,
 }: {
   view: View;
   epoch: number;
@@ -130,13 +148,16 @@ function LibraryView({
   workflow: AcceptedWorkflow | null;
   start: () => void;
   onSaved: (saved: SavedSimulationDefinition) => void;
+  onLock: AuthoringProps["onLock"];
 }) {
   if (view.kind === "chat") return <AuthorChat key={epoch} {...view} onSaved={onSaved} />;
   return (
     <div className="lab-library-review">
       {view.kind === "saved" ? (
-        <SavedReview
+        <SimulationRunView
+          key={`${view.saved.id}-${epoch}`}
           saved={view.saved}
+          onLock={onLock}
           onEdit={() => {
             choose({
               kind: "chat",
@@ -156,11 +177,11 @@ function LibraryView({
 /** Saved definitions load separately from chat recovery and credentials. Opening never starts a run. */
 export function SimulationAuthoring(props: AuthoringProps) {
   const opening = useRef<AbortController | null>(null);
-  const { view, epoch, choose, stopRecovery } = useDefinitionView(props, opening);
+  const selection = useDefinitionView(props, opening);
   const library = useSavedLibrary();
   const start = () => {
     if (props.workflow)
-      choose({
+      selection.choose({
         kind: "chat",
         source: { workflowId: props.workflow.id },
         workflow: props.workflow,
@@ -168,12 +189,12 @@ export function SimulationAuthoring(props: AuthoringProps) {
       });
   };
   const open = (id: string) => {
-    stopRecovery();
+    selection.stopRecovery();
     void openDefinition(
       id,
       opening,
       (saved) => {
-        choose({ kind: "saved", saved });
+        selection.choose({ kind: "saved", saved });
       },
       () => {
         library.setError("Saved simulation could not open. Reload the library and try again.");
@@ -181,18 +202,17 @@ export function SimulationAuthoring(props: AuthoringProps) {
     );
   };
   const onSaved = (saved: SavedSimulationDefinition) => {
-    choose({ kind: "saved", saved });
+    selection.choose({ kind: "saved", saved });
     void library.load();
   };
   return (
     <>
       <LibraryView
-        view={view}
-        epoch={epoch}
-        choose={choose}
+        {...selection}
         workflow={props.workflow}
         start={start}
         onSaved={onSaved}
+        onLock={props.onLock}
       />
       <LibrarySidebar
         workflow={props.workflow}
@@ -200,6 +220,7 @@ export function SimulationAuthoring(props: AuthoringProps) {
         open={open}
         library={library}
         unavailable={props.unavailable}
+        locked={props.locked}
       />
     </>
   );

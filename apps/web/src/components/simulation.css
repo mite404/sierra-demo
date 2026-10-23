@@ -313,6 +313,94 @@
   border-bottom: 1px solid var(--hairline);
   overflow-wrap: anywhere;
 }
+.lab-saved-run {
+  display: grid;
+  gap: var(--space);
+  min-width: 0;
+}
+.lab-saved-run h2 {
+  font: 500 24px/1.2 var(--font-display);
+  margin: 0 0 calc(var(--space) / 2);
+}
+.lab-run-controls .lab-header-actions {
+  flex-wrap: wrap;
+}
+.lab-run-controls output {
+  display: block;
+}
+.lab-run-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space);
+  align-items: start;
+}
+.lab-run-columns > * {
+  min-width: 0;
+}
+.lab-run-message {
+  padding: calc(var(--space) * 2 / 3);
+  margin: calc(var(--space) / 2) 0;
+  border: 1px solid var(--hairline);
+  border-radius: var(--btn-radius);
+  background: var(--paper-deep);
+  font: 13px/20px var(--font-text);
+}
+.lab-run-message p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--soft-ink);
+  margin: calc(var(--space) / 3) 0 0;
+}
+.lab-run-metadata,
+.lab-payment,
+.lab-run-review {
+  font: 13px/20px var(--font-text);
+  color: var(--soft-ink);
+  overflow-wrap: anywhere;
+}
+.lab-run-metadata p,
+.lab-payment p {
+  margin: calc(var(--space) / 3) 0;
+}
+.lab-run-review form {
+  display: grid;
+  gap: calc(var(--space) / 3);
+  max-width: calc(var(--space) * 24);
+}
+.lab-run-review select,
+.lab-run-review textarea {
+  border: 1px solid var(--rule);
+  border-radius: var(--btn-radius);
+  background: var(--paper);
+  color: var(--ink);
+  padding: calc(var(--space) / 3);
+  font: inherit;
+  width: 100%;
+}
+.lab-run-review textarea {
+  min-height: calc(var(--space) * 4);
+  resize: vertical;
+}
+.lab-run-review :focus-visible,
+.lab-saved-run .lab-json:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.lab-completed-run {
+  padding: var(--space) 0;
+  border-top: 1px solid var(--hairline);
+}
+.lab-saved-run .lab-json {
+  white-space: pre;
+  overflow: auto;
+  width: 100%;
+  height: calc(var(--space) * 16);
+}
+@media (max-width: 1100px) {
+  .lab-run-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 @media (max-width: 1100px) {
   .lab-library .lab-stage {
     flex-direction: column;

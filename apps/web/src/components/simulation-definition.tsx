@@ -88,9 +88,11 @@ function DefinitionSummary({
 export function SavedReview({
   saved,
   onEdit,
+  locked = false,
 }: {
   saved: SavedSimulationDefinition;
   onEdit: () => void;
+  locked?: boolean;
 }) {
   return (
     <>
@@ -98,12 +100,12 @@ export function SavedReview({
         Saved simulation · revision {saved.revision} · approved by explicit save
       </p>
       <DefinitionSummary definition={saved.definition} workflow={saved.workflow} />
-      <Button variant="outline" className="btn" onClick={onEdit}>
+      <Button variant="outline" className="btn" onClick={onEdit} disabled={locked}>
         Edit in chat
       </Button>
       <p className="lab-muted">
         Saved {new Date(saved.savedAt).toLocaleString()}. Editing does not change this revision
-        until you explicitly save again. Automated runs arrive in a later lesson.
+        until you explicitly save again. Runs use the saved server snapshot, not an unsaved draft.
       </p>
     </>
   );
