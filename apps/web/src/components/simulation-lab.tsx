@@ -3,15 +3,40 @@ import { SidebarProvider } from "@yaklabs/ui/components/sidebar";
 import type { AcceptedWorkflow, SimulationSelection } from "gateway/simulation-contract";
 import { useEffect, useState } from "react";
 import { SimulationCustomer } from "./simulation-customer";
+import { SimulationAuthoring } from "./simulation-authoring";
+import { SimulationRecovery } from "./simulation-library";
 import { SimulationSetup } from "./simulation-setup";
-import { readLab, resetLab, restoreLab, saveLab, type SavedLab } from "./simulation-persistence";
+import {
+  clearAuthor,
+  readLab,
+  resetLab,
+  restoreLab,
+  saveLab,
+  type SavedLab,
+} from "./simulation-persistence";
 import "./simulation.css";
 
-/** One bounded employee-to-customer journey; no canvas or inherited navigation lifecycle. */
-export function SimulationLab() {
+function useLab() {
   const [saved] = useState(readLab);
   const [restored, setRestored] = useState<Awaited<ReturnType<typeof restoreLab>> | null>(null);
   const [failed, setFailed] = useState(false);
+  const [library, setLibrary] = useState(saved.phase === "library");
+  const [create, setCreate] = useState(false);
+  const [libraryEpoch, setLibraryEpoch] = useState(0);
+  const [accepted, setAccepted] = useState<AcceptedWorkflow | null>();
+  const workflow =
+    accepted === undefined
+      ? restored?.employee?.accepted
+        ? { id: restored.employee.id, config: restored.employee.accepted }
+        : null
+      : accepted;
+  const showLibrary = (newTest: boolean) => {
+    if (newTest) clearAuthor();
+    saveLab({ phase: "library" });
+    setCreate(newTest);
+    setLibraryEpoch((value) => value + 1);
+    setLibrary(true);
+  };
   useEffect(() => {
     void restoreLab(saved)
       .then(setRestored)
@@ -19,40 +44,107 @@ export function SimulationLab() {
         setFailed(true);
       });
   }, [saved]);
-  if (!restored)
-    return (
-      <main className="simulation-lab">
-        <div className="lab-welcome">
-          <h1>{failed ? "Saved session unavailable" : "Restoring your simulation"}</h1>
-          <p aria-live="polite">
-            {failed
-              ? "The server may have restarted, the session expired, or the connection is unavailable. No messages were resent and no invoices were recreated. Reload to retry, or explicitly start a new workflow."
-              : "Loading conversation and payment evidence from the same server sessions."}
-          </p>
-          {failed && (
-            <Button
-              onClick={() => {
-                resetLab("workflow");
-                window.location.reload();
-              }}
-            >
-              Start a new workflow
-            </Button>
-          )}
+  return {
+    saved,
+    restored,
+    failed,
+    library,
+    create,
+    libraryEpoch,
+    workflow,
+    showLibrary,
+    setAccepted,
+    setLibrary,
+  };
+}
+
+function restartWorkflow() {
+  resetLab("workflow");
+  window.location.reload();
+}
+
+function LibraryScreen({ lab }: { lab: ReturnType<typeof useLab> }) {
+  return (
+    <main className="simulation-lab lab-library">
+      <header className="lab-header">
+        <div>
+          <h1>Sierra Agent QA Lab</h1>
+          <span>Independent educational demo · synthetic accounts and payments</span>
         </div>
-      </main>
-    );
-  return <LabWorkspace saved={saved} restored={restored} />;
+        <div className="lab-header-actions">
+          <Button
+            variant="ghost"
+            onClick={() => {
+              saveLab({ phase: "configure" });
+              lab.setLibrary(false);
+            }}
+          >
+            Back to workflow
+          </Button>
+          <Button variant="outline" className="btn" onClick={restartWorkflow}>
+            New workflow
+          </Button>
+        </div>
+      </header>
+      <SidebarProvider className="lab-workspace">
+        <div className="lab-stage">
+          <SimulationAuthoring
+            key={lab.libraryEpoch}
+            workflow={lab.workflow}
+            create={lab.create}
+            restored={
+              !lab.create && lab.restored?.author && lab.restored.author.id === readLab().authorId
+                ? lab.restored.author
+                : null
+            }
+            unavailable={lab.restored?.authorUnavailable ?? false}
+          />
+        </div>
+      </SidebarProvider>
+    </main>
+  );
+}
+
+/** Keeps configure, author, and manual-customer roles distinct while the library survives recovery. */
+export function SimulationLab() {
+  const lab = useLab();
+  return (
+    <>
+      <div hidden={lab.library}>
+        {lab.restored ? (
+          <LabWorkspace
+            saved={lab.saved}
+            restored={lab.restored}
+            onLibrary={lab.showLibrary}
+            onWorkflow={lab.setAccepted}
+          />
+        ) : (
+          <SimulationRecovery
+            failed={lab.failed}
+            onRestart={restartWorkflow}
+            onLibrary={() => {
+              lab.showLibrary(false);
+            }}
+          />
+        )}
+      </div>
+      {lab.library && <LibraryScreen lab={lab} />}
+    </>
+  );
 }
 
 function LabWorkspace({
   saved,
   restored,
+  onLibrary,
+  onWorkflow,
 }: {
   saved: SavedLab;
   restored: Awaited<ReturnType<typeof restoreLab>>;
+  onLibrary: (create: boolean) => void;
+  onWorkflow: (workflow: AcceptedWorkflow | null) => void;
 }) {
-  const [phase, setPhase] = useState(saved.phase);
+  const [phase, setPhase] = useState(saved.phase === "library" ? "configure" : saved.phase);
   const [workflow, setWorkflow] = useState<AcceptedWorkflow | null>(
     restored.employee?.accepted
       ? { id: restored.employee.id, config: restored.employee.accepted }
@@ -84,6 +176,7 @@ function LabWorkspace({
     setEmployee(null);
     setCustomer(null);
     setWorkflow(null);
+    onWorkflow(null);
     setPhase("configure");
     setWorkflowEpoch((epoch) => epoch + 1);
     setPersona("spouse");
@@ -104,6 +197,23 @@ function LabWorkspace({
             aria-pressed={phase === "configure"}
           >
             Configure
+          </Button>
+          <Button
+            variant="ghost"
+            disabled={!workflow || employeeUnavailable}
+            onClick={() => {
+              onLibrary(true);
+            }}
+          >
+            Create simulation
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => {
+              onLibrary(false);
+            }}
+          >
+            Saved simulations
           </Button>
           <Button
             variant="ghost"
@@ -135,7 +245,10 @@ function LabWorkspace({
             <SimulationSetup
               key={workflowEpoch}
               restored={employee}
-              onAccepted={setWorkflow}
+              onAccepted={(receipt) => {
+                setWorkflow(receipt);
+                onWorkflow(receipt);
+              }}
               onTry={() => {
                 changePhase("customer");
               }}

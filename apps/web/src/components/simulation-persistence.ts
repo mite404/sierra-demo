@@ -1,16 +1,22 @@
-import { customerSession, workflowSession } from "gateway/simulation-contract";
+import {
+  customerSession,
+  workflowSession,
+  simulationAuthorSession,
+} from "gateway/simulation-contract";
 import { z } from "zod";
 
 const key = "sierra-simulation-session-v1";
 const savedLab = z.object({
   employeeId: z.uuid().optional(),
   customerId: z.uuid().optional(),
-  phase: z.enum(["configure", "customer"]).default("configure"),
+  authorId: z.uuid().optional(),
+  phase: z.enum(["configure", "customer", "library"]).default("configure"),
   persona: z.enum(["spouse", "owner"]).default("spouse"),
 });
 export type SavedLab = z.infer<typeof savedLab>;
 export type RestoredEmployee = z.infer<typeof workflowSession>;
 export type RestoredCustomer = z.infer<typeof customerSession>;
+export type RestoredAuthor = z.infer<typeof simulationAuthorSession>;
 
 /** Browser storage contains handles and navigation only, never trusted invoices or model history. */
 export function readLab(): SavedLab {
@@ -29,6 +35,16 @@ export function saveLab(patch: Partial<SavedLab>) {
   localStorage.setItem(key, JSON.stringify({ ...readLab(), ...patch }));
 }
 
+/** Releases the author handle without affecting saved definitions.
+ * @throws When browser storage cannot be updated.
+ */
+export function clearAuthor() {
+  const id = readLab().authorId;
+  saveLab({ authorId: undefined });
+  if (id !== undefined)
+    void fetch(`/api/simulation-author/${id}`, { method: "DELETE" }).catch(() => {});
+}
+
 /**
  * Explicit reset clears the selected browser handles and releases abandoned server session slots.
  * @throws When browser storage cannot be cleared.
@@ -37,15 +53,27 @@ export function resetLab(scope: "test" | "workflow") {
   const saved = readLab();
   const ids = [
     ["simulation", saved.customerId],
-    ...(scope === "workflow" ? [["workflow", saved.employeeId]] : []),
+    ...(scope === "workflow"
+      ? [
+          ["workflow", saved.employeeId],
+          ["simulation-author", saved.authorId],
+        ]
+      : []),
   ];
   saveLab(
     scope === "workflow"
-      ? { employeeId: undefined, customerId: undefined, phase: "configure", persona: "spouse" }
+      ? {
+          employeeId: undefined,
+          customerId: undefined,
+          authorId: undefined,
+          phase: "configure",
+          persona: "spouse",
+        }
       : { customerId: undefined },
   );
   for (const [endpoint, id] of ids) {
-    if (id) void fetch(`/api/${endpoint}/${id}`, { method: "DELETE" }).catch(() => {});
+    if (id !== undefined)
+      void fetch(`/api/${endpoint}/${id}`, { method: "DELETE" }).catch(() => {});
   }
 }
 
@@ -60,22 +88,29 @@ async function getSession(endpoint: string): Promise<unknown> {
  * Restores each role independently; missing sessions never hide healthy evidence or start a POST.
  */
 export async function restoreLab(saved: SavedLab) {
-  const [employee, customer] = await Promise.allSettled([
-    saved.employeeId
-      ? getSession(`/api/workflow/${saved.employeeId}`).then((value) =>
+  const [employee, author, customer] = await Promise.allSettled([
+    saved.employeeId === undefined
+      ? null
+      : getSession(`/api/workflow/${saved.employeeId}`).then((value) =>
           workflowSession.parse(value),
-        )
-      : null,
-    saved.customerId
-      ? getSession(`/api/simulation/${saved.customerId}`).then((value) =>
+        ),
+    saved.authorId === undefined
+      ? null
+      : getSession(`/api/simulation-author/${saved.authorId}`).then((value) =>
+          simulationAuthorSession.parse(value),
+        ),
+    saved.customerId === undefined
+      ? null
+      : getSession(`/api/simulation/${saved.customerId}`).then((value) =>
           customerSession.parse(value),
-        )
-      : null,
+        ),
   ]);
   return {
     employee: employee.status === "fulfilled" ? employee.value : null,
     customer: customer.status === "fulfilled" ? customer.value : null,
+    author: author.status === "fulfilled" ? author.value : null,
     employeeUnavailable: employee.status === "rejected",
     customerUnavailable: customer.status === "rejected",
+    authorUnavailable: author.status === "rejected",
   };
 }

@@ -5,6 +5,7 @@ import {
   simulationEvent,
   type SimulationEvent,
   type SimulationSelection,
+  type SimulationAuthorSource,
 } from "gateway/simulation-contract";
 
 export type LabNotice =
@@ -17,7 +18,11 @@ const failure = (detail: string): ReplyChunk => ({
   failure: { title: "Reply incomplete", detail, retry: false },
 });
 const toolLabel = (name: string) =>
-  name === "propose_refund_workflow" ? "Preparing workflow proposal" : "Requesting a refund";
+  name === "propose_refund_workflow"
+    ? "Preparing workflow proposal"
+    : name === "propose_simulation"
+      ? "Preparing simulation proposal"
+      : "Requesting a refund";
 
 // Project one response's real events into catalog activity; session ownership stays in the agent.
 async function* readReply(
@@ -68,10 +73,10 @@ async function* readReply(
         traceCount = event.result.trace.length;
         break;
       case "end":
+      case "author-end":
       case "workflow-end": {
         const error = event.kind === "end" ? event.result.error : event.error;
-        if (error) yield failure(error);
-        else {
+        if (error === null) {
           for (const tool of tools)
             yield {
               kind: "step",
@@ -84,6 +89,8 @@ async function* readReply(
             };
           if (event.kind === "workflow-end" && event.plan)
             yield { kind: "log", text: JSON.stringify(event.plan, null, 2) };
+        } else {
+          yield failure(error);
         }
         return;
       }
@@ -94,8 +101,10 @@ async function* readReply(
 
 /** Adapts actual NDJSON events to the existing catalog thread, without fake text or model reasoning. */
 export function createLabAgent(options: {
-  endpoint: "/api/workflow" | "/api/simulation";
-  initial: Partial<SimulationSelection> & { workflowId?: string };
+  endpoint: "/api/workflow" | "/api/simulation" | "/api/simulation-author";
+  initial:
+    | (Partial<SimulationSelection> & { workflowId?: string })
+    | { source: SimulationAuthorSource };
   resume?: { id: string; closed: boolean };
   observe: (notice: LabNotice, id: number) => void;
 }): Agent {
@@ -144,9 +153,13 @@ export function createLabAgent(options: {
         yield* readReply(response.body, signal, function receiveEvent(event) {
           observe(event);
           if (event.kind === "session") sessionId = event.id;
-          if (event.kind === "end" || event.kind === "workflow-end") {
+          if (
+            event.kind === "end" ||
+            event.kind === "workflow-end" ||
+            event.kind === "author-end"
+          ) {
             const error = event.kind === "end" ? event.result.error : event.error;
-            if (error) retired = true;
+            if (error !== null) retired = true;
           }
         });
       } catch {

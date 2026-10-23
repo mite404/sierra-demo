@@ -70,15 +70,15 @@
         "files": ["apps/web/src/components/simulation-agent.ts"],
         "functions": ["readReply"],
         "maxCognitive": 31,
-        "maxCrap": 273,
+        "maxCrap": 307,
         "reason": "Event projection was separated from session ownership; retain ordered snapshot/tool completion handling, exercised by the live streaming and interrupted-response browser regression."
       },
       {
         "files": ["apps/web/src/components/simulation-lab.tsx"],
         "functions": ["LabWorkspace"],
-        "maxCognitive": 18,
-        "maxCrap": 157,
-        "reason": "Keep two-role navigation and independent recovery together; browser checks prove surviving roles, frozen settings, no replay and Reset isolation."
+        "maxCognitive": 20,
+        "maxCrap": 211,
+        "reason": "Keep configure/manual-customer navigation and the distinct author/library entry together; browser checks prove surviving roles, frozen settings, no replay and Reset isolation."
       },
       {
         "files": ["packages/catalog/src/ComposeBox.tsx"],
@@ -125,7 +125,7 @@
       {
         "files": ["apps/web/src/components/simulation-agent.ts"],
         "functions": ["receiveEvent"],
-        "maxCrap": 43,
+        "maxCrap": 57,
         "reason": "This response-event observer retains only session/terminal ownership; real browser follow-ups and error/cancel recovery exercise it."
       },
       {
@@ -147,16 +147,52 @@
         "reason": "Customer event callback is exercised by live streaming, refunds, transport error and cancellation; cap the no-coverage estimate."
       },
       {
-        "files": ["apps/web/src/components/simulation-lab.tsx"],
-        "functions": ["SimulationLab"],
-        "maxCrap": 31,
-        "reason": "Browser reload/reopen and independent missing-role recovery exercise restoration; keep its bounded loading state."
-      },
-      {
         "files": ["apps/web/src/components/simulation-persistence.ts"],
         "functions": ["resetLab"],
         "maxCrap": 31,
         "reason": "Browser regression checks customer-only and whole-workflow Reset plus reload, including late-response isolation; no replay or reconstructed invoices."
+      },
+      {
+        "files": ["apps/web/src/components/simulation-author-chat.tsx"],
+        "functions": ["nextState"],
+        "maxCrap": 157,
+        "reason": "Exhaustive event projection preserves ready/busy/closed proposal states. Live clarification, proposal, narration-only omission, missing-key and reset controls exercise it; gateway Istanbul omits browser coverage."
+      },
+      {
+        "files": ["apps/web/src/components/simulation-author-chat.tsx"],
+        "functions": ["saveProposal"],
+        "maxCrap": 91,
+        "reason": "Explicit single-flight approval retains abort and stale-response guards. Real Save/reopen/edit/stale-save and reset browser checks exercise it; gateway Istanbul omits browser coverage."
+      },
+      {
+        "files": ["apps/web/src/components/simulation-author-chat.tsx"],
+        "functions": ["initialState"],
+        "maxCrap": 43,
+        "reason": "Restored active or closed chats cannot silently resubmit. Expired/interrupted/keyless browser controls exercise recovery; gateway Istanbul omits browser coverage."
+      },
+      {
+        "files": ["apps/web/src/components/simulation-definition.tsx"],
+        "functions": ["AuthorReview"],
+        "maxCrap": 73,
+        "reason": "Read-only review distinguishes missing, busy, ready and failed proposals. Inspected spouse/owner desktop/narrow and error browser states exercise it; gateway Istanbul omits browser coverage."
+      },
+      {
+        "files": ["apps/web/src/components/simulation-lab.tsx"],
+        "functions": ["LibraryScreen"],
+        "maxCrap": 57,
+        "reason": "Library access remains independent of employee/customer recovery. Keyless/expired browser controls exercise it without POST replay; gateway Istanbul omits browser coverage."
+      },
+      {
+        "files": ["apps/web/src/components/simulation-library.tsx"],
+        "functions": ["LibraryContents"],
+        "maxCrap": 57,
+        "reason": "The saved list retains loading/error/reload/empty states. Real browser delayed-read and keyless controls exercise them; gateway Istanbul omits browser coverage."
+      },
+      {
+        "files": ["apps/web/src/components/simulation-authoring.tsx"],
+        "functions": ["openDefinition"],
+        "maxCrap": 31,
+        "reason": "Latest-revision reads cancel obsolete responses. Pointer/keyboard Open and delayed-library browser controls exercise this read-only boundary; gateway Istanbul omits browser coverage."
       },
       {
         "files": ["apps/web/src/components/simulation-persistence.ts"],
