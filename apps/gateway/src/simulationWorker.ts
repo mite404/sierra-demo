@@ -4,6 +4,7 @@ import { bodyLimit } from "hono/body-limit";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
 import { liveAgent } from "./simulationAgent";
+import { createSimulationAuthorApp } from "./simulationAuthor";
 import {
   compatibleSimulationDefinition,
   simulationDraftRequest,
@@ -47,6 +48,13 @@ export function createSimulationApp(clientFor: (key: string) => Anthropic = open
   const drafts = new Map<string, SimulationDraft>();
   const workflows = createWorkflowApp(clientFor);
   const app = new Hono<{ Bindings: SimulationEnv }>();
+  const authors = createSimulationAuthorApp({
+    clientFor,
+    request: (path, init, env) => Promise.resolve(app.request(path, init, env)),
+    discard: (id) => {
+      drafts.delete(id);
+    },
+  });
   app.use("/api/*", async (c, next) => {
     c.header("Cache-Control", "no-store");
     if (c.req.header("sec-fetch-site") === "cross-site")
@@ -56,6 +64,7 @@ export function createSimulationApp(clientFor: (key: string) => Anthropic = open
   app.use("/api/*", bodyLimit({ maxSize: 8192 }));
   app.use("/api/workflow/:id", async (c, next) => {
     if (c.req.method === "DELETE") {
+      authors.clearWorkflow(c.req.param("id"));
       for (const [id, draft] of drafts)
         if (draft.workflow.id === c.req.param("id") && draft.expectedRevision === 0)
           drafts.delete(id);
@@ -73,6 +82,7 @@ export function createSimulationApp(clientFor: (key: string) => Anthropic = open
     );
   });
   app.route("/", workflows.app);
+  app.route("/", authors.app);
   app.get("/api/simulation-definitions", async (c) => {
     if (!c.env.SIMULATION_DB)
       return c.json({ error: "Simulation storage is not configured." }, 503);
