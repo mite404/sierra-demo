@@ -5,6 +5,15 @@
   "compatibility_date": "2026-09-25",
   "compatibility_flags": ["nodejs_compat"],
   "dev": { "ip": "127.0.0.1", "port": 8787 },
+  "d1_databases": [
+    {
+      "binding": "SIMULATION_DB",
+      "database_name": "sierra-simulations-local",
+      // Local-only placeholder. No remote database is provisioned for this lesson.
+      "database_id": "00000000-0000-0000-0000-000000000086",
+      "migrations_dir": "simulation-migrations",
+    },
+  ],
   // Allowlist this binding from .dev.vars or the orb environment, never the browser build.
   // Without it, Wrangler warns but the offline probe still runs.
   "secrets": { "required": ["OPENROUTER_API_KEY"] },
