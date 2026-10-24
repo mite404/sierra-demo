@@ -25,20 +25,25 @@ PLAYWRIGHT_CHROMIUM="$(ls -d "$HOME"/.agent-browser/browsers/chrome-*/chrome | s
 ```
 
 Require exit status zero and the journey's `PASS` output. Inspect the viewport screenshots for
-setup,
-question, manual customer, saved simulation, completed run, dark/narrow layout, and recovery. A
-full-page screenshot does not establish that the composer is reachable inside the frame.
+setup, question, saved simulation, completed results, frozen conversation, dark/narrow layout,
+and recovery. A full-page screenshot does not establish that the composer is reachable inside
+the frame.
 
 ## Coverage and limits
 
 - `apps/web/src/components/simulation-lab.tsx`, `SimulationLab`, owns the stable frame around all
-  screen branches. Configure/customer navigation must preserve the unsent customer draft and
-  employee handle. Existing journey assertions retain single-workflow and sidebar-only controls.
+  screen branches. Old manual-customer navigation must recover the accepted employee without
+  replaying requests. The manual screen and selector are retired. Existing journey assertions
+  retain single-workflow and sidebar-only scenario/run controls.
 - `apps/web/src/components/simulation.css` owns frame geometry and available-height layout.
   `apps/web/scripts/simulation-shell-check.mjs` checks actual browser rectangles, not a CSS model.
 - `verifyShellSizes` generates every combination of widths 390, 767, 768, 769, 799, 800, 801, 1024,
-  1280, and 1440px; heights 720 and 900px; and light/dark media. Each of six stable lesson states
+  1280, and 1440px; heights 720 and 900px; and light/dark media. Each of five stable lesson states
   receives all 40 combinations. Streaming is checked by the existing journey at its default size.
+- Results open only after execution stops. The journey checks 2px transcript-only blur, inert
+  obscured chat, dismiss/reopen, Escape and focus return, read-only completed conversation,
+  selected goal counts, and incomplete/not-exercised outcomes. Popup bounds are checked at 390,
+  800, 801, 1024 and 1280px widths; narrow light/dark captures accompany desktop results.
 - Assertions cover 16px desktop insets from 768px, full-bleed narrow layout, 44px nonshrinking
   chrome,
   one visible main, frame-height content, decorative desktop-only lights, document scroll bounds,
@@ -65,8 +70,8 @@ after checking the design guide and actual rendered result.
 
 ## Keep in sync
 
-Last confirmed source commit is `b0c964315ac2f4b1f045d73622caa604d54e2ff0`.
-Review the covered files against that commit before rerunning. Advance this commit only after
-confirming the check describes the changed source. Re-run the real-source mutation when changing
-the height contract. Use `/maintain-formal-verification-skill` if the implementation changed without
-updating this coverage record.
+The shell baseline is `b0c964315ac2f4b1f045d73622caa604d54e2ff0`. This record also covers the
+follow-up removing the manual screen and adding post-run results. Review the covered source and
+journey diff together before rerunning. Re-run the real-source mutation when changing the height
+contract. Use `/maintain-formal-verification-skill` if the implementation changed without updating
+this coverage record.

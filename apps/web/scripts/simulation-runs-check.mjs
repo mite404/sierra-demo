@@ -72,6 +72,28 @@ const finished = async () => {
     undefined,
     { timeout: 60000 },
   );
+  const results = page.getByRole("dialog", { name: /Simulation (complete|incomplete)/u });
+  await results.waitFor();
+  assert.equal(
+    await page
+      .locator(".lab-run-transcript")
+      .first()
+      .evaluate((element) => ({
+        filter: getComputedStyle(element).filter,
+        inert: element.inert,
+      }))
+      .then((value) => value.filter === "blur(2px)" && value.inert),
+    true,
+  );
+  await results.getByRole("button", { name: "View conversation", exact: true }).click();
+  await results.waitFor({ state: "hidden" });
+  assert.equal(
+    await page
+      .locator(".lab-run-transcript")
+      .first()
+      .evaluate((element) => getComputedStyle(element).filter === "none" && !element.inert),
+    true,
+  );
 };
 const conversationTop = async () => {
   await page.getByRole("region", { name: "Scenario conversation and results" }).focus();
@@ -94,6 +116,8 @@ try {
   await button("Accept workflow").waitFor();
   await verifyShellSizes(page);
   assert.equal(await button("New workflow").count(), 0);
+  assert.equal(await button("Try it as a customer").count(), 0);
+  assert.equal(await current().getByLabel("Customer fixture").count(), 0);
   const lockedSidebar = current().getByRole("complementary", { name: "Simulation scenarios" });
   assert.equal(await lockedSidebar.getByRole("button").count(), 7);
   for (const control of await lockedSidebar.getByRole("button").all())
@@ -199,13 +223,24 @@ try {
   const employeeHandle = await page.evaluate(
     () => JSON.parse(localStorage.getItem("sierra-simulation-session-v1")).employeeId,
   );
-  await button("Try it as a customer").click();
-  await verifyShellSizes(page);
-  const manualComposer = current().getByRole("textbox", { name: "Message", exact: true });
-  await manualComposer.fill("An unsent customer follow-up");
-  await button("Configure").click();
-  await button("Try it as a customer").click();
-  assert.equal(await manualComposer.inputValue(), "An unsent customer follow-up");
+  const beforeLegacyRecovery = (await qa({})).modelCalls;
+  await page.evaluate(() => {
+    const key = "sierra-simulation-session-v1";
+    localStorage.setItem(
+      key,
+      JSON.stringify({
+        ...JSON.parse(localStorage.getItem(key)),
+        phase: "customer",
+        customerId: "00000000-0000-4000-8000-000000000097",
+        persona: "owner",
+      }),
+    );
+  });
+  await page.reload();
+  await button("Workflow accepted").waitFor();
+  assert.equal(await button("Try it as a customer").count(), 0);
+  assert.equal(await current().getByLabel("Customer fixture").count(), 0);
+  assert.equal((await qa({})).modelCalls, beforeLegacyRecovery);
   await verifyShell(page);
   assert.equal(
     await page.evaluate(
@@ -213,8 +248,6 @@ try {
     ),
     employeeHandle,
   );
-  await capture("04b-manual-customer");
-  await button("Configure").click();
   await button("Create simulation").click();
   const callsBeforeExample = (await qa({})).modelCalls;
   await button("Owner confirm + repeat").click();
@@ -275,6 +308,13 @@ try {
   assert.equal(await page.locator(".lab-device svg").count(), 1);
   await button("Run selected simulation").waitFor({ state: "visible" });
   await verifyShellSizes(page);
+  assert.equal(
+    await page
+      .getByRole("region", { name: "Workflow goals" })
+      .locator('.lab-goal[data-status="not-run"]')
+      .count(),
+    3,
+  );
   await capture("06-saved-ready");
   await qa({ delay: 80 });
   const firstId = await start("Run selected simulation", owner.id);
@@ -285,6 +325,13 @@ try {
   assert.equal(await page.locator('.lab-library-item[aria-current="page"]').isDisabled(), true);
   assert.equal(await button("Edit in chat").isDisabled(), true);
   await page.getByText("Support agent", { exact: true }).first().waitFor();
+  assert.equal(await page.locator(".lab-results-popover").count(), 0);
+  assert.equal(
+    await page
+      .locator(".lab-run-transcript")
+      .evaluate((element) => getComputedStyle(element).filter),
+    "none",
+  );
   const pinned = await geometry();
   const summary = page.locator(".lab-pinned-summary");
   assert.equal(
@@ -318,6 +365,41 @@ try {
     [4200, 0],
   );
   assert.equal(first.humanReview.status, "pending");
+  await button("View results").click();
+  const results = page.getByRole("dialog", { name: "Simulation complete", exact: true });
+  await results.waitFor();
+  assert.equal(await results.locator('.lab-goal[data-status="pass"]').count(), 3);
+  assert.equal(await results.locator(".lab-goal").count(), owner.definition.checks.length);
+  assert.equal(await results.evaluate((element) => element.contains(document.activeElement)), true);
+  await capture("08a-results-popover");
+  for (const width of [390, 800, 801, 1024, 1280]) {
+    await page.setViewportSize({ width, height: 720 });
+    const bounds = await results.boundingBox();
+    assert.ok(
+      bounds.x >= 0 &&
+        bounds.y >= 0 &&
+        bounds.x + bounds.width <= width &&
+        bounds.y + bounds.height <= 720,
+    );
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await capture("08b-narrow-results-popover");
+  await page.emulateMedia({ colorScheme: "dark" });
+  await capture("08c-dark-results-popover");
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await button("Agent settings").click();
+  await page.getByRole("region", { name: "Accepted agent settings" }).waitFor();
+  await results.waitFor({ state: "hidden" });
+  await button("View results").click();
+  await results.waitFor();
+  await page.keyboard.press("Escape");
+  await results.waitFor({ state: "hidden" });
+  assert.equal(
+    await button("View results").evaluate((element) => element === document.activeElement),
+    true,
+  );
+  assert.equal(await current().getByRole("textbox", { name: "Message", exact: true }).count(), 0);
   await page
     .getByRole("heading", { name: "Business checks passed · human review pending", exact: true })
     .waitFor();
@@ -391,6 +473,10 @@ try {
   const beforeReload = (await qa({})).modelCalls;
   await page.reload();
   await button("Rerun selected simulation").waitFor();
+  await page
+    .getByRole("dialog", { name: "Simulation complete", exact: true })
+    .getByRole("button", { name: "View conversation", exact: true })
+    .click();
   assert.equal(await button("Run again").count(), 0);
   assert.equal((await qa({})).modelCalls, beforeReload);
   await button("Search simulations").click();
@@ -400,6 +486,10 @@ try {
   await search.fill("owner");
   await page.locator('.lab-library-item[aria-current="page"]').focus();
   await page.keyboard.press("Enter");
+  await page
+    .getByRole("dialog", { name: "Simulation complete", exact: true })
+    .getByRole("button", { name: "View conversation", exact: true })
+    .click();
   await button("Agent settings").click();
   await page.getByRole("region", { name: "Accepted agent settings" }).waitFor();
   for (const [mode, heading] of [
@@ -415,6 +505,21 @@ try {
     await page.getByRole("heading", { name: heading, exact: true }).waitFor();
     const run = await read(`simulation-runs/${id}`);
     if (mode !== "early") assert.equal(run.evidence.result.verdict, null);
+    await button("View results").click();
+    const outcome = page.getByRole("dialog", {
+      name: mode === "early" ? "Simulation complete" : "Simulation incomplete",
+      exact: true,
+    });
+    await outcome.waitFor();
+    assert.equal(await outcome.locator('.lab-goal[data-status="pass"]').count(), 0);
+    assert.equal(
+      await outcome
+        .locator(`.lab-goal[data-status="${mode === "early" ? "not-exercised" : "incomplete"}"]`)
+        .count(),
+      3,
+    );
+    await capture(`13-${mode}-results`);
+    await outcome.getByRole("button", { name: "View conversation", exact: true }).click();
     await conversationTop();
     await capture(`13-${mode}`);
   }
@@ -465,13 +570,18 @@ try {
   await page.getByRole("heading", { name: "Employee configuration unavailable" }).waitFor();
   await verifyShellSizes(page);
   await capture("15-recovery");
+  for (const legacy of ["/lab", "/t/old-thread", "/playground", "/demo/weekly-brief/x"]) {
+    await page.goto(`${base}${legacy}`);
+    await page.waitForURL(`${base}/`);
+    assert.equal(await page.locator("canvas, .shell, .browser-panel").count(), 0);
+  }
   assert.deepEqual(errors, []);
   await writeFile(
     path.join(logs, "browser-evidence.json"),
     JSON.stringify({ owner, first, second, errors, http: await qa({}) }, null, 2),
   );
   process.stdout.write(
-    "PASS first-use/clarification/proposal gating, choice answer/resume, workflow revision + frozen acceptance, accessible acceptance modal + Escape + recovery, draft/save, Desktop web only, instruction-only JetBrains Mono, sidebar-only play/rerun, single-workflow navigation, busy/unsaved locks, streamed YakLabs conversation, pinned full summary/separator during streaming and completed scrolling, real payment evidence, disclosures, search/settings, dark/light/narrow, error/stop/timeout/not-exercised and save-only retry. Deterministic external transport; real HTTP/executor/disposable D1.\n",
+    "PASS first-use/clarification/proposal gating, choice answer/resume, workflow revision + frozen acceptance, accessible acceptance modal + Escape + recovery, draft/save, Desktop web only, instruction-only JetBrains Mono, sidebar-only scenario/play/rerun, retired manual recovery, single-workflow navigation, busy/unsaved locks, streamed YakLabs conversation, pinned summary/separator, post-run 2px blur + read-only transcript, results dismiss/reopen/outside click + focus return, honest selected-goal outcomes, real payment evidence, disclosures, search/settings, dark/light/narrow, error/stop/timeout/not-exercised, save-only retry, and legacy redirects. Deterministic external transport; real HTTP/executor/disposable D1.\n",
   );
 } finally {
   await browser.close();

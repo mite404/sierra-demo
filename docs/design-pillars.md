@@ -559,6 +559,15 @@ technology, absent below 48rem, and never receive focus or perform window action
 notifications are outside this lesson (Ethan). Inner screens fill available frame height and
 scroll internally so focus cannot move the desk.
 
+Saved scenarios are selected only in the left panel. When a run ends, its outcomes appear in the
+existing nonmodal shadcn dialog, with its inherited surface, border, shadow, corners and motion.
+Only the ended transcript receives 2px blur (`--space / 12`, Ethan). Dismissing results removes
+the blur and reveals the read-only conversation; View results reopens them. Selected expected
+goals, actual evidence and text status labels retain the inspector's icon-led rows. Incomplete
+execution never earns a passing grade. Dialog content uses 16px horizontal padding
+(`--space * 2 / 3`) and 8px row spacing (`--space / 3`), derived from existing sidebar spacing.
+Passed status text uses `--saved-ink`, the existing theme-aware positive status token (derived).
+
 ## Open questions
 
 - The limitation in the words (pillar 29) and the basis lines under a step's outcome (pillar 30)

@@ -20,10 +20,9 @@ function browserStorage() {
   };
 }
 
-it("keeps author recovery independent of expired employee and customer roles without resubmitting", async () => {
+it("keeps author recovery independent of an expired employee without resubmitting", async () => {
   const authorId = "00000000-0000-4000-8000-000000000087";
   const employeeId = "00000000-0000-4000-8000-000000000085";
-  const customerId = "00000000-0000-4000-8000-000000000086";
   const author = {
     id: authorId,
     source: { workflowId: employeeId },
@@ -37,16 +36,12 @@ it("keeps author recovery independent of expired employee and customer roles wit
   const restored = await restoreLab({
     authorId,
     employeeId,
-    customerId,
     phase: "library",
-    persona: "spouse",
   });
   expect(restored).toEqual({
     employee: null,
-    customer: null,
     author,
     employeeUnavailable: true,
-    customerUnavailable: true,
     authorUnavailable: false,
   });
 });
@@ -57,8 +52,26 @@ it("persists only author handles and library navigation, not proposals or approv
   expect(readLab()).toEqual({
     phase: "library",
     authorId: "00000000-0000-4000-8000-000000000087",
-    persona: "spouse",
   });
   saveLab({ authorId: undefined });
-  expect(readLab()).toEqual({ phase: "library", persona: "spouse" });
+  expect(readLab()).toEqual({ phase: "library" });
+});
+
+it("retires old manual navigation without losing the employee or saved scenario handles", () => {
+  vi.stubGlobal("localStorage", browserStorage());
+  const handles = {
+    employeeId: "00000000-0000-4000-8000-000000000085",
+    definitionId: "00000000-0000-4000-8000-000000000086",
+    runHandles: { "saved-scenario": "00000000-0000-4000-8000-000000000087" },
+  };
+  localStorage.setItem(
+    "sierra-simulation-session-v1",
+    JSON.stringify({
+      ...handles,
+      phase: "customer",
+      persona: "owner",
+      customerId: "00000000-0000-4000-8000-000000000088",
+    }),
+  );
+  expect(readLab()).toEqual({ ...handles, phase: "configure" });
 });

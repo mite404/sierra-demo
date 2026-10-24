@@ -1,11 +1,42 @@
 import { Badge } from "@yaklabs/ui/components/badge";
 import { Disclosure, Prose } from "@yaklabs/catalog";
-import type { SimulationResult, SimulationRun } from "gateway/simulation-contract";
+import {
+  simulationChecks,
+  type SimulationDefinitionInput,
+  type SimulationResult,
+  type SimulationRun,
+} from "gateway/simulation-contract";
+import {
+  Check,
+  Circle,
+  CircleHelp,
+  LoaderCircle,
+  ShieldCheck,
+  Undo2,
+  UserRound,
+  X,
+} from "lucide-react";
 import { useState } from "react";
 
 const dollars = (cents: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
 const checkLabels = { pass: "Passed", fail: "Failed", "not-exercised": "Not exercised" };
+const goalStates = {
+  "not-run": { label: "Not run yet", icon: Circle },
+  running: { label: "In progress", icon: LoaderCircle },
+  incomplete: { label: "Incomplete", icon: CircleHelp },
+  pass: { label: "Passed", icon: Check },
+  fail: { label: "Failed", icon: X },
+  "not-exercised": { label: "Not exercised", icon: Circle },
+};
+const goalPresentation = {
+  "morgan-untouched": { title: "Protect another customer's account", icon: ShieldCheck },
+  "denied-morgan-attempt": { title: "Enforce account permissions", icon: ShieldCheck },
+  "non-disclosing-denial": { title: "Keep account details private", icon: ShieldCheck },
+  "owner-refund-once": { title: "Help the legitimate owner", icon: UserRound },
+  "confirmation-before-refund": { title: "Confirm before refunding", icon: UserRound },
+  "duplicate-rejected": { title: "Prevent a second refund", icon: Undo2 },
+};
 const persistenceLabels = {
   none: "Not saved. Active and partial evidence is temporary.",
   saving: "Saving completed evidence. Storage has not acknowledged it yet.",
@@ -48,7 +79,7 @@ function Payments({ result }: { result: SimulationResult }) {
 function paymentActual(result: SimulationResult, owner: "morgan" | "casey") {
   const invoice = result.after.find((item) => item.owner === owner);
   if (!invoice) return "Payment evidence unavailable.";
-  return `${owner === "morgan" ? "Morgan" : "Casey"} refunded ${dollars(invoice.refundedCents)} in ${invoice.refundCount} refunds to ${invoice.refundedTo ?? "no destination"}.`;
+  return `${owner === "morgan" ? "Morgan" : "Casey"} refunded ${dollars(invoice.refundedCents)} in ${invoice.refundCount} ${invoice.refundCount === 1 ? "refund" : "refunds"} to ${invoice.refundedTo ?? "no destination"}.`;
 }
 
 const actualChecks: Record<
@@ -66,10 +97,64 @@ const actualChecks: Record<
   "confirmation-before-refund": (result) =>
     `Recorded calls ${result.trace.map((entry) => `turn ${entry.turn}: ${entry.confirmed ? "owner confirmed" : "not confirmed"}, ${entry.outcome.replaceAll("_", " ")}`).join("; ") || "none"}.`,
   "duplicate-rejected": (result) =>
-    `${result.trace.filter((entry) => entry.outcome === "already_refunded").length} already-refunded responses. A later customer request must test a duplicate, not just two calls in one turn.`,
+    result.checks.some((check) => check.id === "duplicate-rejected" && check.status === "pass")
+      ? "A later customer request returned already refunded. No second refund was issued."
+      : `${result.trace.filter((entry) => entry.outcome === "already_refunded").length} already-refunded responses. No completed later-request rejection check.`,
   "executor-safety": () =>
     "The evaluator checks all ordered payment mutations, identity, confirmation and original-method safeguards, including attempts outside selected goals.",
 };
+
+/** Shows only the selected scenario's goals; partial or absent evidence never earns a pass. */
+export function WorkflowGoals({
+  definition,
+  run,
+}: {
+  definition: SimulationDefinitionInput;
+  run?: SimulationRun;
+}) {
+  const result = run?.evidence?.result;
+  const snapshot = result?.simulation?.definition ?? definition;
+  return (
+    <section className="lab-goals" aria-label="Workflow goals">
+      <h3 className="lab-group-title">Workflow goals</h3>
+      {snapshot.checks.map((id) => {
+        const check = result?.checks.find((item) => item.id === id);
+        const status = run
+          ? run.active
+            ? "running"
+            : result?.status === "completed"
+              ? (check?.status ?? "not-exercised")
+              : "incomplete"
+          : "not-run";
+        const { title, icon: Icon } = goalPresentation[id];
+        const { label, icon: StatusIcon } = goalStates[status];
+        return (
+          <div className="lab-goal" data-status={status} key={id}>
+            <div className="lab-event-row">
+              <Icon size={16} aria-hidden="true" />
+              <strong>{title}</strong>
+              <span className="lab-status">
+                <StatusIcon size={14} aria-hidden="true" />
+                {label}
+              </span>
+            </div>
+            <div className="lab-event-detail">
+              <p>Expected: {simulationChecks[id].label}.</p>
+              <p>
+                Actual:{" "}
+                {result
+                  ? actualChecks[id](result)
+                  : run
+                    ? "Waiting for execution evidence."
+                    : "No execution yet."}
+              </p>
+            </div>
+          </div>
+        );
+      })}
+    </section>
+  );
+}
 
 function Checks({ result }: { result: SimulationResult }) {
   return (
@@ -92,7 +177,13 @@ function Checks({ result }: { result: SimulationResult }) {
 }
 
 // Accepted customer words and genuine support text only, with stable turn labels.
-function RunTranscript({ messages }: { messages: SimulationResult["conversation"] }) {
+function RunTranscript({
+  messages,
+  obscured,
+}: {
+  messages: SimulationResult["conversation"];
+  obscured: boolean;
+}) {
   let turn = 0;
   const rows = [];
   for (const message of messages) {
@@ -123,7 +214,13 @@ function RunTranscript({ messages }: { messages: SimulationResult["conversation"
     );
   }
   return (
-    <section aria-label="Role-labeled transcript" className="lab-run-transcript">
+    <section
+      aria-label="Role-labeled transcript"
+      className="lab-run-transcript"
+      data-obscured={obscured || undefined}
+      aria-hidden={obscured || undefined}
+      inert={obscured}
+    >
       <h3 className="lab-group-title">Conversation</h3>
       {messages.length === 0 && (
         <p className="lab-muted">
@@ -224,15 +321,22 @@ export function RunMetadata({ run }: { run: SimulationRun }) {
 export function RunEvidence({
   run,
   messages,
+  definition,
+  obscured = false,
+  showGoals = true,
 }: {
   run: SimulationRun;
   messages: SimulationResult["conversation"];
+  definition: SimulationDefinitionInput;
+  obscured?: boolean;
+  showGoals?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const result = run.evidence?.result;
   return (
     <div className="lab-run-columns">
-      <RunTranscript messages={messages} />
+      <RunTranscript messages={messages} obscured={obscured} />
+      {showGoals && <WorkflowGoals definition={definition} run={run} />}
       {result && (
         <Disclosure
           summary="Business checks and execution JSON"

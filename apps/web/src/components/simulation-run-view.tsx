@@ -1,11 +1,18 @@
 import { Disclosure } from "@yaklabs/catalog";
 import { Button } from "@yaklabs/ui/components/button";
 import { Separator } from "@yaklabs/ui/components/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@yaklabs/ui/components/dialog";
 import type { SavedSimulationDefinition, SimulationRun } from "gateway/simulation-contract";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SavedReview } from "./simulation-definition";
 import { useSimulationRun } from "./simulation-run";
-import { RunEvidence, RunMetadata } from "./simulation-run-evidence";
+import { RunEvidence, RunMetadata, WorkflowGoals } from "./simulation-run-evidence";
 import { RunHumanReview } from "./simulation-run-review";
 
 type Runner = ReturnType<typeof useSimulationRun>;
@@ -113,23 +120,88 @@ function ResultConversation({
   run,
   messages,
   reload,
+  definition,
 }: {
   run: SimulationRun;
   messages: NonNullable<Runner["current"]>["messages"];
   reload: Runner["loadResults"];
+  definition: SavedSimulationDefinition["definition"];
 }) {
   const [technical, setTechnical] = useState(false);
   const [review, setReview] = useState(false);
+  const [resultsDismissed, setResultsDismissed] = useState(false);
+  const resultsButton = useRef<HTMLButtonElement>(null);
   const result = run.evidence?.result;
+  const resultsOpen = !run.active && !resultsDismissed;
   return (
     <article
       aria-label={
         result?.status === "completed" ? "Latest completed result" : "Current run evidence"
       }
     >
-      <h2 className="lab-run-status">{runStatus(run)}</h2>
+      <div className="lab-run-heading">
+        <h2 className="lab-run-status">{runStatus(run)}</h2>
+        {!run.active && (
+          <>
+            <span className="lab-muted">Conversation ended · Read-only</span>
+            <Button
+              ref={resultsButton}
+              variant="outline"
+              onClick={() => {
+                setResultsDismissed(false);
+              }}
+            >
+              View results
+            </Button>
+          </>
+        )}
+      </div>
       {result?.error && <p role="alert">{result.error}</p>}
-      <RunEvidence run={run} messages={messages} />
+      <RunEvidence
+        run={run}
+        messages={messages}
+        definition={definition}
+        obscured={resultsOpen}
+        showGoals={false}
+      />
+      <Dialog
+        modal={false}
+        open={resultsOpen}
+        onOpenChange={(open) => {
+          setResultsDismissed(!open);
+        }}
+      >
+        <DialogContent className="lab-results-popover" initialFocus finalFocus={resultsButton}>
+          <DialogHeader>
+            <DialogTitle>
+              {result?.status === "completed" ? "Simulation complete" : "Simulation incomplete"}
+            </DialogTitle>
+            <DialogDescription>
+              {runStatus(run)}
+              <br />
+              The conversation is now read-only.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="lab-results-body">
+            <WorkflowGoals definition={definition} run={run} />
+            <p className="lab-review">
+              Human wording review{" "}
+              {run.humanReview.status === "pending"
+                ? "pending"
+                : run.humanReview.status.replaceAll("-", " ")}
+              . Business checks do not grade helpfulness, privacy, or truthful wording.
+            </p>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setResultsDismissed(true);
+              }}
+            >
+              View conversation
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       <Disclosure
         summary="Technical details"
         open={technical}
@@ -190,7 +262,11 @@ function PreviousResults({ runner, saved }: { runner: Runner; saved: SavedSimula
             </p>
           )}
           <RunMetadata run={run} />
-          <RunEvidence run={run} messages={run.evidence?.result.conversation ?? []} />
+          <RunEvidence
+            run={run}
+            messages={run.evidence?.result.conversation ?? []}
+            definition={saved.definition}
+          />
         </article>
       ))}
       {runner.completed?.length === 0 && <p>No completed results yet.</p>}
@@ -266,15 +342,19 @@ export function SimulationRunView({
             run={run}
             messages={conversationMessages(runner, run)}
             reload={runner.loadResults}
+            definition={saved.definition}
           />
         ) : (
-          <div className="lab-welcome">
-            <h2>Ready for a conversation</h2>
-            <p>
-              Play this scenario to see how your agent responds. Each run starts with fresh
-              synthetic payments.
-            </p>
-          </div>
+          <>
+            <div className="lab-welcome">
+              <h2>Ready for a conversation</h2>
+              <p>
+                Play this scenario to see how your agent responds. Each run starts with fresh
+                synthetic payments.
+              </p>
+            </div>
+            <WorkflowGoals definition={saved.definition} />
+          </>
         )}
         <PreviousResults runner={runner} saved={saved} />
       </section>
