@@ -63,6 +63,9 @@
   flex: 1;
   min-height: 0;
 }
+.lab-conversation .dictation-header {
+  flex-wrap: wrap;
+}
 .lab-role {
   font: 12px/20px var(--font-text);
   color: var(--soft-ink);
@@ -587,6 +590,9 @@
   }
   .lab-conversation {
     min-height: calc(var(--space) * 15);
+  }
+  .lab-conversation .thread-panel:has(.dictation) {
+    min-height: calc(var(--space) * 20);
   }
   .lab-sidebar {
     width: 100%;

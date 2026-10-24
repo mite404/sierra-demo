@@ -16,6 +16,27 @@ type Action =
 const unfinished = (result: SimulationResult | null): SimulationResult | null =>
   result ? { ...result, status: "running", checks: [], verdict: null, error: null } : null;
 
+/** Restores finished evidence only when the saved session ended cleanly. */
+export function restoreSimulationState(
+  restored: { result: SimulationResult | null; active: boolean; closed: boolean } | null,
+): SimulationState {
+  if (!restored?.result) return { kind: "idle" };
+  if (restored.result.status === "completed" && !restored.active && !restored.closed) {
+    return { kind: "settled", result: restored.result };
+  }
+  if (restored.result.status === "errored") {
+    return {
+      kind: "errored",
+      message: restored.result.error ?? "Previous reply incomplete. No grade.",
+      result: restored.result,
+    };
+  }
+  return {
+    kind: "cancelled",
+    result: { ...restored.result, status: "cancelled", checks: [], verdict: null },
+  };
+}
+
 /** Reset and cancellation retire the stream; late events can never restore its evidence. */
 export function simulationReducer(state: SimulationState, action: Action): SimulationState {
   if (action.type === "reset") return { kind: "idle" };

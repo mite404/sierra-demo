@@ -99,6 +99,7 @@ export function SimulationLab() {
           <LabWorkspace
             saved={lab.saved}
             restored={lab.restored}
+            active={!lab.library}
             onLibrary={lab.showLibrary}
             onWorkflow={lab.setAccepted}
           />
@@ -144,11 +145,13 @@ function WorkflowNavigation({
 function LabWorkspace({
   saved,
   restored,
+  active,
   onLibrary,
   onWorkflow,
 }: {
   saved: SavedLab;
   restored: Awaited<ReturnType<typeof restoreLab>>;
+  active: boolean;
   onLibrary: (create: boolean) => void;
   onWorkflow: (workflow: AcceptedWorkflow | null) => void;
 }) {
@@ -164,6 +167,7 @@ function LabWorkspace({
   const [persona, setPersona] = useState<SimulationSelection["case"]>(
     restored.customer?.result?.selection.case ?? saved.persona,
   );
+  const isActivePhase = (name: "configure" | "customer") => active && phase === name;
   const changePhase = (next: "configure" | "customer") => {
     saveLab({ phase: next });
     setPhase(next);
@@ -207,6 +211,7 @@ function LabWorkspace({
           ) : (
             <SimulationSetup
               restored={employee}
+              active={isActivePhase("configure")}
               onAccepted={(receipt) => {
                 setWorkflow(receipt);
                 onWorkflow(receipt);
@@ -238,6 +243,7 @@ function LabWorkspace({
               workflow && (
                 <SimulationCustomer
                   key={`${workflow.id}-${persona}-${testEpoch}`}
+                  active={isActivePhase("customer")}
                   workflow={workflow}
                   restored={customer}
                   configurationAvailable={!employeeUnavailable}

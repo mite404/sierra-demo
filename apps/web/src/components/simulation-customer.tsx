@@ -13,7 +13,7 @@ import { createLabAgent } from "./simulation-agent";
 import { SimulationResults } from "./simulation-evidence";
 import { SimulationProbe } from "./simulation-probe";
 import { saveLab, type RestoredCustomer } from "./simulation-persistence";
-import { simulationReducer, type SimulationState } from "./simulation-state";
+import { restoreSimulationState, simulationReducer } from "./simulation-state";
 
 /** An accepted workflow's customer session; reset/persona changes remount and abort this whole session. */
 export function SimulationCustomer({
@@ -23,6 +23,7 @@ export function SimulationCustomer({
   onReset,
   restored,
   configurationAvailable,
+  active,
 }: {
   workflow: AcceptedWorkflow;
   persona: SimulationSelection["case"];
@@ -30,23 +31,10 @@ export function SimulationCustomer({
   onReset: () => void;
   restored: RestoredCustomer | null;
   configurationAvailable: boolean;
+  active: boolean;
 }) {
   const thread = useRef<ThreadHandle>(null);
-  const initialState: SimulationState = restored?.result
-    ? restored.result.status === "completed" && !restored.active && !restored.closed
-      ? { kind: "settled", result: restored.result }
-      : restored.result.status === "errored"
-        ? {
-            kind: "errored",
-            message: restored.result.error ?? "Previous reply incomplete. No grade.",
-            result: restored.result,
-          }
-        : {
-            kind: "cancelled",
-            result: { ...restored.result, status: "cancelled", checks: [], verdict: null },
-          }
-    : { kind: "idle" };
-  const [state, dispatch] = useReducer(simulationReducer, initialState);
+  const [state, dispatch] = useReducer(simulationReducer, restored, restoreSimulationState);
   const [agent] = useState(() =>
     createLabAgent({
       endpoint: "/api/simulation",
@@ -82,7 +70,8 @@ export function SimulationCustomer({
           agent={agent}
           thread={{ title: "Try your refund workflow", messages: restored?.messages ?? [] }}
           cardsCarry={false}
-          textOnly
+          attachmentsEnabled={false}
+          dictation={{ source: "microphone", active }}
           headerActions={
             <span className="lab-role">
               Customer test · {persona === "spouse" ? "Casey" : "Morgan"}

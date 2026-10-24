@@ -41,9 +41,10 @@ afterEach(() => {
   host.remove();
 });
 
-it("offers only text input and stop when a host has no file or voice support", async () => {
+it("offers dictation and stop without uploads when attachments are disabled", async () => {
   let sent = false;
   let stopped = false;
+  let dictating = false;
   flushSync(() => {
     root.render(
       <ComposeBox
@@ -52,7 +53,10 @@ it("offers only text input and stop when a host has no file or voice support", a
         onSend={() => {
           sent = true;
         }}
-        textOnly
+        attachmentsEnabled={false}
+        onDictate={() => {
+          dictating = true;
+        }}
         busy
         onStop={() => {
           stopped = true;
@@ -61,10 +65,12 @@ it("offers only text input and stop when a host has no file or voice support", a
     );
   });
   expect(host.querySelector('[aria-label="Attach"]')).toBeNull();
-  expect(host.querySelector('[aria-label="Dictate"]')).toBeNull();
+  const dictate = host.querySelector<HTMLButtonElement>('[aria-label="Dictate"]');
   const stop = host.querySelector<HTMLButtonElement>('[aria-label="Stop"]');
   const send = host.querySelector<HTMLButtonElement>('[aria-label="Send"]');
-  if (!stop || !send) throw new Error("Missing text composer controls");
+  if (!dictate || !stop || !send) throw new Error("Missing composer controls");
+  await userEvent.click(dictate);
+  expect(dictating).toBe(true);
   await userEvent.click(stop);
   expect(stopped).toBe(true);
   await userEvent.click(send);

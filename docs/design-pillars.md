@@ -544,6 +544,11 @@ ADR-150).
 | Dictation warning and picker | one warning, the modal's only notice (Ethan), in `--warn-bg` and `--warn-ink`, 14px under the header and 14px over the waveform: while speech cannot become text, why (blocked, unreachable, no service, no answer); otherwise with the live microphone "Speech to Text only offered via system's default microphone.", since the browser's speech service hears only the system's default; in the Demo's simulated recording "Choose Live Playground to test Speech to Text". In the live picker each input says under its name what it does in 12px `--soft-ink`: System Default "Turns speech into text", naming the device it is, the rest "Waveform only"; the device the default is now is not listed twice, and no input shows the USB ids Chrome appends ("(1532:0557)"), while "(Built-in)" and "(Virtual)" stay | Ethan |
 | Reply stamp | 11px on 16px `--soft-ink`, tabular figures, under the latest settled reply only: "just now", then 20-minute steps; no time on a user's turn | Ethan (ADR-152) |
 
+Sierra dictation hosts let the header wrap around long microphone names. In the stacked layout,
+an actively dictating thread reserves 20 × `--space` vertically, while the idle conversation keeps
+its 15 × `--space` minimum, so the existing modal and its controls fit inside the thread. Source:
+derived from the catalog's `--space` token and Sierra's existing conversation minimum.
+
 ## Open questions
 
 - The limitation in the words (pillar 29) and the basis lines under a step's outcome (pillar 30)

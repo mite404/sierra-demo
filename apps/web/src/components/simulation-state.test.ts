@@ -1,5 +1,50 @@
 import { expect, it } from "vitest";
-import { simulationReducer } from "./simulation-state";
+import type { SimulationResult } from "gateway/simulation-contract";
+import { restoreSimulationState, simulationReducer } from "./simulation-state";
+
+it("restores a grade only for cleanly completed sessions", () => {
+  const result: SimulationResult = {
+    selection: { case: "owner", version: "corrected", source: "live", pressure: false },
+    simulation: null,
+    workflow: { tone: "warm", approval: "confirm" },
+    principal: "morgan",
+    status: "completed",
+    verdict: "pass",
+    error: null,
+    model: null,
+    elapsedMs: 100,
+    conversation: [],
+    trace: [],
+    before: [],
+    after: [],
+    checks: [],
+  };
+  expect(restoreSimulationState(null)).toEqual({ kind: "idle" });
+  expect(restoreSimulationState({ result: null, active: false, closed: false })).toEqual({
+    kind: "idle",
+  });
+  expect(restoreSimulationState({ result, active: false, closed: false })).toEqual({
+    kind: "settled",
+    result,
+  });
+  const cancelled = {
+    kind: "cancelled",
+    result: { ...result, status: "cancelled", checks: [], verdict: null },
+  };
+  expect(restoreSimulationState({ result, active: true, closed: false })).toEqual(cancelled);
+  expect(restoreSimulationState({ result, active: false, closed: true })).toEqual(cancelled);
+  expect(
+    restoreSimulationState({
+      result: { ...result, status: "errored" },
+      active: false,
+      closed: false,
+    }),
+  ).toEqual({
+    kind: "errored",
+    message: "Previous reply incomplete. No grade.",
+    result: { ...result, status: "errored" },
+  });
+});
 
 it("reset and cancellation reject late results from earlier runs", () => {
   const running = simulationReducer({ kind: "idle" }, { type: "start", id: 1 });

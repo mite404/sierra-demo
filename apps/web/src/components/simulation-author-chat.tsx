@@ -203,7 +203,8 @@ export function AuthorChat({ source, workflow, restored, onSaved, onLock }: Chat
             messages: builderMessages(restored?.messages ?? []),
           }}
           cardsCarry={false}
-          textOnly
+          attachmentsEnabled={false}
+          dictation={{ source: "microphone" }}
           width={undefined}
           headerActions={<span className="lab-role">Simulation author · not a customer</span>}
           empty={<EmptyAuthor editing={"definitionId" in source} />}
