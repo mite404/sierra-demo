@@ -42,16 +42,36 @@ for (const { definition, runs } of records) {
 }
 
 if (phase === "before") {
-  await writeFile(file, JSON.stringify(records, null, 2), { flag: "wx" });
+  assert.equal(typeof values.employee, "string", "Supply the existing employee ID");
+  assert.equal(typeof values.interrupted, "string", "Supply the active run ID");
+  const [employee, run] = await Promise.all([
+    read(`workflow/${values.employee}`),
+    read(`simulation-runs/${values.interrupted}`),
+  ]);
+  assert.equal(employee.id, values.employee);
+  assert.equal(run.id, values.interrupted);
+  assert.equal(run.active, true, "Capture while the interrupted run is still active");
+  await writeFile(
+    file,
+    JSON.stringify({ employeeId: employee.id, interruptedId: run.id, records }, null, 2),
+    { flag: "wx" },
+  );
   process.stdout.write(
-    "Captured saved definitions and immutable completed results. Stop/start the Worker now.\n",
+    "Captured existing workflow, active run, saved definitions and completed results. Restart now.\n",
   );
 } else {
-  assert.deepEqual(records, JSON.parse(await readFile(file, "utf8")), "Saved evidence changed");
-  assert.equal(typeof values.employee, "string", "Supply the expired employee ID");
-  assert.equal(typeof values.interrupted, "string", "Supply the interrupted run ID");
+  const snapshot = JSON.parse(await readFile(file, "utf8"));
+  assert.deepEqual(records, snapshot.records, "Saved evidence changed");
+  assert.equal(typeof snapshot.employeeId, "string", "Snapshot needs the preflight employee ID");
+  assert.equal(typeof snapshot.interruptedId, "string", "Snapshot needs the preflight run ID");
+  assert.equal(values.employee ?? snapshot.employeeId, snapshot.employeeId, "Employee ID changed");
+  assert.equal(
+    values.interrupted ?? snapshot.interruptedId,
+    snapshot.interruptedId,
+    "Run ID changed",
+  );
   await Promise.all(
-    [`workflow/${values.employee}`, `simulation-runs/${values.interrupted}`].map(
+    [`workflow/${snapshot.employeeId}`, `simulation-runs/${snapshot.interruptedId}`].map(
       async (endpoint) => {
         const response = await fetch(`${values.base}/api/${endpoint}`);
         assert.equal(response.status, 410, endpoint);

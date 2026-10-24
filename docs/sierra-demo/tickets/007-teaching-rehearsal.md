@@ -106,8 +106,11 @@ needed for this ticket. README/design cleanup remains separately owned by the pa
   returned 410. Browser recovery kept saved evidence readable, showed **Ready. No automatic run.**,
   and did not restart the interrupted execution.
 * `simulation-retention-check.mjs` makes GET requests only and checks saved definitions/results
-  against a prior snapshot. It passed across another real restart. A deliberately changed original
-  revision in the comparison snapshot failed, proving the checker detects immutable-evidence drift.
+  against a prior snapshot. Preflight verified workflow `471b703b-5ebf-4681-ad38-0d454229f003`
+  existed and run `e76971fc-ce6c-494a-8dd4-601e73aa7015` was active before another real restart.
+  Afterward those exact saved IDs returned 410 and both completed records remained unchanged.
+  Never-existing IDs failed preflight without writing a snapshot. Replacing the interrupted ID or
+  changing an original result's revision also failed. This HTTP proof supplements the browser clip.
 * Agent-assisted review found no password request, invented link, or false refund claim. Revision
   1's "immediately" promise conflicts with confirm-first settings. Revision 2 did not explicitly
   reject offered password sharing. These observations do not mark the human review complete.
