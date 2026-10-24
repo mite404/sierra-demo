@@ -176,6 +176,34 @@ function Checks({ result }: { result: SimulationResult }) {
   );
 }
 
+function RunMessage({ message }: { message: SimulationResult["conversation"][number] }) {
+  const customer = message.role === "customer";
+  const label = customer ? "Simulated customer" : "Support agent";
+  return (
+    <article
+      className={`lab-run-message turn turn-${customer ? "user" : "agent"}`}
+      data-role={message.role}
+      aria-label={label}
+    >
+      <strong>{label}</strong>
+      {customer ? (
+        <div className="user-bubble">
+          <p>{message.text}</p>
+        </div>
+      ) : (
+        <Prose
+          blocks={[
+            {
+              kind: "paragraph",
+              content: [{ kind: "run", text: message.text || "Support is preparing a reply…" }],
+            },
+          ]}
+        />
+      )}
+    </article>
+  );
+}
+
 // Accepted customer words and genuine support text only, with stable turn labels.
 function RunTranscript({
   messages,
@@ -188,30 +216,7 @@ function RunTranscript({
   const rows = [];
   for (const message of messages) {
     if (message.role === "customer") turn++;
-    rows.push(
-      <article
-        key={`${turn}-${message.role}`}
-        className={`lab-run-message turn turn-${message.role === "customer" ? "user" : "agent"}`}
-        data-role={message.role}
-        aria-label={message.role === "customer" ? "Simulated customer" : "Support agent"}
-      >
-        <strong>{message.role === "customer" ? "Simulated customer" : "Support agent"}</strong>
-        {message.role === "customer" ? (
-          <div className="user-bubble">
-            <p>{message.text}</p>
-          </div>
-        ) : (
-          <Prose
-            blocks={[
-              {
-                kind: "paragraph",
-                content: [{ kind: "run", text: message.text || "Support is preparing a reply…" }],
-              },
-            ]}
-          />
-        )}
-      </article>,
-    );
+    rows.push(<RunMessage key={`${turn}-${message.role}`} message={message} />);
   }
   return (
     <section

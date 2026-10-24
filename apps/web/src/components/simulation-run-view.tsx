@@ -116,6 +116,35 @@ function RunControls({
   );
 }
 
+function ResultDetails({ run, reload }: { run: SimulationRun; reload: Runner["loadResults"] }) {
+  const [technical, setTechnical] = useState(false);
+  const [review, setReview] = useState(false);
+  return (
+    <>
+      <Disclosure
+        summary="Technical details"
+        open={technical}
+        onToggle={() => {
+          setTechnical(!technical);
+        }}
+      >
+        <RunMetadata run={run} />
+      </Disclosure>
+      {!run.active && run.evidence?.result.status === "completed" && (
+        <Disclosure
+          summary="Human wording review"
+          open={review}
+          onToggle={() => {
+            setReview(!review);
+          }}
+        >
+          <RunHumanReview key={run.id} run={run} reload={reload} />
+        </Disclosure>
+      )}
+    </>
+  );
+}
+
 function ResultConversation({
   run,
   messages,
@@ -127,18 +156,13 @@ function ResultConversation({
   reload: Runner["loadResults"];
   definition: SavedSimulationDefinition["definition"];
 }) {
-  const [technical, setTechnical] = useState(false);
-  const [review, setReview] = useState(false);
   const [resultsDismissed, setResultsDismissed] = useState(false);
   const resultsButton = useRef<HTMLButtonElement>(null);
   const result = run.evidence?.result;
+  const completed = result?.status === "completed";
   const resultsOpen = !run.active && !resultsDismissed;
   return (
-    <article
-      aria-label={
-        result?.status === "completed" ? "Latest completed result" : "Current run evidence"
-      }
-    >
+    <article aria-label={completed ? "Latest completed result" : "Current run evidence"}>
       <div className="lab-run-heading">
         <h2 className="lab-run-status">{runStatus(run)}</h2>
         {!run.active && (
@@ -173,9 +197,7 @@ function ResultConversation({
       >
         <DialogContent className="lab-results-popover" initialFocus finalFocus={resultsButton}>
           <DialogHeader>
-            <DialogTitle>
-              {result?.status === "completed" ? "Simulation complete" : "Simulation incomplete"}
-            </DialogTitle>
+            <DialogTitle>{completed ? "Simulation complete" : "Simulation incomplete"}</DialogTitle>
             <DialogDescription>
               {runStatus(run)}
               <br />
@@ -185,11 +207,8 @@ function ResultConversation({
           <div className="lab-results-body">
             <WorkflowGoals definition={definition} run={run} />
             <p className="lab-review">
-              Human wording review{" "}
-              {run.humanReview.status === "pending"
-                ? "pending"
-                : run.humanReview.status.replaceAll("-", " ")}
-              . Business checks do not grade helpfulness, privacy, or truthful wording.
+              Human wording review {run.humanReview.status.replaceAll("-", " ")}. Business checks do
+              not grade helpfulness, privacy, or truthful wording.
             </p>
             <Button
               variant="outline"
@@ -202,26 +221,7 @@ function ResultConversation({
           </div>
         </DialogContent>
       </Dialog>
-      <Disclosure
-        summary="Technical details"
-        open={technical}
-        onToggle={() => {
-          setTechnical(!technical);
-        }}
-      >
-        <RunMetadata run={run} />
-      </Disclosure>
-      {!run.active && result?.status === "completed" && (
-        <Disclosure
-          summary="Human wording review"
-          open={review}
-          onToggle={() => {
-            setReview(!review);
-          }}
-        >
-          <RunHumanReview key={run.id} run={run} reload={reload} />
-        </Disclosure>
-      )}
+      <ResultDetails run={run} reload={reload} />
     </article>
   );
 }
