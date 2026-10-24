@@ -59,8 +59,9 @@ or prove success. Inspect the actual tool result and payment state, not the agen
 
 Refresh/reopen in the same browser restores both chats, workflow acceptance, stage/persona and
 execution evidence from their existing server sessions. Local storage contains only opaque handles
-and navigation. Interrupted replies do not resubmit or stay running. Customer Reset clears that
-test; New workflow clears both roles. Sessions last 24 hours after the last turn, with a bounded
+and navigation. Interrupted replies do not resubmit or stay running. Customer Reset clears only that
+test. The demo keeps one workflow, with no back-to-workflow or new-workflow navigation.
+Sessions last 24 hours after the last turn, with a bounded
 24 sessions per role, and **do not survive a Worker/service restart**. Missing state shows explicit
 recovery instead of silently creating fresh invoices. Use the same portal origin and browser.
 

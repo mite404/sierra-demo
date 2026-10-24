@@ -51,7 +51,7 @@ export async function checkManual({ page, qa, send, read, capture }) {
   return { manual, corrected, vulnerable };
 }
 
-/** A reload stops the old transport; reset and recovery read retained results without resubmission. */
+/** A reload stops the old transport and reads retained results without resubmission. */
 export async function checkReload(page, qa, start, finished, read) {
   const runPosts = async () =>
     (await qa({})).requests.filter(
@@ -65,11 +65,10 @@ export async function checkReload(page, qa, start, finished, read) {
   const interrupted = await read(`simulation-runs/${id}`);
   assert.equal(interrupted.evidence.result.status, "cancelled");
   assert.equal(await runPosts(), before);
-  await page.getByRole("button", { name: "New workflow", exact: true }).click();
-  const callsAfterReset = (await qa({})).modelCalls;
-  await page.getByRole("button", { name: "Saved simulations", exact: true }).click();
+  const callsBeforeReload = (await qa({})).modelCalls;
+  await page.reload();
   await page.getByRole("article", { name: "Latest completed result", exact: true }).waitFor();
-  assert.equal((await qa({})).modelCalls, callsAfterReset);
+  assert.equal((await qa({})).modelCalls, callsBeforeReload);
   return interrupted;
 }
 

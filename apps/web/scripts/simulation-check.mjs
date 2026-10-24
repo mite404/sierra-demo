@@ -345,47 +345,6 @@ try {
     );
     await capture("narrow-customer");
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.getByRole("button", { name: "New workflow", exact: true }).click();
-    await send("Help our team handle subscription refunds.", "/api/workflow");
-    await send(
-      "Use brief replies and refund eligible owner requests immediately.",
-      "/api/workflow",
-    );
-    let release;
-    let ready;
-    const held = new Promise((resolve) => {
-      release = resolve;
-    });
-    const accepted = new Promise((resolve) => {
-      ready = resolve;
-    });
-    await page.route("**/api/workflow/*/accept", async (route) => {
-      const response = await route.fetch();
-      ready();
-      await held;
-      await route.fulfill({ response }).catch(() => {});
-    });
-    await current().getByRole("button", { name: "Accept workflow", exact: true }).click();
-    await accepted;
-    assert.equal(
-      await current().getByRole("button", { name: "Accepting workflow", exact: true }).isDisabled(),
-      true,
-    );
-    await capture("acceptance-pending");
-    await page.getByRole("button", { name: "New workflow", exact: true }).click();
-    release();
-    await page.unrouteAll({ behavior: "wait" });
-    assert.equal(
-      await page.getByRole("button", { name: "Customer test", exact: true }).isDisabled(),
-      true,
-    );
-    await restore();
-    assert.equal(await current().locator(".turn-user").count(), 0);
-    assert.equal(
-      await page.getByRole("button", { name: "Customer test", exact: true }).isDisabled(),
-      true,
-    );
-    await capture("acceptance-reset-isolation");
   }
   for (const legacy of ["/lab", "/t/old-thread", "/playground", "/demo/weekly-brief/x"]) {
     await page.goto(`${base}${legacy}`);
@@ -396,7 +355,7 @@ try {
   await writeFile(path.join(out, "typed-flow-evidence.json"), JSON.stringify(evidence, null, 2));
   process.stdout.write(
     arg("--live", "off") === "on"
-      ? "PASS: typed configuration, reload/reopen, independent role recovery, exactly-once refund after employee expiry, late acceptance/reset isolation, genuine streaming, spouse denial, error/cancel and no canvas.\n"
+      ? "PASS: typed configuration, reload/reopen, independent role recovery, exactly-once refund after employee expiry, genuine streaming, spouse denial, error/cancel and no canvas.\n"
       : "PASS: initial render, legacy-route redirects and no canvas. Live-model checks were not requested.\n",
   );
 } finally {

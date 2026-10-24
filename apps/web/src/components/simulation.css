@@ -381,6 +381,9 @@
   white-space: normal;
   font-weight: 400;
 }
+.lab-saved-label {
+  color: var(--saved-ink);
+}
 .lab-library-item[aria-current="page"] {
   background: var(--paper);
   outline: 1px solid var(--hairline);
@@ -469,19 +472,20 @@
 .lab-run-columns > * {
   min-width: 0;
 }
+.lab-run-transcript {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space);
+}
 .lab-run-message {
-  padding: calc(var(--space) * 2 / 3);
-  margin: calc(var(--space) / 2) 0;
-  border: 1px solid var(--hairline);
-  border-radius: var(--btn-radius);
-  background: var(--paper-deep);
+  gap: calc(var(--space) / 6);
+}
+.lab-run-message > strong {
+  color: var(--soft-ink);
   font: 13px/20px var(--font-text);
 }
-.lab-run-message p {
+.lab-run-message .quiet-prose {
   white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  color: var(--soft-ink);
-  margin: calc(var(--space) / 3) 0 0;
 }
 .lab-run-metadata,
 .lab-payment,

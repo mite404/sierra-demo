@@ -48,35 +48,13 @@ export function clearAuthor() {
 }
 
 /**
- * Explicit reset clears the selected browser handles and releases abandoned server session slots.
+ * Resets only the manual customer test, preserving the single workflow and saved scenarios.
  * @throws When browser storage cannot be cleared.
  */
-export function resetLab(scope: "test" | "workflow") {
-  const saved = readLab();
-  const ids = [
-    ["simulation", saved.customerId],
-    ...(scope === "workflow"
-      ? [
-          ["workflow", saved.employeeId],
-          ["simulation-author", saved.authorId],
-        ]
-      : []),
-  ];
-  saveLab(
-    scope === "workflow"
-      ? {
-          employeeId: undefined,
-          customerId: undefined,
-          authorId: undefined,
-          phase: "configure",
-          persona: "spouse",
-        }
-      : { customerId: undefined },
-  );
-  for (const [endpoint, id] of ids) {
-    if (id !== undefined)
-      void fetch(`/api/${endpoint}/${id}`, { method: "DELETE" }).catch(() => {});
-  }
+export function resetLab() {
+  const id = readLab().customerId;
+  saveLab({ customerId: undefined });
+  if (id !== undefined) void fetch(`/api/simulation/${id}`, { method: "DELETE" }).catch(() => {});
 }
 
 async function getSession(endpoint: string): Promise<unknown> {

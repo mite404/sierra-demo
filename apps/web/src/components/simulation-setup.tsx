@@ -35,7 +35,7 @@ export function SimulationSetup({
   const [accepted, setAccepted] = useState(Boolean(restored?.accepted));
   const [error, setError] = useState<string | null>(
     restored?.closed || restored?.active
-      ? "Previous reply incomplete. No automatic resubmission. Start a new workflow to continue."
+      ? "Previous reply incomplete. No automatic resubmission. Reload to retry recovery."
       : null,
   );
   const [agent] = useState(() =>
@@ -69,7 +69,7 @@ export function SimulationSetup({
           setError(
             notice.kind === "error"
               ? notice.error
-              : "Configuration cancelled. Start a new workflow to continue.",
+              : "Configuration cancelled. No automatic resubmission.",
           );
         }
       },
@@ -93,7 +93,7 @@ export function SimulationSetup({
       setInviting(true);
     } catch {
       if (!controller.signal.aborted)
-        setError("The plan could not be accepted. Start a new workflow and try again.");
+        setError("The plan could not be accepted. Retry accepting the reviewed proposal.");
     } finally {
       if (!controller.signal.aborted) {
         acceptance.current = null;

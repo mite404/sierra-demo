@@ -173,16 +173,14 @@ export function SimulationCustomer({
           {!configurationAvailable && (
             <p role="alert">
               Employee configuration unavailable. This saved customer session uses its original
-              accepted settings. Continue here; use New workflow to configure a new test.
+              accepted settings. Continue here or inspect your saved scenarios.
             </p>
           )}
           {(restored?.closed || restored?.active) && (
             <p role="alert">
               Previous reply incomplete. No automatic resubmission.{" "}
-              {configurationAvailable
-                ? "Reset test to continue"
-                : "Use New workflow to start again"}
-              ; recorded payment evidence is preserved below.
+              {configurationAvailable ? "Reset test to continue" : "Reload to retry recovery"};
+              recorded payment evidence is preserved below.
             </p>
           )}
           <SimulationResults state={state} />
