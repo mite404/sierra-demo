@@ -109,10 +109,10 @@ Set `PLAYWRIGHT_CHROMIUM` to an installed Chrome executable if the pinned browse
 The browser check uses real HTTP, the executor, and disposable D1 storage. It covers locked first
 use, choice-card answer/resume, one revision, explicit acceptance, modal dismissal, reload,
 review/save/run, active-run locks, pinned content during streaming, owner and spouse results,
-failure states, save-only retry, and new-workflow gating. It does not measure provider latency.
+failure states, save-only retry, and single-workflow navigation. It does not measure provider latency.
 
 Reload restores existing state without resubmission or an automatic run. Dismissing the invitation
-does not revoke acceptance; **Create simulation** reopens it. **New workflow** relocks simulations.
+does not revoke acceptance; **Create simulation** reopens it. The demo keeps one accepted workflow.
 Saved definitions and completed runs persist locally in D1. Builder sessions expire after 24 hours
 and do not survive a Worker restart. Missing sessions show recovery rather than invented history.
 

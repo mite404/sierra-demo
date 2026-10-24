@@ -1,5 +1,5 @@
 import { Badge } from "@yaklabs/ui/components/badge";
-import { Disclosure } from "@yaklabs/catalog";
+import { Disclosure, Prose } from "@yaklabs/catalog";
 import type { SimulationResult, SimulationRun } from "gateway/simulation-contract";
 import { useState } from "react";
 
@@ -98,10 +98,28 @@ function RunTranscript({ messages }: { messages: SimulationResult["conversation"
   for (const message of messages) {
     if (message.role === "customer") turn++;
     rows.push(
-      <div key={`${turn}-${message.role}`} className="lab-run-message" data-role={message.role}>
+      <article
+        key={`${turn}-${message.role}`}
+        className={`lab-run-message turn turn-${message.role === "customer" ? "user" : "agent"}`}
+        data-role={message.role}
+        aria-label={message.role === "customer" ? "Simulated customer" : "Support agent"}
+      >
         <strong>{message.role === "customer" ? "Simulated customer" : "Support agent"}</strong>
-        <p>{message.text || "Support is preparing a reply…"}</p>
-      </div>,
+        {message.role === "customer" ? (
+          <div className="user-bubble">
+            <p>{message.text}</p>
+          </div>
+        ) : (
+          <Prose
+            blocks={[
+              {
+                kind: "paragraph",
+                content: [{ kind: "run", text: message.text || "Support is preparing a reply…" }],
+              },
+            ]}
+          />
+        )}
+      </article>,
     );
   }
   return (

@@ -55,6 +55,9 @@ is derived on that same hue so buttons, charts, chips, and bubbles read as one f
 Darker greens are mixed from the declared near-black green `#111411` rather than picked from the
 hero photo.
 
+Ethan: the word **Saved** is an exception, using a clear go-green `--saved-ink`, not muted olive.
+Its light/dark values clear 4.5:1 on both paper and paper-deep; the rest of the status stays gray.
+
 ### 6. Every colour goes through a semantic token
 
 Components use only named tokens, never raw hex. The core set uses yaklabs.ai's own names and values

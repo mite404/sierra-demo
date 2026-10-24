@@ -58,35 +58,6 @@ function runActivity(runner: Runner) {
   return runner.operation === "loading" ? "Loading run evidence…" : "Ready. No automatic run.";
 }
 
-function RunStartStop({ runner, enabled }: { runner: Runner; enabled: boolean }) {
-  const run = runner.current?.run;
-  const busy = runner.operation !== "ready";
-  const active = run?.active === true;
-  return (
-    <>
-      <Button
-        variant="outline"
-        disabled={!enabled || busy || active || run?.persistence === "unsaved"}
-        onClick={() => {
-          void runner.start();
-        }}
-      >
-        {runner.startLabel}
-      </Button>
-      {active && (
-        <Button
-          variant="outline"
-          onClick={() => {
-            void runner.stop();
-          }}
-        >
-          {runner.operation === "stopping" ? "Stop requested · retry" : "Stop"}
-        </Button>
-      )}
-    </>
-  );
-}
-
 function RunControls({
   runner,
   enabled,
@@ -102,7 +73,16 @@ function RunControls({
   return (
     <section aria-label="Run controls" className="lab-run-controls">
       <div className="lab-header-actions">
-        <RunStartStop runner={runner} enabled={enabled} />
+        {runner.current?.run.active === true && (
+          <Button
+            variant="outline"
+            onClick={() => {
+              void runner.stop();
+            }}
+          >
+            {runner.operation === "stopping" ? "Stop requested · retry" : "Stop"}
+          </Button>
+        )}
         <Button
           variant="ghost"
           disabled={busy && runner.operation !== "stopping"}

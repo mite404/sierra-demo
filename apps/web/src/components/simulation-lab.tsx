@@ -55,13 +55,7 @@ function useLab() {
     workflow,
     showLibrary,
     setAccepted,
-    setLibrary,
   };
-}
-
-function restartWorkflow() {
-  resetLab("workflow");
-  window.location.reload();
 }
 
 function LibraryScreen({ lab }: { lab: ReturnType<typeof useLab> }) {
@@ -72,21 +66,6 @@ function LibraryScreen({ lab }: { lab: ReturnType<typeof useLab> }) {
         <div>
           <h1>Sierra Agent QA Lab</h1>
           <span>Independent educational demo · synthetic accounts and payments</span>
-        </div>
-        <div className="lab-header-actions">
-          <Button
-            variant="ghost"
-            disabled={locked}
-            onClick={() => {
-              saveLab({ phase: "configure" });
-              lab.setLibrary(false);
-            }}
-          >
-            Back to workflow
-          </Button>
-          <Button variant="outline" className="btn" onClick={restartWorkflow} disabled={locked}>
-            New workflow
-          </Button>
         </div>
       </header>
       <SidebarProvider className="lab-workspace">
@@ -126,7 +105,6 @@ export function SimulationLab() {
         ) : (
           <SimulationRecovery
             failed={lab.failed}
-            onRestart={restartWorkflow}
             onLibrary={() => {
               lab.showLibrary(false);
             }}
@@ -143,13 +121,11 @@ function WorkflowNavigation({
   libraryAvailable,
   onConfigure,
   onLibrary,
-  onRestart,
 }: {
   configuring: boolean;
   libraryAvailable: boolean;
   onConfigure: () => void;
   onLibrary: () => void;
-  onRestart: () => void;
 }) {
   return (
     <div className="lab-header-actions">
@@ -160,9 +136,6 @@ function WorkflowNavigation({
       )}
       <Button variant="ghost" disabled={!libraryAvailable} onClick={onLibrary}>
         Saved simulations
-      </Button>
-      <Button variant="outline" className="btn" onClick={onRestart}>
-        New workflow
       </Button>
     </div>
   );
@@ -183,11 +156,10 @@ function LabWorkspace({
   const [workflow, setWorkflow] = useState<AcceptedWorkflow | null>(
     employeeWorkflow(restored.employee) ?? restored.customer?.workflow ?? null,
   );
-  const [employee, setEmployee] = useState(restored.employee);
+  const employee = restored.employee;
   const [customer, setCustomer] = useState(restored.customer);
-  const [employeeUnavailable, setEmployeeUnavailable] = useState(restored.employeeUnavailable);
+  const employeeUnavailable = restored.employeeUnavailable;
   const [customerUnavailable, setCustomerUnavailable] = useState(restored.customerUnavailable);
-  const [workflowEpoch, setWorkflowEpoch] = useState(0);
   const [testEpoch, setTestEpoch] = useState(0);
   const [persona, setPersona] = useState<SimulationSelection["case"]>(
     restored.customer?.result?.selection.case ?? saved.persona,
@@ -197,22 +169,10 @@ function LabWorkspace({
     setPhase(next);
   };
   const resetCustomer = () => {
-    resetLab("test");
+    resetLab();
     setCustomer(null);
     setCustomerUnavailable(false);
     setTestEpoch((epoch) => epoch + 1);
-  };
-  const startOver = () => {
-    resetLab("workflow");
-    setEmployeeUnavailable(false);
-    setCustomerUnavailable(false);
-    setEmployee(null);
-    setCustomer(null);
-    setWorkflow(null);
-    onWorkflow(null);
-    setPhase("configure");
-    setWorkflowEpoch((epoch) => epoch + 1);
-    setPersona("spouse");
   };
   return (
     <main className="simulation-lab">
@@ -230,7 +190,6 @@ function LabWorkspace({
           onLibrary={() => {
             onLibrary(false);
           }}
-          onRestart={startOver}
         />
       </header>
       <SidebarProvider className="lab-workspace">
@@ -241,13 +200,12 @@ function LabWorkspace({
               <h2>Employee configuration unavailable</h2>
               <p>
                 No requests were replayed. Any surviving customer conversation and payment evidence
-                remain available in Customer test. Reload to retry recovery, or use New workflow to
-                clear both roles and start again.
+                remain available in Customer test. Reload to retry recovery. Saved scenarios remain
+                available for inspection.
               </p>
             </div>
           ) : (
             <SimulationSetup
-              key={workflowEpoch}
               restored={employee}
               onAccepted={(receipt) => {
                 setWorkflow(receipt);

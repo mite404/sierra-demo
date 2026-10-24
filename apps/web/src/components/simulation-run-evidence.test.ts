@@ -94,7 +94,7 @@ it("the selected saved test starts as read-only frozen evidence, not a new run o
     }),
   );
   expect(html).toContain("Spouse protection");
-  expect(html).toContain("Run simulation");
+  expect(html).not.toContain("Run simulation");
   expect(html).toContain("Loading run evidence");
   expect(html).not.toContain("Selected business outcome");
 });

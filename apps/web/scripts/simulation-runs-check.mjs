@@ -46,7 +46,8 @@ const save = async () => {
   await button("Save simulation").click();
   const saved = await response;
   assert.equal(saved.status(), 201);
-  await button("Run simulation").waitFor();
+  await button("Run selected simulation").waitFor();
+  assert.equal(await button("Run simulation").count(), 0);
   return saved.json();
 };
 const start = async (name = "Run selected simulation", definitionId) => {
@@ -90,6 +91,7 @@ try {
   await qa({ mode: "owner", delay: 5, failSave: false });
   await page.goto(base);
   await button("Accept workflow").waitFor();
+  assert.equal(await button("New workflow").count(), 0);
   const lockedSidebar = current().getByRole("complementary", { name: "Simulation scenarios" });
   assert.equal(await lockedSidebar.getByRole("button").count(), 7);
   for (const control of await lockedSidebar.getByRole("button").all())
@@ -251,8 +253,8 @@ try {
   await qa({ delay: 80 });
   const firstId = await start("Run selected simulation", owner.id);
   assert.equal(await button("Rerun selected simulation").isDisabled(), true);
-  assert.equal(await button("Back to workflow").isDisabled(), true);
-  assert.equal(await button("New workflow").isDisabled(), true);
+  assert.equal(await button("Back to workflow").count(), 0);
+  assert.equal(await button("New workflow").count(), 0);
   assert.equal(await button("Create another simulation").isDisabled(), true);
   assert.equal(await page.locator('.lab-library-item[aria-current="page"]').isDisabled(), true);
   assert.equal(await button("Edit in chat").isDisabled(), true);
@@ -300,6 +302,17 @@ try {
   await page.waitForFunction(() => document.querySelector(".lab-run-scroll").scrollTop > 0);
   assert.deepEqual(await geometry(), pinned);
   await conversationTop();
+  const customer = page.getByRole("article", { name: "Simulated customer", exact: true }).first();
+  const support = page.getByRole("article", { name: "Support agent", exact: true }).first();
+  assert.ok((await customer.boundingBox()).x > (await support.boundingBox()).x);
+  assert.equal(
+    await customer
+      .locator(".user-bubble")
+      .evaluate((element) => getComputedStyle(element).borderRadius),
+    "12px",
+  );
+  assert.equal(await support.locator(".user-bubble").count(), 0);
+  assert.equal(await support.locator(".quiet-prose").count(), 1);
   await capture("08-completed-conversation");
   await button("Business checks and execution JSON").click();
   await page.getByRole("textbox", { name: "Automated execution JSON" }).waitFor();
@@ -350,7 +363,8 @@ try {
   );
   const beforeReload = (await qa({})).modelCalls;
   await page.reload();
-  await button("Run again").waitFor();
+  await button("Rerun selected simulation").waitFor();
+  assert.equal(await button("Run again").count(), 0);
   assert.equal((await qa({})).modelCalls, beforeReload);
   await button("Search simulations").click();
   const search = current().getByLabel("Search saved simulation names");
@@ -407,23 +421,17 @@ try {
   await conversationTop();
   await capture("14-spouse-no-tool-coverage");
   await context.storageState({ path: path.join(logs, "browser-state.json") });
-  await button("Back to workflow").click();
-  await button("New workflow").click();
-  await button("Accept workflow").waitFor();
-  assert.equal(await button("Saved simulations").isDisabled(), true);
-  assert.equal(
-    await lockedSidebar
-      .getByRole("button", { name: "Run selected simulation", exact: true })
-      .isDisabled(),
-    true,
-  );
+  await page.reload();
+  await button("Run selected simulation").waitFor();
+  assert.equal(await button("Back to workflow").count(), 0);
+  assert.equal(await button("New workflow").count(), 0);
   assert.deepEqual(errors, []);
   await writeFile(
     path.join(logs, "browser-evidence.json"),
     JSON.stringify({ owner, first, second, errors, http: await qa({}) }, null, 2),
   );
   process.stdout.write(
-    "PASS first-use/clarification/proposal gating, choice answer/resume, workflow revision + frozen acceptance, accessible acceptance modal + Escape + recovery, draft/save, Desktop web only, instruction-only JetBrains Mono, selected toolbar play/rerun, busy/unsaved locks, streamed conversation, pinned full summary/separator during streaming and completed scrolling, real payment evidence, disclosures, search/settings, dark/light/narrow, error/stop/timeout/not-exercised, save-only retry and new-workflow gating. Deterministic external transport; real HTTP/executor/disposable D1.\n",
+    "PASS first-use/clarification/proposal gating, choice answer/resume, workflow revision + frozen acceptance, accessible acceptance modal + Escape + recovery, draft/save, Desktop web only, instruction-only JetBrains Mono, sidebar-only play/rerun, single-workflow navigation, busy/unsaved locks, streamed YakLabs conversation, pinned full summary/separator during streaming and completed scrolling, real payment evidence, disclosures, search/settings, dark/light/narrow, error/stop/timeout/not-exercised and save-only retry. Deterministic external transport; real HTTP/executor/disposable D1.\n",
   );
 } finally {
   await browser.close();

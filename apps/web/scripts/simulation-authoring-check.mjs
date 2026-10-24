@@ -127,7 +127,10 @@ try {
       true,
     );
     await capture("authoring-empty");
-    await current().getByRole("button", { name: "Back to workflow" }).click();
+    await page.evaluate(() => {
+      localStorage.clear();
+    });
+    await page.reload();
     await send("Help our team handle subscription refunds.", "/api/workflow");
     const configured = await send(
       "Use warm replies and ask the owner to confirm before refunding.",
@@ -236,16 +239,15 @@ try {
     .getByRole("button", { name: "Open Morgan's saved duplicate control", exact: true })
     .click();
   await current().getByText("Saved simulation · revision 2 · approved by explicit save").waitFor();
-  await current().getByRole("button", { name: "New workflow", exact: true }).click();
-  await page.getByRole("button", { name: "Saved simulations", exact: true }).click();
+  await page.reload();
   await current()
     .getByRole("button", { name: "Open Morgan's saved duplicate control", exact: true })
     .waitFor();
   assert.deepEqual(errors, []);
   process.stdout.write(
     resuming
-      ? "PASS: resumed exact live owner proposal without replay; owner checks/instructions, save, keyboard reopen, edit, stale-save rejection, reset library, narrow layout and no browser errors.\n"
-      : "PASS: real K3 clarification, custom spouse/owner authoring, changed expectations, explicit save, keyboard reopen, revision edit, stale save, reset library, narrow layout and no browser errors.\n",
+      ? "PASS: resumed exact live owner proposal without replay; owner checks/instructions, save, keyboard reopen, edit, stale-save rejection, library reload, narrow layout and no browser errors.\n"
+      : "PASS: real K3 clarification, custom spouse/owner authoring, changed expectations, explicit save, keyboard reopen, revision edit, stale save, library reload, narrow layout and no browser errors.\n",
   );
 } finally {
   const stateOut = arg("--state-out", "");

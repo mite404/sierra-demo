@@ -121,11 +121,9 @@ export function LockedScenarios() {
 export function SimulationRecovery({
   failed,
   onLibrary,
-  onRestart,
 }: {
   failed: boolean;
   onLibrary: () => void;
-  onRestart: () => void;
 }) {
   return (
     <main className="simulation-lab">
@@ -133,13 +131,12 @@ export function SimulationRecovery({
         <h1>{failed ? "Saved session unavailable" : "Restoring your simulation"}</h1>
         <p aria-live="polite">
           {failed
-            ? "The server may have restarted, the session expired, or the connection is unavailable. No messages were resent and no invoices were recreated. Reload to retry, or explicitly start a new workflow."
+            ? "The server may have restarted, the session expired, or the connection is unavailable. No messages were resent and no invoices were recreated. Reload to retry. Saved scenarios remain available for inspection."
             : "Loading conversation and payment evidence from the same server sessions."}
         </p>
         <Button variant="outline" className="btn" onClick={onLibrary}>
           Saved simulations
         </Button>
-        {failed && <Button onClick={onRestart}>Start a new workflow</Button>}
       </div>
     </main>
   );
@@ -192,7 +189,13 @@ function LibraryItem({
       }}
     >
       <span className="lab-library-name">{saved.definition.name}</span>
-      <span className="lab-muted">{status ?? "Saved · open to inspect results"}</span>
+      <span className="lab-muted">
+        {status ?? (
+          <>
+            <span className="lab-saved-label">Saved</span> · open to inspect results
+          </>
+        )}
+      </span>
     </Button>
   );
 }

@@ -292,7 +292,5 @@ export function useSimulationRun(saved: SavedSimulationDefinition) {
     };
   }, [controller]);
   const { start, stop, save, refresh, clear, loadResults } = controller;
-  const startLabel =
-    view.current !== null || (view.completed?.length ?? 0) > 0 ? "Run again" : "Run simulation";
-  return { ...view, startLabel, start, stop, save, refresh, clear, loadResults };
+  return { ...view, start, stop, save, refresh, clear, loadResults };
 }
