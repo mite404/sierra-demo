@@ -3,14 +3,22 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./ndjson": "./src/ndjson.ts"
+    "./ndjson": "./src/ndjson.ts",
+    "./markdown": "./src/markdown.ts",
+    "./markdown-emitter": "./src/markdownEmitter.ts"
   },
   "scripts": {
+    "test": "vitest run",
+    "test:unit": "vitest run",
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@yaklabs/catalog": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "catalog:",
     "@yaklabs/config": "workspace:*",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }
