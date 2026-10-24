@@ -93,6 +93,10 @@ In the Sierra demo, only saved scenario User instructions use locally bundled Je
 Draft instructions, expectations, conversation, and controls keep the normal UI typography
 (Ethan; ETH-93). Technical JSON may retain its existing monospace styling inside disclosure.
 
+Saved scenario rows pair a 13px/20px medium title with 12px/16px regular status subtext, separated
+by 2px (`--space / 12`) with no status margin. Keep this tight title/subtext hierarchy local to
+scenario rows (Ethan; derived from the compact-control and annotation scales).
+
 ## Buttons
 
 ### 8. The outline button is the default

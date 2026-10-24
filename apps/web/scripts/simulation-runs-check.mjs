@@ -181,6 +181,29 @@ try {
     "/api/simulation-author",
   );
   const owner = await save();
+  assert.deepEqual(
+    await current()
+      .locator(".lab-library-item:has(.lab-library-name)")
+      .first()
+      .evaluate((row) => {
+        const name = getComputedStyle(row.querySelector(".lab-library-name"));
+        const status = getComputedStyle(row.querySelector(".lab-muted"));
+        return {
+          gap: getComputedStyle(row).rowGap,
+          nameSize: name.fontSize,
+          statusSize: status.fontSize,
+          statusMargin: status.margin,
+          statusLineHeight: status.lineHeight,
+        };
+      }),
+    {
+      gap: "2px",
+      nameSize: "13px",
+      statusSize: "12px",
+      statusMargin: "0px",
+      statusLineHeight: "16px",
+    },
+  );
   await page.waitForFunction(() => document.fonts.check('13px "JetBrains Mono"'));
   const instructions = page.locator(".lab-saved-instructions");
   assert.match(
