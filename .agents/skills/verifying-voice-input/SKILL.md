@@ -62,8 +62,9 @@ node apps/web/scripts/voice-check.mjs
 The browser check uses Chromium's fake audio device through real `getUserMedia` and controls only
 the external speech recognition results. It exercises the unchanged catalog modal, editable draft,
 Done, Escape, focus restoration, track cleanup, hidden uploads, and no automatic submission in
-employee, customer, and author chats. It also captures a narrow author modal. It uses the local
-live model to configure and explicitly accept a synthetic workflow, so server credentials must
+employee and author chats. Navigating to Saved simulations must stop the retained setup capture.
+It also captures a narrow author modal. It uses the local live model to configure and explicitly
+accept a synthetic workflow, so server credentials must
 be available. No deployment or real customer data is involved.
 
 Use `--base` for another local teaching server and `--out` for screenshots. If Playwright's pinned

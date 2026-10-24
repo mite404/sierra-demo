@@ -282,7 +282,7 @@ const asset = async (outgoing, url) => {
         .toString()
         .replace(
           "<body>",
-          '<body><div style="background:#fff;color:#222;padding:4px;font:12px sans-serif">Deterministic transport · real HTTP / executor / disposable D1 · not live K3</div>',
+          '<body><div style="position:fixed;top:24px;right:24px;z-index:9999;pointer-events:none;background:#fff;color:#222;padding:0 4px;font:10px/16px sans-serif">Deterministic QA · not live K3</div>',
         ),
     );
   outgoing.setHeader("Content-Type", mime[extname(file)] ?? "text/html");

@@ -1,11 +1,18 @@
 import { Disclosure } from "@yaklabs/catalog";
 import { Button } from "@yaklabs/ui/components/button";
 import { Separator } from "@yaklabs/ui/components/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@yaklabs/ui/components/dialog";
 import type { SavedSimulationDefinition, SimulationRun } from "gateway/simulation-contract";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SavedReview } from "./simulation-definition";
 import { useSimulationRun } from "./simulation-run";
-import { RunEvidence, RunMetadata } from "./simulation-run-evidence";
+import { RunEvidence, RunMetadata, WorkflowGoals } from "./simulation-run-evidence";
 import { RunHumanReview } from "./simulation-run-review";
 
 type Runner = ReturnType<typeof useSimulationRun>;
@@ -109,27 +116,11 @@ function RunControls({
   );
 }
 
-function ResultConversation({
-  run,
-  messages,
-  reload,
-}: {
-  run: SimulationRun;
-  messages: NonNullable<Runner["current"]>["messages"];
-  reload: Runner["loadResults"];
-}) {
+function ResultDetails({ run, reload }: { run: SimulationRun; reload: Runner["loadResults"] }) {
   const [technical, setTechnical] = useState(false);
   const [review, setReview] = useState(false);
-  const result = run.evidence?.result;
   return (
-    <article
-      aria-label={
-        result?.status === "completed" ? "Latest completed result" : "Current run evidence"
-      }
-    >
-      <h2 className="lab-run-status">{runStatus(run)}</h2>
-      {result?.error && <p role="alert">{result.error}</p>}
-      <RunEvidence run={run} messages={messages} />
+    <>
       <Disclosure
         summary="Technical details"
         open={technical}
@@ -139,7 +130,7 @@ function ResultConversation({
       >
         <RunMetadata run={run} />
       </Disclosure>
-      {!run.active && result?.status === "completed" && (
+      {!run.active && run.evidence?.result.status === "completed" && (
         <Disclosure
           summary="Human wording review"
           open={review}
@@ -150,6 +141,87 @@ function ResultConversation({
           <RunHumanReview key={run.id} run={run} reload={reload} />
         </Disclosure>
       )}
+    </>
+  );
+}
+
+function ResultConversation({
+  run,
+  messages,
+  reload,
+  definition,
+}: {
+  run: SimulationRun;
+  messages: NonNullable<Runner["current"]>["messages"];
+  reload: Runner["loadResults"];
+  definition: SavedSimulationDefinition["definition"];
+}) {
+  const [resultsDismissed, setResultsDismissed] = useState(false);
+  const resultsButton = useRef<HTMLButtonElement>(null);
+  const result = run.evidence?.result;
+  const completed = result?.status === "completed";
+  const resultsOpen = !run.active && !resultsDismissed;
+  return (
+    <article aria-label={completed ? "Latest completed result" : "Current run evidence"}>
+      <div className="lab-run-heading">
+        <h2 className="lab-run-status">{runStatus(run)}</h2>
+        {!run.active && (
+          <>
+            <span className="lab-muted">Conversation ended · Read-only</span>
+            <Button
+              ref={resultsButton}
+              variant="outline"
+              onClick={() => {
+                setResultsDismissed(false);
+              }}
+            >
+              View results
+            </Button>
+          </>
+        )}
+      </div>
+      {result?.error && <p role="alert">{result.error}</p>}
+      <RunEvidence
+        run={run}
+        messages={messages}
+        definition={definition}
+        obscured={resultsOpen}
+        showGoals={false}
+      />
+      <Dialog
+        modal={false}
+        open={resultsOpen}
+        onOpenChange={(open) => {
+          setResultsDismissed(!open);
+        }}
+      >
+        <DialogContent className="lab-results-popover" initialFocus finalFocus={resultsButton}>
+          <DialogHeader>
+            <DialogTitle>{completed ? "Simulation complete" : "Simulation incomplete"}</DialogTitle>
+            <DialogDescription>
+              {runStatus(run)}
+              <br />
+              The conversation is now read-only.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="lab-results-body">
+            <WorkflowGoals definition={definition} run={run} />
+            <p className="lab-review">
+              Human wording review {run.humanReview.status.replaceAll("-", " ")}. Business checks do
+              not grade helpfulness, privacy, or truthful wording.
+            </p>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setResultsDismissed(true);
+              }}
+            >
+              View conversation
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <ResultDetails run={run} reload={reload} />
     </article>
   );
 }
@@ -190,7 +262,11 @@ function PreviousResults({ runner, saved }: { runner: Runner; saved: SavedSimula
             </p>
           )}
           <RunMetadata run={run} />
-          <RunEvidence run={run} messages={run.evidence?.result.conversation ?? []} />
+          <RunEvidence
+            run={run}
+            messages={run.evidence?.result.conversation ?? []}
+            definition={saved.definition}
+          />
         </article>
       ))}
       {runner.completed?.length === 0 && <p>No completed results yet.</p>}
@@ -266,15 +342,19 @@ export function SimulationRunView({
             run={run}
             messages={conversationMessages(runner, run)}
             reload={runner.loadResults}
+            definition={saved.definition}
           />
         ) : (
-          <div className="lab-welcome">
-            <h2>Ready for a conversation</h2>
-            <p>
-              Play this scenario to see how your agent responds. Each run starts with fresh
-              synthetic payments.
-            </p>
-          </div>
+          <>
+            <div className="lab-welcome">
+              <h2>Ready for a conversation</h2>
+              <p>
+                Play this scenario to see how your agent responds. Each run starts with fresh
+                synthetic payments.
+              </p>
+            </div>
+            <WorkflowGoals definition={saved.definition} />
+          </>
         )}
         <PreviousResults runner={runner} saved={saved} />
       </section>

@@ -1,14 +1,15 @@
-# Design pillars - the YakLabs visual language
+# Design pillars - Sierra demo visual guidance
 
-Rules for building on-brand surfaces for Kay, reverse-engineered from yaklabs.ai and refined through
-prototyping.
+The Sierra demo reuses the catalog's visual language, originally derived from yaklabs.ai and
+refined through prototyping. These shared component rules remain applicable to this demo;
+references to inherited shell features do not expand its scope in `docs/sierra-demo/PLAN.md`.
 Each rule states what to do, then why.
 Sources are marked: **css** (declared in yaklabs.ai's stylesheet), **derived** (our choice),
 **Ethan** (Ethan's pick), **estimated** (a guess awaiting confirmation).
 No brand colour is sampled from screenshots or recordings: the screen used had a blue-light filter,
 and filters and colour profiles shift pixels (ADR-051).
-Decisions behind these rules live in `docs/adr/adr.md` (ADR-033 to ADR-035); tokens live in
-`packages/catalog/src/tokens.css`.
+Tokens live in `packages/catalog/src/tokens.css`. Historical ADR numbers below identify decisions
+from the source repository's history, not a Sierra ADR register or additional product requirements.
 
 ## Colour
 
@@ -310,8 +311,7 @@ cannot be reused by accident.
 
 Two kinds of motion, with two sets of rules: **feedback** answers a user's action (a hover, a
 menu opening) and should be brief; **status** loops while the agent works and should feel steady.
-The status glyphs live in `packages/catalog/src/motion.css` (Storybook: Motion), and the reasoning
-behind each rule below is told in `docs/FOR_ETHAN.md`.
+The status glyphs live in `packages/catalog/src/motion.css` (Storybook: Motion).
 
 | Motion | Duration | Curve | Source |
 | --- | --- | --- | --- |
@@ -549,6 +549,30 @@ an actively dictating thread reserves 20 × `--space` vertically, while the idle
 its 15 × `--space` minimum, so the existing modal and its controls fit inside the thread. Source:
 derived from the catalog's `--space` token and Sierra's existing conversation minimum.
 
+## Sierra desktop shell
+
+The lesson keeps YakLabs' presentation without its workspace runtime (Ethan; ETH-96). From 48rem,
+use a fixed window inset 16px (`--space * 2 / 3`), 12px corners (`--space / 2`), a 1px `--hairline`
+border, `--paper` fill, and `0 8px 32px var(--shadow)` over a plain `--desk`. Below 48rem it is
+full-bleed. The title bar is 44px (`--space * 2 - --btn-radius`) and uses `.chrome-surface`.
+The title uses the compact interface scale, 13px/20px medium Inter. The source is YakLabs
+`104a052309402b25b64c64b8114b69f5e4276523`, `window.tsx` and `title-bar.tsx` (css, derived).
+
+The three traffic lights use the inherited `--traffic-*` colours. Their 14px discs over 12px slots
+have 20px centre spacing, matching the source. They are decorative, hidden from assistive
+technology, absent below 48rem, and never receive focus or perform window actions. Tabs and
+notifications are outside this lesson (Ethan). Inner screens fill available frame height and
+scroll internally so focus cannot move the desk.
+
+Saved scenarios are selected only in the left panel. When a run ends, its outcomes appear in the
+existing nonmodal shadcn dialog, with its inherited surface, border, shadow, corners and motion.
+Only the ended transcript receives 2px blur (`--space / 12`, Ethan). Dismissing results removes
+the blur and reveals the read-only conversation; View results reopens them. Selected expected
+goals, actual evidence and text status labels retain the inspector's icon-led rows. Incomplete
+execution never earns a passing grade. Dialog content uses 16px horizontal padding
+(`--space * 2 / 3`) and 8px row spacing (`--space / 3`), derived from existing sidebar spacing.
+Passed status text uses `--saved-ink`, the existing theme-aware positive status token (derived).
+
 ## Open questions
 
 - The limitation in the words (pillar 29) and the basis lines under a step's outcome (pillar 30)
@@ -556,7 +580,7 @@ derived from the catalog's `--space` token and Sierra's existing conversation mi
   them, or pick a look for each (Ethan's call).
 
 - Whether the stepped slider, dictation controls, links and the primary button should move from
-  olive to ink, so green only appears on button hovers (tracked in `docs/LATER.md`).
+  olive to ink, so green only appears on button hovers.
 
 - Rules 2 and 3 (and the display ink `#22251e`) rest on how the tint looked on a screen with a
   blue-light filter, which warms dark neutrals: re-check them with the filter off.

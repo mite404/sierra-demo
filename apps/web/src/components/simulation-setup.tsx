@@ -15,13 +15,11 @@ import { ScenarioInvitation } from "./simulation-library";
 /** Employee configuration stays in its own existing catalog thread, separate from customer tests. */
 export function SimulationSetup({
   onAccepted,
-  onTry,
   onCreate,
   restored,
   active,
 }: {
   onAccepted: (receipt: AcceptedWorkflow) => void;
-  onTry: () => void;
   onCreate: () => void;
   restored: RestoredEmployee | null;
   active: boolean;
@@ -180,9 +178,6 @@ export function SimulationSetup({
           </Button>
           <Button variant="outline" className="btn" disabled={!accepted} onClick={onCreate}>
             Create simulation
-          </Button>
-          <Button variant="ghost" disabled={!accepted} onClick={onTry}>
-            Try it as a customer
           </Button>
         </div>
         {error && <p role="alert">{error}</p>}

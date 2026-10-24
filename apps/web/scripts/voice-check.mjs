@@ -173,18 +173,19 @@ try {
   await page.getByRole("dialog").getByRole("button", { name: "Not now", exact: true }).click();
   await page.getByRole("button", { name: "Workflow accepted", exact: true }).waitFor();
   await field().fill("Employee draft survives navigation.");
-  await current().getByRole("button", { name: "Try it as a customer" }).click();
-  await dictate("customer");
-  await navigateWhileDictating("Configure");
-  assert.equal(await field().inputValue(), "Employee draft survives navigation.");
-  await current().getByRole("button", { name: "Try it as a customer" }).click();
-  assert.equal(await page.locator(".dictation").count(), 0, "Returning does not resume recording");
-  assert.equal(
-    await field().inputValue(),
-    "Existing draft. Use warm replies and refund immediately.",
-  );
-  await navigateWhileDictating("Configure");
   await navigateWhileDictating("Saved simulations");
+  assert.equal(
+    await page
+      .locator(".lab-retained-workspace")
+      .getByRole("textbox", {
+        name: "Message",
+        exact: true,
+        includeHidden: true,
+      })
+      .inputValue(),
+    "Employee draft survives navigation.",
+  );
+  assert.equal(await page.getByRole("button", { name: "Try it as a customer" }).count(), 0);
   await page.getByRole("button", { name: "Create simulation", exact: true }).first().click();
   await dictate("author");
   await page.setViewportSize({ width: 420, height: 900 });
@@ -212,7 +213,7 @@ try {
   await page.keyboard.press("Escape");
   assert.deepEqual(errors, []);
   console.log(
-    "PASS all three roles; real microphone capture with controlled recognition results, not acoustic E2E",
+    "PASS both surviving chats; real microphone capture with controlled recognition results, not acoustic E2E",
   );
 } catch (error) {
   await capture("failure");
