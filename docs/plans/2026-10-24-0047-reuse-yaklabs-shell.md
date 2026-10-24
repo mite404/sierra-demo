@@ -14,6 +14,24 @@ filed: 2026-10-24
 - **Category**: feature
 - **Planned at**: origin/main `59b99bd0d1c58bc86492698e9ad5701579c9528f`, 2026-10-24
 
+## Review corrections
+
+- Plan 0047 is now tracked on origin/main after PR 25. Execute from that single-workflow baseline,
+  `adb4bfff8a7f574bb7fc4e3993ee121d84862cfd`, preserving its removed restart/back controls.
+- Ethan confirmed traffic lights and an app title bar for aesthetics only. The lights are
+  decorative, hidden from assistive technology and keyboard navigation. Add no tabs, notifications,
+  window actions, or runtime providers. Keep the existing app title and independent-demo label.
+- Match YakLabs' desktop breakpoint at 48rem. Below it the frame is full-bleed and lights stay
+  hidden. Both base and narrow `.simulation-lab` rules must use available-frame height, including
+  the retained-workspace wrapper and recovery screens. Check widths 767, 768, 800, and 801px.
+- At 1280 by 720 and 1440 by 900, check content against the actual frame bounds, not the viewport
+  or a full-page screenshot. Cover questions, composer, actions, pinned summary, manual customer,
+  and recovery states. Resize and Configure/customer navigation must preserve unsent drafts and
+  session handles. Extend the existing deterministic browser workflow rather than add model work.
+- Leave a project-local verification skill with generated viewport checks against real rendered
+  CSS. No applicable CSS proof tool is available here. State the bounded Chromium coverage, prove
+  the check catches a restored `100dvh` regression, and do not call it an unbounded formal proof.
+
 ## Why this matters
 
 - Give the independent Sierra teaching demo the established YakLabs desktop-window presentation
@@ -105,11 +123,28 @@ filed: 2026-10-24
 ## Done when
 
 * Every Sierra lesson screen uses source-derived desktop window framing on the token-based desk.
+* A 44px desktop title bar shows decorative top-left traffic lights without tabs or notifications.
 * Width may shrink, but source shell height and title-bar height remain unchanged per viewport.
 * A small shadow makes the shell float without introducing any canvas panel or canvas lifecycle.
 * Sierra's existing functionality, design tokens, accessibility, and synthetic-data boundaries hold.
 * Desktop measurements, inspected captures, interaction evidence, and applicable checks are
   recorded.
+
+## Implementation verification, 2026-10-24
+
+- Implemented the source-derived frame, title bar, and decorative lights without changing executor,
+  model, persistence, or workflow navigation behavior. The deterministic server's QA badge remains
+  visible above the fixed frame; captures are not live-model evidence.
+- The complete `simulation-runs-check.mjs` journey passes. Six stable screens each receive all
+  40 combinations of ten widths, two heights, and light/dark media. The check measures actual frame
+  bounds and preserves manual-customer drafts and employee handles across navigation.
+- A real-source mutation restoring `.simulation-lab { height: 100dvh; }` failed at the frame-height
+  assertion, with content bottom 764px versus the expected 720px. Restoring `height: 100%`,
+  rebuilding, and rerunning the entire journey passed. This is bounded Chromium verification,
+  not a formal proof across all browsers, content, or viewport sizes.
+- Build, typecheck, unit tasks, targeted formatting, and lint passed. Lint reports warnings.
+  Inspected nine final viewport captures and the pointer/typing recording. The separate
+  `verifying-desktop-shell` skill owns rerun instructions and the coverage record.
 
 ## Notes
 
@@ -118,9 +153,9 @@ filed: 2026-10-24
   ETH-95 is related verification, not a blocker.
 - History confirms intent. [The shell polish commit][polish] establishes the 16px desk inset.
   [The raised-canvas commit][raised] adds the optional shadow and removes the obsolete olive trim.
-  Do not restore the trim. ADR-094, ADR-111, and ADR-136 document these choices.
-- Source dimensions and history were inspected during filing. No UI implementation or runtime
-  verification is claimed. The repo Markdown owns the plan, Linear owns status, GitHub discussion.
+  Do not restore the trim. The linked source commits preserve the original decisions.
+- Source dimensions and history were inspected during filing; runtime evidence was added above
+  during implementation. The repo Markdown owns the plan, Linear owns status, GitHub discussion.
 
 [window]: https://github.com/mite404/yaklabs/blob/104a052/apps/web/src/shell/window.tsx#L59-L85
 [titlebar]: https://github.com/mite404/yaklabs/blob/104a052/apps/web/src/shell/title-bar.tsx#L85
