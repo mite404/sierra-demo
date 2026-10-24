@@ -8,7 +8,7 @@ import {
 } from "gateway/simulation-contract";
 import { Check, LockKeyhole, MessageSquare } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { createLabAgent } from "./simulation-agent";
+import { builderMessages, createBuilderAgent } from "./builder-agent";
 import { saveLab, type RestoredEmployee } from "./simulation-persistence";
 import { ScenarioInvitation } from "./simulation-library";
 
@@ -39,7 +39,7 @@ export function SimulationSetup({
       : null,
   );
   const [agent] = useState(() =>
-    createLabAgent({
+    createBuilderAgent({
       endpoint: "/api/workflow",
       initial: {},
       resume: restored
@@ -108,7 +108,10 @@ export function SimulationSetup({
         <ChatThreadPanel
           ref={thread}
           agent={agent}
-          thread={{ title: "Build your refund agent", messages: restored?.messages ?? [] }}
+          thread={{
+            title: "Build your refund agent",
+            messages: builderMessages(restored?.messages ?? []),
+          }}
           cardsCarry={false}
           textOnly
           width={undefined}

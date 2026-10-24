@@ -1,12 +1,8 @@
-import type { SimulationEvent, SimulationRunEvent } from "./simulationContract";
-
 /** Sends bounded lesson events as NDJSON; closing the reader aborts the real upstream request. */
-export function simulationStream(
+// oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- callers select their outgoing protocol, preventing cross-role events
+export function simulationStream<Event>(
   incoming: AbortSignal,
-  run: (
-    emit: (event: SimulationEvent | SimulationRunEvent) => void,
-    signal: AbortSignal,
-  ) => Promise<void>,
+  run: (emit: (event: Event) => void, signal: AbortSignal) => Promise<void>,
   onCancel: () => void,
   deadlineMs = 45000,
 ): Response {
@@ -16,7 +12,7 @@ export function simulationStream(
   const encoder = new TextEncoder();
   const body = new ReadableStream<Uint8Array>({
     start(controller) {
-      const emit = (event: SimulationEvent | SimulationRunEvent) => {
+      const emit = (event: Event) => {
         if (!cancelled) controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
       };
       void run(emit, signal)

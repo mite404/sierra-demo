@@ -9,7 +9,7 @@ import {
   type SimulationAuthorSource,
   type SimulationDefinitionInput,
   type SimulationDraft,
-  type SimulationEvent,
+  type BuilderEvent,
   type sessionMessages,
 } from "./simulationContract";
 import { streamModel } from "./simulationModel";
@@ -124,7 +124,7 @@ type Turn = {
   env: AuthorEnv;
   signal: AbortSignal;
   reply: { text: string };
-  emit: (event: SimulationEvent) => void;
+  emit: (event: BuilderEvent) => void;
 };
 
 async function proposeTurn(
@@ -205,7 +205,7 @@ export function authorReply(
     { id: crypto.randomUUID(), role: "user", text: message, time: reply.time },
     reply,
   );
-  return simulationStream(
+  return simulationStream<BuilderEvent>(
     requestSignal,
     (emit, streamSignal) => {
       emit({ kind: "session", id });

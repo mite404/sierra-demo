@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { awaitingSchema } from "@yaklabs/catalog/awaiting";
 
 /** Only named fixtures cross HTTP; neither principal nor tool policy is client supplied. */
 export const simulationSelection = z.strictObject({
@@ -233,6 +234,15 @@ export const simulationEvent = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("text"), text: z.string() }),
   z.object({ kind: z.literal("tool-start"), id: z.string(), tool: z.string() }),
   z.object({ kind: z.literal("end"), result: simulationResult }),
+]);
+export type SimulationEvent = z.infer<typeof simulationEvent>;
+
+/** Human builder prose and questions never enter the automated execution protocol. */
+export const builderEvent = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("session"), id: z.uuid() }),
+  z.object({ kind: z.literal("text"), text: z.string() }),
+  z.object({ kind: z.literal("question"), question: awaitingSchema }),
+  z.object({ kind: z.literal("tool-start"), id: z.string(), tool: z.string() }),
   z.object({
     kind: z.literal("workflow-end"),
     plan: workflowConfig.nullable(),
@@ -244,7 +254,7 @@ export const simulationEvent = z.discriminatedUnion("kind", [
     error: z.string().nullable(),
   }),
 ]);
-export type SimulationEvent = z.infer<typeof simulationEvent>;
+export type BuilderEvent = z.infer<typeof builderEvent>;
 
 /** Customer protocol deltas are genuine upstream JSON, not yet an accepted visible message. */
 export const simulationRunEvent = z.discriminatedUnion("kind", [
@@ -263,6 +273,7 @@ export const sessionMessages = z.array(
     role: z.enum(["user", "agent"]),
     text: z.string(),
     time: z.string(),
+    asks: awaitingSchema.optional(),
   }),
 );
 

@@ -50,6 +50,7 @@
 }
 .lab-conversation {
   min-width: 0;
+  min-height: 0;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -295,6 +296,15 @@
   min-width: 0;
   min-height: 0;
 }
+.lab-setup-workspace .thread-panel {
+  container-type: size;
+}
+.lab-setup-workspace .dock-overlay {
+  /* Reserve nine --space units for the title, composer and footnote. */
+  max-height: calc(100cqh - var(--space) * 9);
+  overflow-y: auto;
+  pointer-events: auto;
+}
 .lab-setup-review {
   order: -1;
   padding: calc(var(--space) / 2) var(--space);
@@ -357,6 +367,7 @@
   display: flex;
   flex-direction: column;
   align-items: start;
+  gap: calc(var(--space) / 12);
   width: 100%;
   height: auto;
   min-width: 0;
@@ -365,6 +376,8 @@
   white-space: normal;
 }
 .lab-library-item .lab-muted {
+  margin: 0;
+  line-height: 16px;
   white-space: normal;
   font-weight: 400;
 }
@@ -374,6 +387,7 @@
 }
 .lab-library-name {
   display: block;
+  font: 500 13px/20px var(--font-text);
   width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;

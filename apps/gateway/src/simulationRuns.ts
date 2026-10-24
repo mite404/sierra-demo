@@ -178,7 +178,7 @@ const runResponse = (
   incoming: AbortSignal,
   db: D1Database,
 ) =>
-  simulationStream(
+  simulationStream<SimulationRunEvent>(
     AbortSignal.any([incoming, session.stop.signal]),
     async (emit, signal) => {
       try {
