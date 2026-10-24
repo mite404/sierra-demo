@@ -16,7 +16,7 @@ import {
   type RefObject,
   type SetStateAction,
 } from "react";
-import { createLabAgent, type LabNotice } from "./simulation-agent";
+import { builderMessages, createBuilderAgent, type BuilderNotice } from "./builder-agent";
 import { AuthorReview } from "./simulation-definition";
 import { saveLab, type RestoredAuthor } from "./simulation-persistence";
 
@@ -54,7 +54,7 @@ function initialState(restored: RestoredAuthor | null): DraftState {
   return { kind: "ready", draft: restored?.draft ?? null, error: null };
 }
 
-function nextState(state: DraftState, notice: LabNotice): DraftState {
+function nextState(state: DraftState, notice: BuilderNotice): DraftState {
   switch (notice.kind) {
     case "start":
       return { kind: "busy", draft: null, error: null };
@@ -70,9 +70,8 @@ function nextState(state: DraftState, notice: LabNotice): DraftState {
       };
     case "error":
       return { kind: "closed", draft: null, error: notice.error };
-    case "end":
     case "session":
-    case "snapshot":
+    case "question":
     case "text":
     case "tool-start":
     case "workflow-end":
@@ -87,7 +86,7 @@ function nextState(state: DraftState, notice: LabNotice): DraftState {
 function useAuthor(source: SimulationAuthorSource, restored: RestoredAuthor | null) {
   const [state, setState] = useState(() => initialState(restored));
   const [agent] = useState(() =>
-    createLabAgent({
+    createBuilderAgent({
       endpoint: "/api/simulation-author",
       initial: { source },
       resume: restored
@@ -199,7 +198,10 @@ export function AuthorChat({ source, workflow, restored, onSaved, onLock }: Chat
         <ChatThreadPanel
           ref={thread}
           agent={agent}
-          thread={{ title: "Author a simulation", messages: restored?.messages ?? [] }}
+          thread={{
+            title: "Author a simulation",
+            messages: builderMessages(restored?.messages ?? []),
+          }}
           cardsCarry={false}
           textOnly
           width={undefined}

@@ -142,16 +142,43 @@ const controlledModel = async (url, init) => {
     last.content.some((block) => block.type === "tool_result") === true;
   if (
     body.tools.some((item) => item.name === "propose_refund_workflow") === true &&
-    body.messages.filter((item) => item.role === "user").length === 1
+    body.messages.filter((item) => item.role === "user" && typeof item.content === "string")
+      .length === 1
   )
-    return text(
-      "Would you like warm or brief replies, and confirmation or immediate refunds?",
-      init.signal,
-    );
+    return isResult
+      ? text("Choose your refund preferences below.", init.signal)
+      : tool(
+          "ask_user",
+          {
+            question: {
+              question: "How should your team handle refunds?",
+              options: [
+                {
+                  label: "Warm replies, confirm first",
+                  detail: "Friendly replies. Ask the owner to confirm before refunding.",
+                },
+                {
+                  label: "Brief replies, immediate refunds",
+                  detail: "Short replies. Refund immediately after ownership checks pass.",
+                },
+                {
+                  label: "Warm replies, immediate refunds",
+                  detail: "Friendly replies. Refund immediately after ownership checks pass.",
+                },
+                {
+                  label: "Brief replies, confirm first",
+                  detail: "Short replies. Ask the owner to confirm before refunding.",
+                },
+              ],
+              answer: { placeholder: "Describe your preferences" },
+            },
+          },
+          init.signal,
+        );
   if (body.tools.some((item) => item.name === "propose_refund_workflow") === true)
     return isResult
       ? text(
-          "Warm replies. Ask the owner to confirm before refunding. Review and accept these synthetic settings.",
+          "## Your refund workflow\n\nUse **warm replies** and ask the owner to confirm before refunding.\n\n- Check ownership before access.\n- Refund once to the original payment method.\n\nReview and accept these synthetic settings.",
           init.signal,
         )
       : tool("propose_refund_workflow", { tone: "warm", approval: "confirm" }, init.signal);

@@ -6,6 +6,7 @@ type ModelRequest = {
   messages: Anthropic.MessageParam[];
   system: string;
   tools: Anthropic.Tool[];
+  initialTool?: string;
   onModel?: (model: string) => void;
 };
 type ModelRun = Pick<
@@ -32,6 +33,9 @@ const modelReply = async (
         thinking: { type: "disabled" },
         system: request.system,
         tools: request.tools,
+        ...(round === 0 && request.initialTool
+          ? { tool_choice: { type: "tool" as const, name: request.initialTool } }
+          : {}),
         messages: request.messages,
         stream: true,
       },

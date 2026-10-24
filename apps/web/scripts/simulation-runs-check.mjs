@@ -108,7 +108,52 @@ try {
     true,
   );
   await capture("02-clarification-locked");
-  await send("Use warm replies and ask the owner to confirm before refunding.", "/api/workflow");
+  const choices = current().getByRole("radiogroup", {
+    name: "How should your team handle refunds?",
+  });
+  assert.equal(await choices.getByRole("radio").count(), 5);
+  const composerBounds = await current()
+    .getByRole("textbox", { name: "Message", exact: true })
+    .boundingBox();
+  assert.ok(
+    composerBounds && composerBounds.y + composerBounds.height <= 1000,
+    "Question card must leave the composer in the viewport",
+  );
+  const questionReloadCalls = (await qa({})).modelCalls;
+  await page.reload();
+  await choices.waitFor();
+  assert.equal(
+    (await qa({})).modelCalls,
+    questionReloadCalls,
+    "Reload restores the question without resubmitting",
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  const questionBounds = await current()
+    .locator(".dock-overlay")
+    .evaluate((element) => ({
+      top: element.getBoundingClientRect().top,
+      titleBottom: element
+        .closest(".thread-panel")
+        .querySelector(".thread-header")
+        .getBoundingClientRect().bottom,
+      scrollable: element.scrollHeight > element.clientHeight,
+    }));
+  assert.ok(questionBounds.top >= questionBounds.titleBottom);
+  assert.ok(questionBounds.scrollable, "Tall questions remain scrollable above the composer");
+  await choices.getByRole("radio", { name: /Brief replies, confirm first/u }).click();
+  await choices.getByRole("radio", { name: /Warm replies, confirm first/u }).click();
+  const answered = page.waitForResponse(
+    (item) => item.url().endsWith("/api/workflow") && item.request().method() === "POST",
+  );
+  await button("Submit").click();
+  assert.equal((await answered).status(), 200);
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await button("Stop").waitFor({ state: "hidden" });
+  await choices.waitFor({ state: "hidden" });
+  await current().getByRole("heading", { name: "Your refund workflow", exact: true }).waitFor();
+  assert.equal((await current().locator(".quiet-prose strong").count()) > 0, true);
+  await page.reload();
+  await current().getByRole("heading", { name: "Your refund workflow", exact: true }).waitFor();
   assert.equal(await button("Accept workflow").isEnabled(), true);
   assert.equal(await button("Saved simulations").isDisabled(), true);
   await capture("03-proposal-unaccepted");

@@ -12,6 +12,7 @@ import {
   simulationSaveRequest,
   type customerSession,
   type SimulationDraft,
+  type SimulationEvent,
   type SimulationResult,
   type SimulationSelection,
   type WorkflowConfig,
@@ -301,7 +302,7 @@ export function createSimulationApp(clientFor: (key: string) => Anthropic = open
       time: new Date().toISOString(),
     };
     session.display.push(reply);
-    return simulationStream(
+    return simulationStream<SimulationEvent>(
       c.req.raw.signal,
       async (emit, signal) => {
         emit({ kind: "session", id });

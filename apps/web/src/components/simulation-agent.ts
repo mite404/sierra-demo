@@ -5,7 +5,6 @@ import {
   simulationEvent,
   type SimulationEvent,
   type SimulationSelection,
-  type SimulationAuthorSource,
 } from "gateway/simulation-contract";
 
 export type LabNotice =
@@ -17,12 +16,7 @@ const failure = (detail: string): ReplyChunk => ({
   kind: "failure",
   failure: { title: "Reply incomplete", detail, retry: false },
 });
-const toolLabel = (name: string) =>
-  name === "propose_refund_workflow"
-    ? "Preparing workflow proposal"
-    : name === "propose_simulation"
-      ? "Preparing simulation proposal"
-      : "Requesting a refund";
+const toolLabel = () => "Requesting a refund";
 
 // Project one response's real events into catalog activity; session ownership stays in the agent.
 async function* readReply(
@@ -47,9 +41,9 @@ async function* readReply(
         tools.push(event);
         yield {
           kind: "step",
-          step: { id: event.id, label: toolLabel(event.tool), status: "running" },
+          step: { id: event.id, label: toolLabel(), status: "running" },
         };
-        yield { kind: "activity", text: toolLabel(event.tool) };
+        yield { kind: "activity", text: toolLabel() };
         break;
       case "snapshot":
         if (!seenSnapshot) {
@@ -63,7 +57,7 @@ async function* readReply(
               kind: "step",
               step: {
                 id: tool.id,
-                label: toolLabel(tool.tool),
+                label: toolLabel(),
                 status: "done",
                 outcome: entry.outcome.replaceAll("_", " "),
               },
@@ -72,23 +66,19 @@ async function* readReply(
         }
         traceCount = event.result.trace.length;
         break;
-      case "end":
-      case "author-end":
-      case "workflow-end": {
-        const error = event.kind === "end" ? event.result.error : event.error;
+      case "end": {
+        const error = event.result.error;
         if (error === null) {
           for (const tool of tools)
             yield {
               kind: "step",
               step: {
                 id: tool.id,
-                label: toolLabel(tool.tool),
+                label: toolLabel(),
                 status: "done",
-                outcome: "Ready for employee review",
+                outcome: "Refund request checked",
               },
             };
-          if (event.kind === "workflow-end" && event.plan)
-            yield { kind: "log", text: JSON.stringify(event.plan, null, 2) };
         } else {
           yield failure(error);
         }
@@ -101,10 +91,8 @@ async function* readReply(
 
 /** Adapts actual NDJSON events to the existing catalog thread, without fake text or model reasoning. */
 export function createLabAgent(options: {
-  endpoint: "/api/workflow" | "/api/simulation" | "/api/simulation-author";
-  initial:
-    | (Partial<SimulationSelection> & { workflowId?: string })
-    | { source: SimulationAuthorSource };
+  endpoint: "/api/simulation";
+  initial: Partial<SimulationSelection> & { workflowId?: string };
   resume?: { id: string; closed: boolean };
   observe: (notice: LabNotice, id: number) => void;
 }): Agent {
@@ -153,14 +141,7 @@ export function createLabAgent(options: {
         yield* readReply(response.body, signal, function receiveEvent(event) {
           observe(event);
           if (event.kind === "session") sessionId = event.id;
-          if (
-            event.kind === "end" ||
-            event.kind === "workflow-end" ||
-            event.kind === "author-end"
-          ) {
-            const error = event.kind === "end" ? event.result.error : event.error;
-            if (error !== null) retired = true;
-          }
+          if (event.kind === "end" && event.result.error !== null) retired = true;
         });
       } catch {
         if (!signal.aborted) {

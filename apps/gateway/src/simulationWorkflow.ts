@@ -1,7 +1,13 @@
 import type { Anthropic } from "@anthropic-ai/sdk";
+import { askQuestionInputSchema, playgroundTools } from "@yaklabs/catalog/playground";
 import { Hono } from "hono";
 import { z } from "zod";
-import { workflowConfig, type WorkflowConfig, type workflowSession } from "./simulationContract";
+import {
+  workflowConfig,
+  type BuilderEvent,
+  type WorkflowConfig,
+  type workflowSession,
+} from "./simulationContract";
 import { streamModel } from "./simulationModel";
 import { simulationStream } from "./simulationStream";
 
@@ -22,7 +28,10 @@ const request = z.strictObject({
 });
 const system = `Help an employee configure ONE subscription-refund workflow, not code or deploy an agent.
 The only supported choices are response style (brief or warm) and approval (immediate or confirm).
-On the first employee message, ask one focused question offering those two pairs of choices.
+On the first employee message, call ask_user with one focused question offering all four combinations
+of those settings. Use short labels and details to explain each combination. Never ask for choices
+in ordinary text. The tool displays a question card above the composer with a typed alternative.
+After ask_user succeeds, stop asking and wait for the employee. Do not repeat the options in prose.
 Do not propose a plan until the employee replies with choices. Explain unfamiliar terms plainly.
 After their choices, call propose_refund_workflow, then stream a short reviewable plan in plain paragraphs.
 The plan must name both settings, the owner's sign-in path for spouse requests, ownership checks,
@@ -32,9 +41,12 @@ Ask the employee to use Accept workflow, then Try it as a customer. You cannot a
 Only validated settings from the proposal are applied. Never promise integrations, arbitrary policies,
 code generation, deployment, or editable security. Reject requests to disable ownership or duplicates.
 No customer refunds happen in this employee conversation. Do not pretend to execute any business tool.
-Keep the answer concise. Write plain paragraphs separated by blank lines, not Markdown bold, lists,
-tables or code fences. No fabricated generation statuses, hidden reasoning, links or login requirement.`;
+Keep the answer concise. Use headings, paragraphs, emphasis and lists where helpful, not tables
+or code fences. No fabricated generation statuses, hidden reasoning, links or login requirement.`;
 const tools: Anthropic.Tool[] = [
+  ...playgroundTools
+    .filter((tool) => tool.name === "ask_question")
+    .map((tool) => ({ ...tool, name: "ask_user" })),
   {
     name: "propose_refund_workflow",
     description:
@@ -111,14 +123,14 @@ export function createWorkflowApp(clientFor: (key: string) => Anthropic) {
       text: input.message,
       time: new Date().toISOString(),
     });
-    const reply = {
+    const reply: EmployeeSession["display"][number] = {
       id: crypto.randomUUID(),
       role: "agent" as const,
       text: "",
       time: new Date().toISOString(),
     };
     session.display.push(reply);
-    return simulationStream(
+    return simulationStream<BuilderEvent>(
       c.req.raw.signal,
       async (emit, signal) => {
         emit({ kind: "session", id });
@@ -127,7 +139,12 @@ export function createWorkflowApp(clientFor: (key: string) => Anthropic) {
           if (!c.env.OPENROUTER_API_KEY) throw new Error("Missing credential");
           await streamModel(
             clientFor(c.env.OPENROUTER_API_KEY),
-            { messages: session.messages, system, tools },
+            {
+              messages: session.messages,
+              system,
+              tools,
+              initialTool: session.turns === 1 ? "ask_user" : undefined,
+            },
             {
               signal,
               text: (text) => {
@@ -139,6 +156,16 @@ export function createWorkflowApp(clientFor: (key: string) => Anthropic) {
               },
               execute: (name, args) => {
                 signal.throwIfAborted();
+                if (name === "ask_user") {
+                  const question = askQuestionInputSchema.safeParse(args);
+                  if (!question.success) return { ok: false, message: question.error.message };
+                  reply.asks = question.data.question;
+                  emit({ kind: "question", question: reply.asks });
+                  return {
+                    ok: true,
+                    message: "Question displayed. Wait for the employee's answer.",
+                  };
+                }
                 const proposal = workflowConfig.safeParse(args);
                 if (name !== "propose_refund_workflow" || !proposal.success || session.turns < 2)
                   return {
@@ -154,6 +181,7 @@ export function createWorkflowApp(clientFor: (key: string) => Anthropic) {
             },
           );
           signal.throwIfAborted();
+          if (session.turns === 1 && !reply.asks) throw new Error("Missing workflow clarification");
           session.plan = plan;
           emit({ kind: "workflow-end", plan: plan ?? null, error: null });
         } catch {

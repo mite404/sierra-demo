@@ -7,6 +7,7 @@ import { fileURLToPath, URL } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { getPlatformProxy, unstable_dev } from "wrangler";
 import {
+  builderEvent,
   customerSession,
   savedSimulationDefinition,
   simulationDraft,
@@ -37,6 +38,11 @@ const eventsOf = async (response: Pick<Response, "text">) =>
     .trim()
     .split("\n")
     .map((line) => simulationEvent.parse(JSON.parse(line)));
+const builderEventsOf = async (response: Pick<Response, "text">) =>
+  (await response.text())
+    .trim()
+    .split("\n")
+    .map((line) => builderEvent.parse(JSON.parse(line)));
 const resultOf = async (response: Response) => {
   const end = (await eventsOf(response)).at(-1);
   if (end?.kind !== "end") throw new Error("Missing terminal evidence");
@@ -101,7 +107,24 @@ const appWith = (replies: Response[]) =>
   );
 
 const workflowReplies = (config: WorkflowConfig) => [
-  message([{ type: "text", text: "Brief or warm, immediate or confirm first?" }]),
+  message(
+    [
+      {
+        type: "tool_use",
+        id: "clarification",
+        name: "ask_user",
+        input: {
+          question: {
+            question: "How should refunds work?",
+            options: [{ label: "Brief and immediate" }, { label: "Warm and confirm first" }],
+            answer: { placeholder: "Describe your preferences" },
+          },
+        },
+      },
+    ],
+    "tool_use",
+  ),
+  message([{ type: "text", text: "Choose your preferences above the composer." }]),
   message(
     [
       {
@@ -130,12 +153,12 @@ const readyApp = async (
       fetch: async () => setup.shift() ?? replies.shift() ?? upstream(),
     }),
   );
-  const first = await eventsOf(
+  const first = await builderEventsOf(
     await app.fetch(employeeRequest({ message: "Configure refunds." }), environment),
   );
   const session = first.find((event) => event.kind === "session");
   if (session?.kind !== "session") throw new Error("No employee session");
-  await eventsOf(
+  await builderEventsOf(
     await app.fetch(
       employeeRequest({ sessionId: session.id, message: "Brief, immediate." }),
       environment,
@@ -172,7 +195,7 @@ async function authorTurn(
   body: unknown,
   env = environment,
 ) {
-  return eventsOf(await app.fetch(libraryRequest("simulation-author", body), env));
+  return builderEventsOf(await app.fetch(libraryRequest("simulation-author", body), env));
 }
 
 async function authorDraftOf(
@@ -254,7 +277,7 @@ it("clarifies before proposing, holds only complete validated authoring drafts, 
     environment,
   );
   expect(first.status).toBe(200);
-  const clarification = (await eventsOf(first)).at(-1);
+  const clarification = (await builderEventsOf(first)).at(-1);
   expect(clarification).toMatchObject({ kind: "author-end", draft: null, error: null });
   const complete = await authorTurn(app, {
     sessionId: startId,
@@ -376,10 +399,12 @@ it("preserves an approved HTTP definition through real Wrangler restart and repe
       vars: { OPENROUTER_API_KEY: "controlled-transport" },
     } as const;
     worker = await unstable_dev(entry, options);
-    const initial = await eventsOf(await send(employeeRequest({ message: "Configure refunds." })));
+    const initial = await builderEventsOf(
+      await send(employeeRequest({ message: "Configure refunds." })),
+    );
     const workflow = initial.find((event) => event.kind === "session");
     if (workflow?.kind !== "session") throw new Error("Missing employee session");
-    await eventsOf(
+    await builderEventsOf(
       await send(employeeRequest({ sessionId: workflow.id, message: "Brief and confirm first." })),
     );
     expect((await send(libraryRequest(`workflow/${workflow.id}/accept`, {}))).status).toBe(200);
@@ -873,11 +898,17 @@ describe("local simulation HTTP and real agent loop", () => {
   });
 
   it("requires explicit workflow acceptance and applies confirmation to the customer executor", async () => {
+    const question = {
+      question: "How should the team handle refunds?",
+      options: [{ label: "Brief + confirm first" }, { label: "Warm + immediate" }],
+      answer: { placeholder: "Describe your preferences" },
+    };
     const app = appWith([
+      message([{ type: "tool_use", id: "ask", name: "ask_user", input: { question } }], "tool_use"),
       message([
         {
           type: "text",
-          text: "Would you prefer brief or warm replies, and immediate refunds or confirmation first?",
+          text: "Choose your preferences above the composer.",
         },
       ]),
       message(
@@ -907,10 +938,17 @@ describe("local simulation HTTP and real agent loop", () => {
       environment,
     );
     expect(initial.status).toBe(200);
-    const first = await eventsOf(initial);
+    const first = await builderEventsOf(initial);
+    expect(first).toContainEqual({ kind: "question", question });
     const session = first.find((event) => event.kind === "session");
     if (session?.kind !== "session") throw new Error("No employee session");
-    await eventsOf(
+    const pending = workflowSession.parse(
+      await (
+        await app.fetch(new Request(`http://localhost/api/workflow/${session.id}`), environment)
+      ).json(),
+    );
+    expect(pending.messages.at(-1)).toMatchObject({ asks: question });
+    await builderEventsOf(
       await app.fetch(
         employeeRequest({
           sessionId: session.id,
@@ -1256,4 +1294,95 @@ describe("local simulation HTTP and real agent loop", () => {
     expect(result).toMatchObject({ status: "cancelled", verdict: null, trace: [] });
     expect(result.after.map((invoice) => invoice.refundedCents)).toEqual([0, 0]);
   });
+});
+
+describe("builder question boundary", () => {
+  it("forces only the first upstream round to ask_user and resumes with the employee answer", async () => {
+    const sent: { tool_choice?: unknown; messages: unknown[] }[] = [];
+    const replies = workflowReplies({ tone: "warm", approval: "confirm" });
+    const app = createSimulationApp((key) =>
+      openRouterClient(key, {
+        fetch: async (url, init) => {
+          sent.push(await new Request(url, init).json());
+          return replies.shift() ?? new Response("Unexpected model request", { status: 503 });
+        },
+      }),
+    );
+    const first = await builderEventsOf(
+      await app.fetch(employeeRequest({ message: "Help with refunds" }), environment),
+    );
+    const session = first.find((event) => event.kind === "session");
+    if (session?.kind !== "session") throw new Error("No session");
+    expect(first).toContainEqual(expect.objectContaining({ kind: "question" }));
+    expect(sent[0]?.tool_choice).toEqual({ type: "tool", name: "ask_user" });
+    expect(sent[1]?.tool_choice).toBeUndefined();
+    expect(
+      (await app.fetch(libraryRequest(`workflow/${session.id}/accept`, {}), environment)).status,
+    ).toBe(409);
+    const answered = await builderEventsOf(
+      await app.fetch(
+        employeeRequest({ sessionId: session.id, message: "Warm and confirm first" }),
+        environment,
+      ),
+    );
+    expect(sent[2]?.tool_choice).toBeUndefined();
+    expect(sent[2]?.messages).toContainEqual({ role: "user", content: "Warm and confirm first" });
+    expect(answered.at(-1)).toEqual({
+      kind: "workflow-end",
+      plan: { tone: "warm", approval: "confirm" },
+      error: null,
+    });
+  });
+
+  it.each(["invalid-question", "prose-only", "early-proposal"])(
+    "cannot accept a first turn with %s",
+    async (mode) => {
+      const first =
+        mode === "prose-only"
+          ? answer()
+          : message(
+              [
+                {
+                  type: "tool_use",
+                  id: "invalid",
+                  name: mode === "early-proposal" ? "propose_refund_workflow" : "ask_user",
+                  input:
+                    mode === "early-proposal"
+                      ? { tone: "brief", approval: "immediate" }
+                      : {
+                          question: {
+                            question: "Refund choices?",
+                            options: [],
+                            answer: { placeholder: "Choose" },
+                          },
+                        },
+                },
+              ],
+              "tool_use",
+            );
+      const app = appWith([first, answer()]);
+      const events = await builderEventsOf(
+        await app.fetch(employeeRequest({ message: "Configure refunds" }), environment),
+      );
+      const session = events.find((event) => event.kind === "session");
+      if (session?.kind !== "session") throw new Error("No session");
+      expect(events.some((event) => event.kind === "question")).toBe(false);
+      expect(events.at(-1)).toMatchObject({
+        kind: "workflow-end",
+        plan: null,
+      });
+      const completion = events.at(-1);
+      expect(completion?.kind === "workflow-end" && typeof completion.error === "string").toBe(
+        true,
+      );
+      const restored = workflowSession.parse(
+        await (await app.fetch(libraryRequest(`workflow/${session.id}`), environment)).json(),
+      );
+      expect(restored).toMatchObject({ closed: true, active: false, plan: null, accepted: null });
+      expect(restored.messages.at(-1)).not.toHaveProperty("asks");
+      expect(
+        (await app.fetch(libraryRequest(`workflow/${session.id}/accept`, {}), environment)).status,
+      ).toBe(409);
+    },
+  );
 });
