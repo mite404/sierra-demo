@@ -26,14 +26,18 @@ Open the loopback address Wrangler prints. Keep this training Worker local. Publ
 public model access, and changes to YakLabs infrastructure are outside this sample's scope.
 
 Start as an employee: describe the refund workflow in chat, answer the live model's focused choices,
-review the streamed plan, then click **Accept workflow** and **Try it as a customer**. The supported
-settings are brief/warm replies and immediate/confirm-first refunds. Accepted settings actually
-apply to the executor; ownership and duplicate safeguards cannot be edited.
+iterate on the streamed proposal, then click **Accept workflow**. Simulations stay disabled until
+acceptance opens the first-test-scenario invitation. Describe a scenario in the separate authoring
+chat, review the instructions and expected behavior, then explicitly save and run it. The automated
+customer and support agent converse while the saved scenario stays pinned above the conversation.
+Open **Business checks and execution JSON** to inspect the real payment results. Helpful wording
+remains a separate human review. Desktop web is the only scenario device.
 
-Type customer requests and follow-ups in the original YakLabs composer/history. Shortcuts only
-seed drafts. Actual text deltas, tool activity, readable goal statuses and execution JSON appear
-together. JSON is visible by default, not behind an expansion. Follow-ups preserve history and
-invoices; Reset or a fixture change starts fresh. Employee and customer history are separate.
+Supported agent settings are brief/warm replies and immediate/confirm-first refunds. Accepted
+settings apply to the executor; ownership and duplicate safeguards cannot be edited. The separate
+**Try it as a customer** path still supports manual requests and follow-ups. Shortcuts only seed
+drafts. Follow-ups preserve invoices; Reset or a fixture change starts fresh. Builder, scenario
+authoring, and customer histories are separate.
 
 The secondary **Tool probe · no model** controls exercise corrected/vulnerable enforcement on
 separate fresh invoices. They are never presented as a live conversation.
@@ -74,20 +78,24 @@ the external model transport controlled in automated tests:
 pnpm --filter gateway exec vitest run src/simulation.test.ts src/simulationWorker.test.ts
 ```
 
-With the preview running, verify the actual screen using the installed browser harness:
+For the complete deterministic journey, build the SPA and run the disposable acceptance server:
 
 ```sh
-node apps/web/scripts/simulation-check.mjs
-node apps/web/scripts/simulation-check.mjs --live on --out .amp/in/artifacts
+VITE_AUTH=none pnpm --filter web build
+node apps/web/scripts/simulation-ui-server.mjs
 ```
 
-The second command spends model credit and saves genuine live conversations separately from probe
-evidence. If the harness's Chromium is not installed, set `PLAYWRIGHT_CHROMIUM` to an installed
-Chrome executable. Live browser checks cover typed configuration, explicit acceptance, confirmation
-enforcement, spouse/owner follow-ups, cancellation, errors, fresh state, narrow layout and redirects
-away from inherited canvas routes. Without `--live on`, the harness checks entry/redirects only.
-Do not rebuild the SPA
-under a running Wrangler process; restart the simulation service after rebuilding static assets.
+In another terminal, run `node apps/web/scripts/simulation-runs-check.mjs`. Only the external model
+transport is controlled. HTTP, the executor, and disposable D1 are real; the page labels this
+transport as not live K3. The check covers choice-card answer/resume, revision, acceptance,
+author/save/run, pinned content, reload/reset, locks, payment evidence, and incomplete results.
+If Chromium is not installed, set `PLAYWRIGHT_CHROMIUM` to an installed Chrome executable.
+
+Rehearse the complete real-provider journey separately using
+[VIDEO.md](docs/sierra-demo/VIDEO.md). It spends model credit and must retain actual latency and
+results. The older `simulation-check.mjs --live on` covers the manual customer path, not the
+automated journey. Do not rebuild the SPA under a running Wrangler process; restart the simulation
+service after rebuilding static assets.
 
 Money and permission checks are deterministic. A model refusal leaves **Tool boundary exercised**
 as **Not exercised**. Use the separate probe to prove enforcement. The human rubric reviews useful
