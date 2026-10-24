@@ -175,13 +175,18 @@ const controlledModel = async (url, init) => {
           },
           init.signal,
         );
-  if (body.tools.some((item) => item.name === "propose_refund_workflow") === true)
+  if (body.tools.some((item) => item.name === "propose_refund_workflow") === true) {
+    const employee = body.messages.findLast(
+      (item) => item.role === "user" && typeof item.content === "string",
+    );
+    const tone = employee.content.includes("brief replies") === true ? "brief" : "warm";
     return isResult
       ? text(
-          "## Your refund workflow\n\nUse **warm replies** and ask the owner to confirm before refunding.\n\n- Check ownership before access.\n- Refund once to the original payment method.\n\nReview and accept these synthetic settings.",
+          `## Your refund workflow\n\nUse **${tone} replies** and ask the owner to confirm before refunding.\n\n- Check ownership before access.\n- Refund once to the original payment method.\n\nReview and accept these synthetic settings.`,
           init.signal,
         )
-      : tool("propose_refund_workflow", { tone: "warm", approval: "confirm" }, init.signal);
+      : tool("propose_refund_workflow", { tone, approval: "confirm" }, init.signal);
+  }
   if (body.tools.some((item) => item.name === "propose_simulation") === true)
     return isResult
       ? text("Review the complete test and save explicitly.", init.signal)

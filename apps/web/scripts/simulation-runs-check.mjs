@@ -4,8 +4,8 @@ import path from "node:path";
 import { arg, launch } from "./harness.mjs";
 
 const base = arg("--base", "http://127.0.0.1:8790");
-const out = path.resolve(arg("--out", ".amp/in/artifacts/eth93"));
-const logs = path.resolve(arg("--logs", "/tmp/eth93-logs"));
+const out = path.resolve(arg("--out", ".amp/in/artifacts/journey-deterministic"));
+const logs = path.resolve(arg("--logs", "/tmp/journey-deterministic-logs"));
 await Promise.all([mkdir(out, { recursive: true }), mkdir(logs, { recursive: true })]);
 const browser = await launch();
 const context = await browser.newContext({
@@ -112,9 +112,16 @@ try {
     name: "How should your team handle refunds?",
   });
   assert.equal(await choices.getByRole("radio").count(), 5);
+  const choiceBounds = await choices.boundingBox();
   const composerBounds = await current()
     .getByRole("textbox", { name: "Message", exact: true })
     .boundingBox();
+  assert.ok(
+    choiceBounds !== null &&
+      composerBounds !== null &&
+      choiceBounds.y + choiceBounds.height <= composerBounds.y,
+    "Real choice cards stay above the composer",
+  );
   assert.ok(
     composerBounds && composerBounds.y + composerBounds.height <= 1000,
     "Question card must leave the composer in the viewport",
@@ -146,7 +153,9 @@ try {
     (item) => item.url().endsWith("/api/workflow") && item.request().method() === "POST",
   );
   await button("Submit").click();
-  assert.equal((await answered).status(), 200);
+  const resumed = await answered;
+  assert.equal(resumed.status(), 200);
+  assert.equal(resumed.request().postDataJSON().message, "Warm replies, confirm first");
   await page.setViewportSize({ width: 1440, height: 1000 });
   await button("Stop").waitFor({ state: "hidden" });
   await choices.waitFor({ state: "hidden" });
@@ -157,6 +166,14 @@ try {
   assert.equal(await button("Accept workflow").isEnabled(), true);
   assert.equal(await button("Saved simulations").isDisabled(), true);
   await capture("03-proposal-unaccepted");
+  await send("Revise the workflow to brief replies. Keep owner confirmation.", "/api/workflow");
+  const workflowId = await page.evaluate(
+    () => JSON.parse(localStorage.getItem("sierra-simulation-session-v1")).employeeId,
+  );
+  const revised = await read(`workflow/${workflowId}`);
+  assert.deepEqual(revised.plan, { tone: "brief", approval: "confirm" });
+  assert.equal(revised.accepted, null, "A revision never accepts itself");
+  assert.equal(await button("Saved simulations").isDisabled(), true);
   await button("Accept workflow").click();
   const dialog = page.getByRole("dialog", { name: "Create your first test scenario" });
   await dialog.waitFor();
@@ -180,7 +197,10 @@ try {
     "Test the owner. Request a refund, confirm, then ask for it again.",
     "/api/simulation-author",
   );
+  await button("Save simulation").scrollIntoViewIfNeeded();
+  await capture("05b-reviewed-proposal");
   const owner = await save();
+  assert.deepEqual(owner.workflow.config, { tone: "brief", approval: "confirm" });
   assert.deepEqual(
     await current()
       .locator(".lab-library-item:has(.lab-library-name)")
@@ -232,10 +252,32 @@ try {
   const firstId = await start("Run selected simulation", owner.id);
   assert.equal(await button("Rerun selected simulation").isDisabled(), true);
   assert.equal(await button("Back to workflow").isDisabled(), true);
+  assert.equal(await button("New workflow").isDisabled(), true);
+  assert.equal(await button("Create another simulation").isDisabled(), true);
+  assert.equal(await page.locator('.lab-library-item[aria-current="page"]').isDisabled(), true);
   assert.equal(await button("Edit in chat").isDisabled(), true);
   await page.getByText("Support agent", { exact: true }).first().waitFor();
   const pinned = await geometry();
+  const summary = page.locator(".lab-pinned-summary");
+  assert.equal(
+    await summary.locator(".lab-saved-instructions").innerText(),
+    owner.definition.instructions,
+  );
+  assert.match(await summary.innerText(), /Desktop web/u);
+  assert.equal(await summary.locator("li").count(), 3);
   await capture("07-running");
+  await page.waitForFunction(() => {
+    const element = document.querySelector(".lab-run-scroll");
+    return element.scrollHeight > element.clientHeight;
+  });
+  await page.getByRole("region", { name: "Scenario conversation and results" }).focus();
+  await page.keyboard.press("End");
+  assert.equal(await button("Stop").isVisible(), true, "Scroll check happens during streaming");
+  assert.deepEqual(await geometry(), pinned);
+  assert.equal(
+    await summary.locator(".lab-saved-instructions").innerText(),
+    owner.definition.instructions,
+  );
   await finished();
   const first = await read(`simulation-runs/${firstId}`);
   assert.equal(first.evidence.result.verdict, "pass");
@@ -381,7 +423,7 @@ try {
     JSON.stringify({ owner, first, second, errors, http: await qa({}) }, null, 2),
   );
   process.stdout.write(
-    "PASS first-use/clarification/proposal gating, accessible acceptance modal + Escape + recovery, draft/save, Desktop web only, instruction-only JetBrains Mono, selected toolbar play/rerun, busy/unsaved locks, streamed conversation, pinned summary/separator under keyboard scrolling, real payment evidence, disclosures, search/settings, dark/light/narrow, error/stop/timeout/not-exercised, save-only retry and new-workflow gating. Deterministic external transport; real HTTP/executor/disposable D1.\n",
+    "PASS first-use/clarification/proposal gating, choice answer/resume, workflow revision + frozen acceptance, accessible acceptance modal + Escape + recovery, draft/save, Desktop web only, instruction-only JetBrains Mono, selected toolbar play/rerun, busy/unsaved locks, streamed conversation, pinned full summary/separator during streaming and completed scrolling, real payment evidence, disclosures, search/settings, dark/light/narrow, error/stop/timeout/not-exercised, save-only retry and new-workflow gating. Deterministic external transport; real HTTP/executor/disposable D1.\n",
   );
 } finally {
   await browser.close();
