@@ -18,6 +18,14 @@ export type BuilderNotice =
   | { kind: "cancelled" }
   | { kind: "error"; error: string };
 
+type BuilderOptions = {
+  resume?: { id: string; closed: boolean };
+  observe: (notice: BuilderNotice, id: number) => void;
+} & (
+  | { endpoint: "/api/workflow"; initial: Record<string, never> }
+  | { endpoint: "/api/simulation-author"; initial: { source: SimulationAuthorSource } }
+);
+
 const failure = (detail: string): ReplyChunk => ({
   kind: "failure",
   failure: { title: "Reply incomplete", detail, retry: false },
@@ -28,6 +36,36 @@ const toolLabel = (name: string) =>
     : name === "propose_refund_workflow"
       ? "Preparing workflow proposal"
       : "Preparing simulation proposal";
+
+function readBuilderEvent(line: string, endpoint: BuilderOptions["endpoint"]): BuilderEvent {
+  const event = builderEvent.parse(JSON.parse(line));
+  if (
+    (event.kind === "workflow-end" && endpoint !== "/api/workflow") ||
+    (event.kind === "author-end" && endpoint !== "/api/simulation-author")
+  )
+    throw new Error("Unexpected builder completion");
+  return event;
+}
+
+function* finishTools(
+  tools: { id: string; tool: string }[],
+  error: string | null,
+): Generator<ReplyChunk> {
+  if (error !== null) {
+    yield failure(error);
+    return;
+  }
+  for (const tool of tools)
+    yield {
+      kind: "step",
+      step: {
+        id: tool.id,
+        label: toolLabel(tool.tool),
+        status: "done",
+        outcome: "Ready for employee review",
+      },
+    };
+}
 
 async function* readBuilderReply(
   body: ReadableStream<Uint8Array>,
@@ -40,12 +78,7 @@ async function* readBuilderReply(
   try {
     for await (const line of linesOf(body)) {
       signal.throwIfAborted();
-      const event = builderEvent.parse(JSON.parse(line));
-      if (
-        (event.kind === "workflow-end" && endpoint !== "/api/workflow") ||
-        (event.kind === "author-end" && endpoint !== "/api/simulation-author")
-      )
-        throw new Error("Unexpected builder completion");
+      const event = readBuilderEvent(line, endpoint);
       observe(event);
       switch (event.kind) {
         case "session":
@@ -71,20 +104,7 @@ async function* readBuilderReply(
         case "author-end":
           yield* closeMarkdown(emitter);
           emitter = newEmitter;
-          if (event.error === null) {
-            for (const tool of tools)
-              yield {
-                kind: "step",
-                step: {
-                  id: tool.id,
-                  label: toolLabel(tool.tool),
-                  status: "done",
-                  outcome: "Ready for employee review",
-                },
-              };
-          } else {
-            yield failure(event.error);
-          }
+          yield* finishTools(tools, event.error);
           return;
         default: {
           const unhandled: never = event;
@@ -98,13 +118,27 @@ async function* readBuilderReply(
   }
 }
 
-type BuilderOptions = {
-  resume?: { id: string; closed: boolean };
-  observe: (notice: BuilderNotice, id: number) => void;
-} & (
-  | { endpoint: "/api/workflow"; initial: Record<string, never> }
-  | { endpoint: "/api/simulation-author"; initial: { source: SimulationAuthorSource } }
-);
+async function postBuilderMessage(
+  options: BuilderOptions,
+  sessionId: string | undefined,
+  message: string,
+  signal: AbortSignal,
+  observe: (notice: BuilderNotice) => void,
+): Promise<ReadableStream<Uint8Array>> {
+  const startId = sessionId ? undefined : crypto.randomUUID();
+  // Persist the opaque handle before HTTP, including when the first response is lost.
+  if (startId) observe({ kind: "session", id: startId });
+  const response = await fetch(options.endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    signal,
+    body: JSON.stringify(
+      sessionId ? { sessionId, message } : { ...options.initial, startId, message },
+    ),
+  });
+  if (!response.ok || !response.body) throw new Error("Request unavailable");
+  return response.body;
+}
 
 /** Restores human replies with the same formatting as a completed stream, retaining questions. */
 export function builderMessages(
@@ -148,22 +182,9 @@ export function createBuilderAgent(options: BuilderOptions): Agent {
       observe({ kind: "start" });
       try {
         signal.throwIfAborted();
-        const startId = sessionId ? undefined : crypto.randomUUID();
-        // Persist the opaque handle before HTTP, including when the first response is lost.
-        if (startId) observe({ kind: "session", id: startId });
-        const response = await fetch(options.endpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          signal,
-          body: JSON.stringify(
-            sessionId
-              ? { sessionId, message: request.text }
-              : { ...options.initial, startId, message: request.text },
-          ),
-        });
-        if (!response.ok || !response.body) throw new Error("Request unavailable");
+        const body = await postBuilderMessage(options, sessionId, request.text, signal, observe);
         yield* readBuilderReply(
-          response.body,
+          body,
           signal,
           (event) => {
             observe(event);
