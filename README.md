@@ -30,17 +30,21 @@ iterate on the streamed proposal, then click **Accept workflow**. Simulations st
 acceptance opens the first-test-scenario invitation. Describe a scenario in the separate authoring
 chat, review the instructions and expected behavior, then explicitly save and run it. The automated
 customer and support agent converse while the saved scenario stays pinned above the conversation.
-Open **Business checks and execution JSON** to inspect the real payment results. Helpful wording
-remains a separate human review. Desktop web is the only scenario device.
+When execution ends, an outcomes popover opens over a 2px-blurred, read-only transcript. Its
+**Simulation complete** title means execution finished, not that every check passed. Read the actual
+goal statuses. Click **View conversation**, **Close**, or press Escape to reveal the clear history.
+**View results** reopens the outcomes without rerunning anything. Open **Business checks and
+execution JSON** below the transcript to inspect payment evidence. Helpful wording remains a
+separate human review. Desktop web is the only scenario device.
 
 Supported agent settings are brief/warm replies and immediate/confirm-first refunds. Accepted
-settings apply to the executor; ownership and duplicate safeguards cannot be edited. The separate
-**Try it as a customer** path still supports manual requests and follow-ups. Shortcuts only seed
-drafts. Follow-ups preserve invoices; Reset or a fixture change starts fresh. Builder, scenario
-authoring, and customer histories are separate.
+settings apply to the executor; ownership and duplicate safeguards cannot be edited. Select a saved
+scenario using its sidebar row. Its approved definition selects Casey or Morgan; there is no
+separate customer-fixture selector or manual customer screen. Examples only seed authoring drafts.
+Builder, scenario authoring, and automated customer dialogue are separate.
 
-The secondary **Tool probe · no model** controls exercise corrected/vulnerable enforcement on
-separate fresh invoices. They are never presented as a live conversation.
+Corrected and vulnerable probe endpoints remain available for backend regression checks on separate
+fresh invoices. There is no in-app probe control. A scripted probe is never a live conversation.
 
 ## Enable the live agent
 
@@ -52,18 +56,19 @@ the orb environment. For a non-orb launch, put the same binding in the ignored
 The chats use the existing Anthropic-format OpenRouter client and
 `moonshotai/kimi-k3`, with no model fallback. Each call allows 1,400 output tokens and 20 seconds,
 with at most four rounds per customer turn, eight tool calls per run, and a 45-second turn deadline.
-Customer sessions are limited to named fixtures and six typed turns.
+Automated runs are limited to named fixtures, six customer turns, and 240 seconds overall.
 Missing credentials and upstream failures produce **Execution error**, never a passing verdict.
 Live replies vary. A reply that describes a refund without calling the tool does not change payments
 or prove success. Inspect the actual tool result and payment state, not the agent's claim.
 
-Refresh/reopen in the same browser restores both chats, workflow acceptance, stage/persona and
-execution evidence from their existing server sessions. Local storage contains only opaque handles
-and navigation. Interrupted replies do not resubmit or stay running. Customer Reset clears only that
-test. The demo keeps one workflow, with no back-to-workflow or new-workflow navigation.
-Sessions last 24 hours after the last turn, with a bounded
-24 sessions per role, and **do not survive a Worker/service restart**. Missing state shows explicit
-recovery instead of silently creating fresh invoices. Use the same portal origin and browser.
+Refresh/reopen in the same browser restores existing authoring and workflow sessions without
+resubmission. Local storage contains only opaque handles and navigation. Interrupted replies do not
+resubmit or stay running. The demo keeps one workflow, with no back-to-workflow or new-workflow
+navigation. Builder sessions last 24 hours after the last turn, with at most 24 sessions, and
+**do not survive a Worker/service restart**. Missing sessions show explicit recovery instead of
+invented history. Saved definitions and the latest two completed results per test persist in local
+D1 across restarts with the same storage directory. Old results retain their exact revision and
+settings. An interrupted run never resumes automatically. Use the same portal origin and browser.
 
 The fixture represents a trusted session, not a login implementation. Casey has no delegated
 access to Morgan's account. Morgan owns an eligible $42.00 invoice; Casey's unrelated invoice is
@@ -94,16 +99,16 @@ If Chromium is not installed, set `PLAYWRIGHT_CHROMIUM` to an installed Chrome e
 
 Rehearse the complete real-provider journey separately using
 [VIDEO.md](docs/sierra-demo/VIDEO.md). It spends model credit and must retain actual latency and
-results. The older `simulation-check.mjs --live on` covers the manual customer path, not the
-automated journey. Do not rebuild the SPA under a running Wrangler process; restart the simulation
-service after rebuilding static assets.
+results. The guide also covers a GET-only retention check around an actual Worker restart. Do not
+rebuild the SPA under a running Wrangler process; restart the simulation service after rebuilding
+static assets.
 
-Money and permission checks are deterministic. A model refusal leaves **Tool boundary exercised**
-as **Not exercised**. Use the separate probe to prove enforcement. The human rubric reviews useful
-guidance, private-data disclosure, and unsupported claims; it is not an automated language judge.
+Money and permission checks are deterministic. A refusal without a tool attempt leaves boundary
+coverage not exercised. Use executor regressions to prove enforcement. The human rubric reviews
+useful guidance, private-data disclosure, and unsupported claims; it is not an automated judge.
 
 Use [the five-minute recording outline](docs/sierra-demo/VIDEO.md) to rehearse. Ethan records the
-final narrated application video. No authored reply or tool probe is labeled as a live agent, and
+final narrated application video. No authored reply or backend probe is labeled as a live agent, and
 this sample has no replay mode.
 
 ## Inherited source
