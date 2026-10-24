@@ -16,8 +16,14 @@ pnpm --filter web typecheck
 pnpm --filter web test
 pnpm --filter web build
 pnpm --filter gateway exec vitest run src/simulation.test.ts src/simulationWorker.test.ts
-node apps/web/scripts/simulation-check.mjs
 ```
+
+For browser acceptance, start `node apps/web/scripts/simulation-ui-server.mjs` after building,
+then run `node apps/web/scripts/simulation-runs-check.mjs` in another terminal. This uses real
+HTTP, executor and disposable D1 with controlled external model transport, not live K3.
+It covers saved-scenario selection, streamed conversation, results dismissal/reopening, honest
+incomplete statuses, preserved evidence, and desktop/narrow shell geometry. The retired manual
+customer screen and its separate scenario selector are not part of the app.
 
 Run the local simulation Worker with `pnpm --filter gateway dev:simulation`. The script applies
 only the simulation D1 migrations, then starts Wrangler with its local persistence directory.

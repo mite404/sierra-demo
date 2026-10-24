@@ -1,19 +1,11 @@
 import { Button } from "@yaklabs/ui/components/button";
 import { SidebarProvider } from "@yaklabs/ui/components/sidebar";
-import type { AcceptedWorkflow, SimulationSelection } from "gateway/simulation-contract";
+import type { AcceptedWorkflow } from "gateway/simulation-contract";
 import { useEffect, useState } from "react";
-import { SimulationCustomer } from "./simulation-customer";
 import { SimulationAuthoring } from "./simulation-authoring";
 import { LockedScenarios, SimulationRecovery } from "./simulation-library";
 import { SimulationSetup } from "./simulation-setup";
-import {
-  clearAuthor,
-  readLab,
-  resetLab,
-  restoreLab,
-  saveLab,
-  type SavedLab,
-} from "./simulation-persistence";
+import { clearAuthor, readLab, restoreLab, saveLab } from "./simulation-persistence";
 import "./simulation.css";
 
 function employeeWorkflow(
@@ -64,7 +56,6 @@ function LibraryScreen({ lab }: { lab: ReturnType<typeof useLab> }) {
     <main className="simulation-lab lab-library">
       <header className="lab-header">
         <div>
-          <h1>Sierra Agent QA Lab</h1>
           <span>Independent educational demo · synthetic accounts and payments</span>
         </div>
       </header>
@@ -89,119 +80,84 @@ function LibraryScreen({ lab }: { lab: ReturnType<typeof useLab> }) {
   );
 }
 
-/** Keeps configure, author, and manual-customer roles distinct while the library survives recovery. */
+/** Keeps agent setup and saved scenarios inside one stable shell, including recovery. */
 export function SimulationLab() {
   const lab = useLab();
   return (
     <>
-      <div hidden={lab.library}>
-        {lab.restored ? (
-          <LabWorkspace
-            saved={lab.saved}
-            restored={lab.restored}
-            onLibrary={lab.showLibrary}
-            onWorkflow={lab.setAccepted}
-          />
-        ) : (
-          <SimulationRecovery
-            failed={lab.failed}
-            onLibrary={() => {
-              lab.showLibrary(false);
-            }}
-          />
-        )}
+      <div data-slot="desk" className="lab-desk" aria-hidden="true" />
+      <div data-slot="window" className="lab-window">
+        <header data-slot="title-bar" className="lab-title-bar chrome-surface">
+          <div data-slot="traffic-lights" className="lab-traffic-lights" aria-hidden="true">
+            {["close", "minimise", "zoom"].map((light) => (
+              <span key={light} style={{ background: `var(--traffic-${light})` }} />
+            ))}
+          </div>
+          <h1>Sierra Agent QA Lab</h1>
+        </header>
+        <div className="lab-window-body">
+          <div className="lab-retained-workspace" hidden={lab.library}>
+            {lab.restored ? (
+              <LabWorkspace
+                restored={lab.restored}
+                onLibrary={lab.showLibrary}
+                onWorkflow={lab.setAccepted}
+              />
+            ) : (
+              <SimulationRecovery
+                failed={lab.failed}
+                onLibrary={() => {
+                  lab.showLibrary(false);
+                }}
+              />
+            )}
+          </div>
+          {lab.library && <LibraryScreen lab={lab} />}
+        </div>
       </div>
-      {lab.library && <LibraryScreen lab={lab} />}
     </>
   );
 }
 
-function WorkflowNavigation({
-  configuring,
-  libraryAvailable,
-  onConfigure,
-  onLibrary,
-}: {
-  configuring: boolean;
-  libraryAvailable: boolean;
-  onConfigure: () => void;
-  onLibrary: () => void;
-}) {
-  return (
-    <div className="lab-header-actions">
-      {!configuring && (
-        <Button variant="ghost" onClick={onConfigure}>
-          Configure
-        </Button>
-      )}
-      <Button variant="ghost" disabled={!libraryAvailable} onClick={onLibrary}>
-        Saved simulations
-      </Button>
-    </div>
-  );
-}
-
 function LabWorkspace({
-  saved,
   restored,
   onLibrary,
   onWorkflow,
 }: {
-  saved: SavedLab;
   restored: Awaited<ReturnType<typeof restoreLab>>;
   onLibrary: (create: boolean) => void;
   onWorkflow: (workflow: AcceptedWorkflow | null) => void;
 }) {
-  const [phase, setPhase] = useState(saved.phase === "library" ? "configure" : saved.phase);
   const [workflow, setWorkflow] = useState<AcceptedWorkflow | null>(
-    employeeWorkflow(restored.employee) ?? restored.customer?.workflow ?? null,
+    employeeWorkflow(restored.employee),
   );
   const employee = restored.employee;
-  const [customer, setCustomer] = useState(restored.customer);
   const employeeUnavailable = restored.employeeUnavailable;
-  const [customerUnavailable, setCustomerUnavailable] = useState(restored.customerUnavailable);
-  const [testEpoch, setTestEpoch] = useState(0);
-  const [persona, setPersona] = useState<SimulationSelection["case"]>(
-    restored.customer?.result?.selection.case ?? saved.persona,
-  );
-  const changePhase = (next: "configure" | "customer") => {
-    saveLab({ phase: next });
-    setPhase(next);
-  };
-  const resetCustomer = () => {
-    resetLab();
-    setCustomer(null);
-    setCustomerUnavailable(false);
-    setTestEpoch((epoch) => epoch + 1);
-  };
   return (
     <main className="simulation-lab">
       <header className="lab-header">
         <div>
-          <h1>Sierra Agent QA Lab</h1>
           <span>Independent educational demo · synthetic accounts and payments</span>
         </div>
-        <WorkflowNavigation
-          configuring={phase === "configure"}
-          libraryAvailable={workflow !== null || restored.employeeUnavailable}
-          onConfigure={() => {
-            changePhase("configure");
-          }}
-          onLibrary={() => {
+        <Button
+          variant="ghost"
+          disabled={workflow === null && !employeeUnavailable}
+          onClick={() => {
             onLibrary(false);
           }}
-        />
+        >
+          Saved simulations
+        </Button>
       </header>
       <SidebarProvider className="lab-workspace">
-        <div className="lab-stage" hidden={phase !== "configure"}>
+        <div className="lab-stage">
           {!workflow && <LockedScenarios />}
           {employeeUnavailable ? (
             <div className="lab-welcome" role="alert">
               <h2>Employee configuration unavailable</h2>
               <p>
-                No requests were replayed. Any surviving customer conversation and payment evidence
-                remain available in Customer test. Reload to retry recovery. Saved scenarios remain
-                available for inspection.
+                No requests were replayed. Reload to retry recovery. Saved scenarios and their
+                recorded payment evidence remain available for inspection.
               </p>
             </div>
           ) : (
@@ -211,48 +167,12 @@ function LabWorkspace({
                 setWorkflow(receipt);
                 onWorkflow(receipt);
               }}
-              onTry={() => {
-                changePhase("customer");
-              }}
               onCreate={() => {
                 onLibrary(true);
               }}
             />
           )}
         </div>
-        {(workflow || customerUnavailable) && (
-          <div className="lab-stage" hidden={phase !== "customer"}>
-            {customerUnavailable ? (
-              <div className="lab-welcome" role="alert">
-                <h2>Customer session unavailable</h2>
-                <p>
-                  No request was replayed and no invoices were recreated. Your employee conversation
-                  and accepted workflow are preserved when available. Reset only this test, or
-                  reload to retry recovery.
-                </p>
-                <Button disabled={!workflow || employeeUnavailable} onClick={resetCustomer}>
-                  Reset test
-                </Button>
-              </div>
-            ) : (
-              workflow && (
-                <SimulationCustomer
-                  key={`${workflow.id}-${persona}-${testEpoch}`}
-                  workflow={workflow}
-                  restored={customer}
-                  configurationAvailable={!employeeUnavailable}
-                  persona={persona}
-                  onPersona={(next) => {
-                    resetCustomer();
-                    saveLab({ persona: next });
-                    setPersona(next);
-                  }}
-                  onReset={resetCustomer}
-                />
-              )
-            )}
-          </div>
-        )}
       </SidebarProvider>
     </main>
   );
