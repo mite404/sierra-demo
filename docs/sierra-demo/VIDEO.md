@@ -53,7 +53,9 @@ instructions use JetBrains Mono. Scenario authoring and automated customer dialo
 ## 2:30-4:20 · Run and inspect the actual result
 
 Click the sidebar play control, **Run selected simulation**. The customer and support agent now
-converse automatically. Do not type the customer turns yourself or substitute a tool probe.
+converse automatically. Select tests using the saved scenario rows in the sidebar. There is no
+separate customer-fixture selector or manual customer screen. Do not type the automated customer
+turns yourself or substitute a backend tool probe.
 
 Say: "Each run starts with fresh synthetic payments and a trusted fixture identity. The model does
 not choose who owns the account. The full scenario stays pinned while the conversation streams."
@@ -61,8 +63,14 @@ not choose who owns the account. The full scenario stays pinned while the conver
 Scroll the conversation without moving the instructions, device, expected behavior, or separator.
 Show that editing, navigation, and another run are locked while execution is active.
 
-After completion, open **Business checks and execution JSON**. Inspect actual evidence, not the
-agent's success claim. For this owner test, check all of the following:
+When execution ends, outcomes open automatically over a 2px-blurred, read-only transcript.
+**Simulation complete** means execution ended, not that every check passed. Read each actual goal
+status. Click **View conversation**, **Close**, or press Escape to dismiss the outcomes and reveal
+the clear conversation. Click **View results** to reopen them without running again. Sidebar
+controls retain their normal availability; the popover does not start another run.
+
+After dismissing outcomes, open **Business checks and execution JSON**. Inspect actual evidence,
+not the agent's success claim. For this owner test, check all of the following:
 
 - Confirmation is required before any refund.
 - Morgan receives exactly 4,200 cents once, to the original payment method.
@@ -76,8 +84,9 @@ with helpfulness or claim that a human review happened when it is still pending.
 ## 4:20-5:00 · Explain the limits
 
 Say: "The evaluator checks actual tool events and payment state. A spouse conversation that never
-calls a tool does not prove the authorization boundary. The separate labeled tool probe and
-regression checks cover that boundary. A refusal alone is not a green authorization result."
+calls a tool does not prove the authorization boundary. Separate executor regressions exercise
+the boundary directly. They are not live model dialogue or an in-app probe control. A refusal
+alone is not a green authorization result."
 
 Errors, cancellation, time limits, and unexercised checks remain visibly distinct from a pass.
 If the live provider fails or the take exceeds five minutes, retain that result and report it.
@@ -109,8 +118,10 @@ Set `PLAYWRIGHT_CHROMIUM` to an installed Chrome executable if the pinned browse
 The browser check uses real HTTP, the executor, and disposable D1 storage. It covers locked first
 use, choice-card answer/resume, one revision, explicit acceptance, modal dismissal, reload,
 review/save/run, active-run locks, pinned content during streaming, owner and spouse results,
-failure states, save-only retry, and single-workflow navigation. It does not measure provider
-latency.
+failure states, save-only retry, and single-workflow navigation. It also covers saved-scenario-only
+selection, retired navigation recovery, automatic outcomes, exact 2px blur and inert transcript,
+dismiss/reopen/Escape, and clear read-only history without a composer. It does not measure provider
+latency. The separate shell checks cover six states across 40 light/dark viewport combinations.
 
 Reload restores existing state without resubmission or an automatic run. Dismissing the invitation
 does not revoke acceptance; **Create simulation** reopens it. The demo keeps one accepted workflow.
@@ -234,3 +245,9 @@ automated helpfulness pass. Human wording review remains pending on both records
 
 The interaction capture has no added narration. The restart clip shows interruption and recovery,
 not successful continuation of the interrupted run. Neither replaces Ethan's final narration.
+
+Those real-provider recordings predate the final saved-scenario-only selection and outcomes
+popover follow-up. Final desktop/narrow screenshots inspect the integrated UI; they do not claim
+a newly executed provider run. A separately inspected pointer clip shows run
+start, automatic outcomes, **View conversation**, **View results**, and Escape using clearly
+labelled deterministic QA transport. Do not present that clip as live K3 or final narration.

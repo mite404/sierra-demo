@@ -40,8 +40,9 @@ cannot establish that the five-minute story works with real model behavior and h
 
 ## Scope
 
-* In: `apps/web/scripts/simulation-check.mjs`, focused regression checks revealed by rehearsal,
-  README, `docs/sierra-demo/VIDEO.md`, and accurate scope/model/persistence references.
+* In: `apps/web/scripts/simulation-runs-check.mjs`, the GET-only retention checker, focused
+  regression checks revealed by rehearsal, README, `docs/sierra-demo/VIDEO.md`, and accurate
+  scope/model/persistence references. ETH-96 owns changes to the shared journey browser script.
 * In: reviewable captures and an operator-ready portal; bounded fixes necessary for this journey.
 * Out: unrelated cleanup, production deployment, narrated-video editing, marketing claims of Sierra
   affiliation, and a generic agent platform. Ethan supplies final narration.
@@ -55,7 +56,7 @@ cannot establish that the five-minute story works with real model behavior and h
   blocked repeat, and the unrelated $17 invoice unchanged.
 * Revise one test in chat, save a new revision, rerun, and compare immutable completed evidence.
 * Restart local Worker with the same directory. Reopen saved tests and two results, showing active
-  session recovery without automatic replay. Keep probes visibly separate from live execution.
+  session recovery without automatic replay. Keep backend probes separate from live execution.
 * Update exact UI names and narration. Explain customer instructions/context/checks in plain words.
 * Record and inspect a concise real interaction clip plus representative desktop/narrow captures.
 
@@ -63,7 +64,8 @@ cannot establish that the five-minute story works with real model behavior and h
 
 * Run the extended live browser harness with real K3 and the existing executor/HTTP regressions.
 * Repeat the restart and storage-retention proof against disposable local state, not user records.
-* Check cancellation/incomplete states and probe controls. Neither is a passing live test.
+* Check cancellation/incomplete states and backend probe regressions. Neither is a passing live
+  test. Saved scenario rows replace the old manual customer selector; there is no in-app probe.
 * Verify all launch commands, typechecks, lint, document links, and Markdown wrapping.
 * Inspect the recording for real streamed dialogue, visible business evidence, and no secrets.
 
@@ -76,7 +78,8 @@ cannot establish that the five-minute story works with real model behavior and h
   review.
 * Saved definitions and two completed results survive a demonstrated Worker restart without replay.
 * Exact controls, model identity, storage limits, run limits, and independent-demo claims match the
-  app.
+  app. Saved scenario rows are the only selection UI. Ended runs open outcomes over a 2px-blurred
+  transcript; View conversation, Close/Escape, and View results dismiss/reopen read-only evidence.
 * Inspected captures/recording and passing executed checks support every stated outcome.
 * The first six tickets are integrated, and this ticket's rehearsal meets every remaining goal.
   No unverified claim is presented as a passing demo.
@@ -93,7 +96,8 @@ material, not permission to replace the recording with seeded responses or a fab
 The [ETH-91 execution thread](https://ampcode.com/threads/T-01a16fb5-4f9a-71be-8f1c-bcf25f8b9f67)
 started at current `origin/main` after PR25. ETH-96's owner supplied exact shell/check files for
 integrated verification only. No product, provider, executor, or shared browser-check changes were
-needed for this ticket. README/design cleanup remains separately owned by the parent.
+needed for this ticket. Root README includes the parent's transferred cleanup baseline and the
+verified final control names. Other inherited-document/design cleanup remains parent-owned.
 
 * Real spouse run `1585214a-5c0b-40df-91ff-88eca0b5f5d5` retained revision 1. A chat revision
   added a password-sharing pressure follow-up. Explicit save created revision 2, used by run
@@ -120,5 +124,8 @@ needed for this ticket. README/design cleanup remains separately owned by the pa
 
 The thread retains full provider results, before/after storage exports, incomplete-author evidence,
 and an inspected restart/recovery recording under `.amp/in/artifacts/eth91/`. The long uncut
-author/revise capture has no narration. See [VIDEO.md](../VIDEO.md) for exact controls and the
-disposable-storage launch/restart procedure. Linear status is not changed by this document.
+author/revise capture has no narration and predates the final selector/popover follow-up. Final
+UI captures and a separately inspected deterministic pointer clip cover that follow-up without
+claiming another live provider success. The integrated journey, typecheck, lint (warnings), format,
+unit tasks, and build passed. See [VIDEO.md](../VIDEO.md) for exact controls and the disposable
+storage launch/restart procedure. Linear status is not changed by this document.
