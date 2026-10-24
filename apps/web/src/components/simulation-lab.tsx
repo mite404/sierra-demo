@@ -100,6 +100,7 @@ export function SimulationLab() {
             {lab.restored ? (
               <LabWorkspace
                 restored={lab.restored}
+                active={!lab.library}
                 onLibrary={lab.showLibrary}
                 onWorkflow={lab.setAccepted}
               />
@@ -121,10 +122,12 @@ export function SimulationLab() {
 
 function LabWorkspace({
   restored,
+  active,
   onLibrary,
   onWorkflow,
 }: {
   restored: Awaited<ReturnType<typeof restoreLab>>;
+  active: boolean;
   onLibrary: (create: boolean) => void;
   onWorkflow: (workflow: AcceptedWorkflow | null) => void;
 }) {
@@ -163,6 +166,7 @@ function LabWorkspace({
           ) : (
             <SimulationSetup
               restored={employee}
+              active={active}
               onAccepted={(receipt) => {
                 setWorkflow(receipt);
                 onWorkflow(receipt);

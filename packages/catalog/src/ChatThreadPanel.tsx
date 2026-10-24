@@ -80,13 +80,19 @@ export type { ThreadActivity };
  * whether it opens already recording (stories), and the host's standing warning for the modal
  * in place of the live microphone's own (`DictationModal`'s `note`).
  */
-export type Dictation = { source?: DictationSource; open?: boolean; note?: string };
+export type Dictation = {
+  source?: DictationSource;
+  open?: boolean;
+  note?: string;
+  /** False cancels recording when a host hides this mounted thread. Defaults to true. */
+  active?: boolean;
+};
 
 // The dictation setup with its defaults filled in; a note stays optional.
 function dictationSetup(
   dictation: Dictation | undefined,
 ): Required<Omit<Dictation, "note">> & Pick<Dictation, "note"> {
-  return { source: "simulated", open: false, ...dictation };
+  return { source: "simulated", open: false, active: true, ...dictation };
 }
 
 // How often the idle clock re-checks when time is live rather than fixed.
@@ -957,7 +963,7 @@ export function ChatThreadPanel({
   empty,
   bare = false,
   footnote,
-  textOnly = false,
+  attachmentsEnabled = true,
   ref,
 }: {
   thread: Thread;
@@ -976,11 +982,11 @@ export function ChatThreadPanel({
   empty?: ReactNode;
   bare?: boolean;
   footnote?: ReactNode;
-  /** Keep the existing composer and history, without file or dictation features. */
-  textOnly?: boolean;
+  /** Hide uploads and screen capture without disabling dictation. */
+  attachmentsEnabled?: boolean;
   ref?: Ref<ThreadHandle>;
 }) {
-  const { source, open, note } = dictationSetup(dictation);
+  const { source, open, note, active } = dictationSetup(dictation);
   const [messages, setMessages] = useState(thread.messages);
   // A question in a reply's stream goes to the dock, which needs the agent to report a malformed
   // one back: the dock's `ask` reaches the replies through this ref, kept current below.
@@ -988,6 +994,7 @@ export function ChatThreadPanel({
   const replies = useAgent(agent, setMessages, questions);
   const { draft, setDraft, latest } = useDraft(initialDraft);
   const [dictating, setDictating] = useState(open);
+  if (!active && dictating) setDictating(false);
   const outbox = useOutbox(thread.messages);
   const { awaiting, setAwaiting, ask } = useAwaiting(thread, replies.tell);
   // An answer a host is giving on the user's behalf, shown on the card before it is sent.
@@ -1219,7 +1226,7 @@ export function ChatThreadPanel({
           {...pointer.compose}
         >
           <ComposeBox
-            textOnly={textOnly}
+            attachmentsEnabled={attachmentsEnabled}
             draft={draft}
             onDraftChange={editDraft}
             onSend={send}
@@ -1236,7 +1243,7 @@ export function ChatThreadPanel({
         </div>
         {footnote !== undefined && <div className="thread-footnote">{footnote}</div>}
       </div>
-      {dictating && (
+      {dictating && active && (
         <DictationModal
           source={source}
           note={note}

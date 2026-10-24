@@ -17,10 +17,12 @@ export function SimulationSetup({
   onAccepted,
   onCreate,
   restored,
+  active,
 }: {
   onAccepted: (receipt: AcceptedWorkflow) => void;
   onCreate: () => void;
   restored: RestoredEmployee | null;
+  active: boolean;
 }) {
   const thread = useRef<ThreadHandle>(null);
   const acceptance = useRef<AbortController | null>(null);
@@ -111,7 +113,8 @@ export function SimulationSetup({
             messages: builderMessages(restored?.messages ?? []),
           }}
           cardsCarry={false}
-          textOnly
+          attachmentsEnabled={false}
+          dictation={{ source: "microphone", active }}
           width={undefined}
           headerActions={<span className="lab-role">Your agent</span>}
           empty={
