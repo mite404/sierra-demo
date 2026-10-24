@@ -1,11 +1,19 @@
 /* Layout uses --space (24px) and its fractions. Thread, composer, turns, work details and sidebar
    keep their catalog/shadcn styling. No replacement theme, bubbles, or message animations. */
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/fonts/JetBrainsMono-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
 .simulation-lab {
   height: 100dvh;
   display: flex;
   flex-direction: column;
   color: var(--ink);
   background: var(--paper);
+  font-family: var(--font-text);
 }
 .lab-header {
   display: flex;
@@ -87,6 +95,9 @@
   font-size: 12px;
 }
 .lab-sidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   width: calc(var(--space) * 21);
   min-width: 0;
   border-left: 1px solid var(--hairline);
@@ -265,26 +276,60 @@
 .lab-probe button {
   font-size: 12px;
 }
-.lab-library .lab-sidebar {
-  width: calc(var(--space) * 10);
+.lab-library .lab-sidebar,
+.lab-scenarios {
+  width: calc(var(--space) * 12);
   flex-shrink: 0;
+  border-left: 0;
+  border-right: 1px solid var(--hairline);
+}
+.lab-library-toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: calc(var(--space) / 6);
+}
+.lab-setup-workspace {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+.lab-setup-review {
+  order: -1;
+  padding: calc(var(--space) / 2) var(--space);
+  border-bottom: 1px solid var(--hairline);
+}
+.lab-setup-review .lab-event-row {
+  display: inline-flex;
+  margin-right: var(--space);
+}
+.lab-setup-review .lab-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: calc(var(--space) / 2);
 }
 .lab-library-review {
   flex: 1;
   min-width: 0;
-  overflow-y: auto;
-  padding: var(--space);
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 .lab-author-workspace {
   display: flex;
   flex: 1;
   min-width: 0;
+  min-height: 0;
+  flex-direction: column;
 }
 .lab-author-review {
-  width: calc(var(--space) * 16);
+  width: 100%;
   flex-shrink: 0;
   overflow-y: auto;
-  border-left: 1px solid var(--hairline);
+  max-height: 45%;
+  border-top: 1px solid var(--hairline);
   padding: calc(var(--space) * 2 / 3);
   background: var(--paper-deep);
 }
@@ -309,18 +354,91 @@
   overflow-wrap: anywhere;
 }
 .lab-library-item {
-  padding: calc(var(--space) / 2) 0;
-  border-bottom: 1px solid var(--hairline);
-  overflow-wrap: anywhere;
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  width: 100%;
+  height: auto;
+  min-width: 0;
+  padding: calc(var(--space) / 2);
+  text-align: left;
+  white-space: normal;
+}
+.lab-library-item .lab-muted {
+  white-space: normal;
+  font-weight: 400;
+}
+.lab-library-item[aria-current="page"] {
+  background: var(--paper);
+  outline: 1px solid var(--hairline);
+}
+.lab-library-name {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .lab-saved-run {
-  display: grid;
-  gap: var(--space);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
   min-width: 0;
+  min-height: 0;
+}
+.lab-saved-run > form {
+  display: none;
+}
+.lab-pinned-summary {
+  flex-shrink: 0;
+  max-height: 65%;
+  overflow-y: auto;
+  padding: calc(var(--space) * 2 / 3) var(--space);
+  background: var(--paper);
+}
+.lab-summary-separator {
+  flex-shrink: 0;
+}
+.lab-run-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: calc(var(--space) * 2 / 3) var(--space);
+  scrollbar-gutter: stable;
+}
+.lab-definition .lab-saved-instructions {
+  font-family: "JetBrains Mono", monospace;
+}
+.lab-device {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space) / 3);
+}
+.lab-device span {
+  margin-right: calc(var(--space) / 3);
+}
+.lab-invitation {
+  display: grid;
+  gap: calc(var(--space) / 2);
+  padding: 0 calc(var(--space) * 2 / 3) calc(var(--space) * 2 / 3);
+}
+.lab-invitation svg,
+.lab-scenarios svg {
+  display: inline;
+  vertical-align: middle;
+}
+.lab-invitation select {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-text);
 }
 .lab-saved-run h2 {
   font: 500 24px/1.2 var(--font-display);
   margin: 0 0 calc(var(--space) / 2);
+}
+.lab-saved-run .lab-run-status {
+  font: 500 13px/20px var(--font-text);
 }
 .lab-run-controls .lab-header-actions {
   flex-wrap: wrap;
@@ -330,7 +448,7 @@
 }
 .lab-run-columns {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space);
   align-items: start;
 }
@@ -386,40 +504,47 @@
   outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
-.lab-completed-run {
-  padding: var(--space) 0;
-  border-top: 1px solid var(--hairline);
-}
 .lab-saved-run .lab-json {
   white-space: pre;
   overflow: auto;
   width: 100%;
   height: calc(var(--space) * 16);
 }
-@media (max-width: 1100px) {
-  .lab-run-columns {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-@media (max-width: 1100px) {
+@media (max-width: 800px) {
   .lab-library .lab-stage {
     flex-direction: column;
-    overflow-y: auto;
   }
-  .lab-library .lab-sidebar {
+  .lab-library .lab-sidebar,
+  .lab-scenarios {
     width: 100%;
     height: auto;
     border-left: 0;
     border-top: 1px solid var(--hairline);
+    max-height: calc(var(--space) * 9);
   }
-  .lab-author-workspace {
-    min-height: calc(var(--space) * 30);
+  .lab-library .lab-sidebar [data-slot="sidebar-header"] {
+    padding: calc(var(--space) / 3) calc(var(--space) * 2 / 3);
+  }
+  .lab-library .lab-sidebar .lab-review-actions {
+    margin-top: calc(var(--space) / 3);
+    display: flex;
+    flex-wrap: wrap;
+    gap: calc(var(--space) / 3);
+  }
+  .lab-library-review {
+    min-height: 0;
+  }
+  .lab-pinned-summary {
+    padding: calc(var(--space) / 2);
+    max-height: 75%;
+  }
+  .lab-run-scroll {
+    padding: calc(var(--space) / 2);
   }
 }
 @media (max-width: 800px) {
   .simulation-lab {
-    height: auto;
-    min-height: 100dvh;
+    height: 100dvh;
   }
   .lab-header {
     align-items: start;
@@ -443,8 +568,7 @@
     border-top: 1px solid var(--hairline);
   }
   .lab-conversation {
-    height: 70dvh;
-    flex: none;
+    min-height: calc(var(--space) * 15);
   }
   .lab-sidebar {
     width: 100%;

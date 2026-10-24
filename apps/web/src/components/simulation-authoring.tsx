@@ -4,10 +4,10 @@ import {
   type SavedSimulationDefinition,
   type SimulationAuthorSource,
 } from "gateway/simulation-contract";
-import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type RefObject } from "react";
 import { AuthorChat } from "./simulation-author-chat";
 import { SimulationRunView } from "./simulation-run-view";
-import { LibrarySidebar, LibraryWelcome } from "./simulation-library";
+import { LibrarySidebar, LibraryWelcome, ScenarioInvitation } from "./simulation-library";
 import { clearAuthor, readLab, saveLab, type RestoredAuthor } from "./simulation-persistence";
 
 type View =
@@ -141,6 +141,8 @@ function LibraryView({
   start,
   onSaved,
   onLock,
+  runFormId,
+  onStatus,
 }: {
   view: View;
   epoch: number;
@@ -149,14 +151,20 @@ function LibraryView({
   start: () => void;
   onSaved: (saved: SavedSimulationDefinition) => void;
   onLock: AuthoringProps["onLock"];
+  runFormId: string;
+  onStatus: (id: string, status: string) => void;
 }) {
-  if (view.kind === "chat") return <AuthorChat key={epoch} {...view} onSaved={onSaved} />;
+  if (view.kind === "chat")
+    return <AuthorChat key={epoch} {...view} onSaved={onSaved} onLock={onLock} />;
   return (
     <div className="lab-library-review">
       {view.kind === "saved" ? (
         <SimulationRunView
           key={`${view.saved.id}-${epoch}`}
           saved={view.saved}
+          runFormId={runFormId}
+          enabled={workflow !== null}
+          onStatus={onStatus}
           onLock={onLock}
           onEdit={() => {
             choose({
@@ -176,11 +184,18 @@ function LibraryView({
 
 /** Saved definitions load separately from chat recovery and credentials. Opening never starts a run. */
 export function SimulationAuthoring(props: AuthoringProps) {
+  const runFormId = useId();
   const opening = useRef<AbortController | null>(null);
   const selection = useDefinitionView(props, opening);
   const library = useSavedLibrary();
+  const [inviting, setInviting] = useState(false);
+  const [openingId, setOpeningId] = useState<string | null>(null);
+  const [statuses, setStatuses] = useState<Record<string, string>>({});
+  const onStatus = useCallback((id: string, status: string) => {
+    setStatuses((previous) => (previous[id] === status ? previous : { ...previous, [id]: status }));
+  }, []);
   const start = () => {
-    if (props.workflow)
+    if (props.workflow && !props.locked && !openingId)
       selection.choose({
         kind: "chat",
         source: { workflowId: props.workflow.id },
@@ -189,14 +204,18 @@ export function SimulationAuthoring(props: AuthoringProps) {
       });
   };
   const open = (id: string) => {
+    if (props.locked || openingId) return;
+    setOpeningId(id);
     selection.stopRecovery();
     void openDefinition(
       id,
       opening,
       (saved) => {
+        setOpeningId(null);
         selection.choose({ kind: "saved", saved });
       },
       () => {
+        setOpeningId(null);
         library.setError("Saved simulation could not open. Reload the library and try again.");
       },
     );
@@ -207,21 +226,35 @@ export function SimulationAuthoring(props: AuthoringProps) {
   };
   return (
     <>
-      <LibraryView
-        {...selection}
-        workflow={props.workflow}
-        start={start}
-        onSaved={onSaved}
-        onLock={props.onLock}
-      />
+      <ScenarioInvitation open={inviting} onOpenChange={setInviting} onCreate={start} />
       <LibrarySidebar
         workflow={props.workflow}
-        start={start}
+        start={() => {
+          setInviting(true);
+        }}
         open={open}
         library={library}
         unavailable={props.unavailable}
-        locked={props.locked}
+        locked={props.locked || openingId !== null}
+        selectedId={selection.view.kind === "saved" ? selection.view.saved.id : undefined}
+        runFormId={runFormId}
+        statuses={statuses}
       />
+      {openingId === null ? (
+        <LibraryView
+          {...selection}
+          workflow={props.workflow}
+          start={start}
+          onSaved={onSaved}
+          onLock={props.onLock}
+          runFormId={runFormId}
+          onStatus={onStatus}
+        />
+      ) : (
+        <div className="lab-library-review">
+          <output>Opening selected scenario…</output>
+        </div>
+      )}
     </>
   );
 }

@@ -1,7 +1,8 @@
+import { Disclosure } from "@yaklabs/catalog";
 import { Button } from "@yaklabs/ui/components/button";
 import { Separator } from "@yaklabs/ui/components/separator";
 import type { SavedSimulationDefinition, SimulationRun } from "gateway/simulation-contract";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { SavedReview } from "./simulation-definition";
 import { useSimulationRun } from "./simulation-run";
 import { RunEvidence, RunMetadata } from "./simulation-run-evidence";
@@ -17,63 +18,55 @@ const statusLabels = {
   errored: "Execution error. No grade.",
 };
 
-function CompletedRun({
-  run,
-  label,
-  reload,
-}: {
-  run: SimulationRun;
-  label: string;
-  reload: () => Promise<unknown>;
-}) {
-  if (!run.evidence) return null;
-  return (
-    <article aria-label={`${label} completed result`} className="lab-completed-run">
-      <h2>{label}</h2>
-      <RunMetadata run={run} />
-      <RunEvidence run={run} messages={run.evidence.result.conversation} />
-      <RunHumanReview key={run.id} run={run} reload={reload} />
-    </article>
-  );
-}
-
-function CurrentRun({ runner }: { runner: Runner }) {
-  if (runner.current === null) return null;
-  const { run, messages } = runner.current;
-  if (runner.completed?.some((item) => item.id === run.id) === true) return null;
+function runStatus(run: SimulationRun | undefined) {
+  if (!run) return "Not run yet";
+  if (run.active) return statusLabels.running;
   const result = run.evidence?.result;
-  return (
-    <article aria-label="Current run evidence">
-      <h2>
-        {result
-          ? statusLabels[result.status]
-          : run.active
-            ? "Running. No grade yet."
-            : "No completed evidence"}
-      </h2>
-      {run.active && (
-        <p className="lab-muted">
-          Scenario is still active. Do not treat any support turn as a final grade.
-        </p>
-      )}
-      <RunMetadata run={run} />
-      {result && result.error !== null && <p role="alert">{result.error}</p>}
-      <RunEvidence run={run} messages={messages} />
-    </article>
-  );
+  if (!result) return "No completed evidence";
+  if (result.status !== "completed") return statusLabels[result.status];
+  const verdict =
+    result.verdict === "pass"
+      ? "Business checks passed"
+      : result.verdict === "fail"
+        ? "Business checks failed"
+        : "Checks not exercised";
+  return `${verdict} · ${run.humanReview.status === "pending" ? "human review pending" : run.humanReview.status.replaceAll("-", " ")}`;
 }
 
-function RunStartStop({ runner }: { runner: Runner }) {
+function RunRecoveryActions({ runner }: { runner: Runner }) {
   const run = runner.current?.run;
   const busy = runner.operation !== "ready";
-  const active = run?.active ?? false;
-  const unsaved = run?.persistence === "unsaved";
+  if (!run || run.active) return null;
+  if (run.persistence === "unsaved")
+    return (
+      <Button variant="outline" disabled={busy} onClick={() => void runner.save()}>
+        Retry save only
+      </Button>
+    );
+  if (run.persistence === "saving") return null;
+  return (
+    <Button variant="ghost" disabled={busy} onClick={() => void runner.clear()}>
+      Clear temporary view
+    </Button>
+  );
+}
+
+function runActivity(runner: Runner) {
+  if (runner.operation === "stopping")
+    return "Stop requested. Still active until the server confirms termination.";
+  if (runner.current?.run.active) return runner.current.activity;
+  return runner.operation === "loading" ? "Loading run evidence…" : "Ready. No automatic run.";
+}
+
+function RunStartStop({ runner, enabled }: { runner: Runner; enabled: boolean }) {
+  const run = runner.current?.run;
+  const busy = runner.operation !== "ready";
+  const active = run?.active === true;
   return (
     <>
       <Button
         variant="outline"
-        className="btn"
-        disabled={busy || active || unsaved}
+        disabled={!enabled || busy || active || run?.persistence === "unsaved"}
         onClick={() => {
           void runner.start();
         }}
@@ -83,7 +76,6 @@ function RunStartStop({ runner }: { runner: Runner }) {
       {active && (
         <Button
           variant="outline"
-          className="btn"
           onClick={() => {
             void runner.stop();
           }}
@@ -95,167 +87,178 @@ function RunStartStop({ runner }: { runner: Runner }) {
   );
 }
 
-function RunRecoveryActions({ runner }: { runner: Runner }) {
-  const run = runner.current?.run;
+function RunControls({
+  runner,
+  enabled,
+  onEdit,
+  locked,
+}: {
+  runner: Runner;
+  enabled: boolean;
+  onEdit: () => void;
+  locked: boolean;
+}) {
   const busy = runner.operation !== "ready";
   return (
-    <>
-      {run && !run.active && run.persistence !== "unsaved" && run.persistence !== "saving" && (
-        <Button
-          variant="ghost"
-          disabled={busy}
-          onClick={() => {
-            void runner.clear();
-          }}
-        >
-          Clear temporary view
-        </Button>
-      )}
-      {run?.persistence === "unsaved" && (
-        <Button
-          variant="outline"
-          className="btn"
-          disabled={busy || run.active}
-          onClick={() => {
-            void runner.save();
-          }}
-        >
-          Retry save only
-        </Button>
-      )}
-    </>
-  );
-}
-
-function RunControls({ runner }: { runner: Runner }) {
-  const active = runner.current?.run.active === true;
-  const activity =
-    runner.operation === "stopping"
-      ? "Stop requested. Still active until the server confirms termination."
-      : active
-        ? runner.current?.activity
-        : "Ready. No automatic run.";
-  return (
     <section aria-label="Run controls" className="lab-run-controls">
-      <h2>Test this saved simulation</h2>
-      <p className="lab-muted">
-        Each explicit run starts fresh synthetic payments. Stop active work before leaving this
-        view. Save unsaved evidence first. Reload only reads; it never resubmits. Clearing a
-        temporary view never deletes saved tests or results.
-      </p>
       <div className="lab-header-actions">
-        <RunStartStop runner={runner} />
+        <RunStartStop runner={runner} enabled={enabled} />
         <Button
           variant="ghost"
-          disabled={
-            ["loading", "saving"].includes(runner.operation) ||
-            (active && runner.operation !== "stopping")
-          }
+          disabled={busy && runner.operation !== "stopping"}
           onClick={() => {
             void runner.refresh();
           }}
         >
           Read run status
         </Button>
+        <Button variant="ghost" disabled={locked} onClick={onEdit}>
+          Edit in chat
+        </Button>
         <RunRecoveryActions runner={runner} />
       </div>
       <output className="lab-muted" aria-live="polite">
-        {runner.operation === "loading" && !active ? "Loading run evidence…" : activity}
+        {runActivity(runner)}
       </output>
+      {!enabled && (
+        <p className="lab-muted">Accept your current agent before starting a new run.</p>
+      )}
       {runner.error !== null && <p role="alert">{runner.error}</p>}
-    </section>
-  );
-}
-
-function ComparisonWarnings({
-  runs,
-  saved,
-}: {
-  runs: SimulationRun[];
-  saved: SavedSimulationDefinition;
-}) {
-  const differs = runs.some(
-    (run) =>
-      run.evidence?.result.simulation?.revision !== saved.revision ||
-      JSON.stringify(run.evidence.result.workflow) !== JSON.stringify(saved.workflow.config),
-  );
-  const latest = runs.at(0);
-  const previous = runs.at(1);
-  const modelsDiffer =
-    latest !== undefined &&
-    previous !== undefined &&
-    JSON.stringify(latest.evidence?.models) !== JSON.stringify(previous.evidence?.models);
-  return (
-    <>
-      {differs && (
-        <p role="alert">
-          Definition revisions or accepted settings differ from the selected test. This is not a
-          controlled same-version comparison.
-        </p>
-      )}
-      {modelsDiffer && (
-        <p role="alert">
-          Model identities or reported calls differ. Compare the actual identities below; these
-          trials are not guaranteed equivalent.
-        </p>
-      )}
-    </>
-  );
-}
-
-function Comparison({ runner, saved }: { runner: Runner; saved: SavedSimulationDefinition }) {
-  return (
-    <section aria-label="Completed result comparison">
-      <h2>Completed results</h2>
-      <p className="lab-muted">
-        Latest two completions across revisions. Stopped, timed-out and errored runs do not replace
-        these results. Repeated success does not establish model reliability.
-      </p>
-      <ComparisonWarnings runs={runner.completed ?? []} saved={saved} />
-      {runner.completed === null && runner.resultsError === null && (
-        <output>Loading completed results…</output>
-      )}
-      {runner.completed?.length === 0 && (
-        <p>
-          No completed results yet. Only a normal customer stop completes and grades a scenario.
-        </p>
-      )}
       {runner.resultsError !== null && <p role="alert">{runner.resultsError}</p>}
-      {runner.completed?.map((run, index) => (
-        <CompletedRun
-          key={run.id}
-          run={run}
-          label={index === 0 ? "Latest" : "Previous"}
-          reload={runner.loadResults}
-        />
-      ))}
-      {runner.completed?.length === 1 && (
-        <p className="lab-muted">
-          One completed result. Run again explicitly to compare two trials.
-        </p>
-      )}
     </section>
   );
 }
 
-/** Explicit saved-test runs, partial facts, and latest-two completed evidence share one view. */
+function ResultConversation({
+  run,
+  messages,
+  reload,
+}: {
+  run: SimulationRun;
+  messages: NonNullable<Runner["current"]>["messages"];
+  reload: Runner["loadResults"];
+}) {
+  const [technical, setTechnical] = useState(false);
+  const [review, setReview] = useState(false);
+  const result = run.evidence?.result;
+  return (
+    <article
+      aria-label={
+        result?.status === "completed" ? "Latest completed result" : "Current run evidence"
+      }
+    >
+      <h2 className="lab-run-status">{runStatus(run)}</h2>
+      {result?.error && <p role="alert">{result.error}</p>}
+      <RunEvidence run={run} messages={messages} />
+      <Disclosure
+        summary="Technical details"
+        open={technical}
+        onToggle={() => {
+          setTechnical(!technical);
+        }}
+      >
+        <RunMetadata run={run} />
+      </Disclosure>
+      {!run.active && result?.status === "completed" && (
+        <Disclosure
+          summary="Human wording review"
+          open={review}
+          onToggle={() => {
+            setReview(!review);
+          }}
+        >
+          <RunHumanReview key={run.id} run={run} reload={reload} />
+        </Disclosure>
+      )}
+    </article>
+  );
+}
+
+function PreviousResults({ runner, saved }: { runner: Runner; saved: SavedSimulationDefinition }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Disclosure
+      summary="Previous runs and comparison"
+      open={open}
+      onToggle={() => {
+        setOpen(!open);
+      }}
+    >
+      <p className="lab-muted">
+        Latest two completions. Stopped or failed attempts do not replace these results. Repeated
+        success does not establish model reliability.
+      </p>
+      {runner.completed?.length === 2 &&
+        JSON.stringify(runner.completed[0]?.evidence?.models) !==
+          JSON.stringify(runner.completed[1]?.evidence?.models) && (
+          <p role="alert">
+            Model identities or reported calls differ. Compare the actual identities below; these
+            trials are not guaranteed equivalent.
+          </p>
+        )}
+      {runner.completed?.map((run, index) => (
+        <article key={run.id} aria-label={`${index === 0 ? "Latest" : "Previous"} saved evidence`}>
+          <h3>
+            {index === 0 ? "Latest" : "Previous"} · {runStatus(run)}
+          </h3>
+          {(run.evidence?.result.simulation?.revision !== saved.revision ||
+            JSON.stringify(run.evidence?.result.workflow) !==
+              JSON.stringify(saved.workflow.config)) && (
+            <p role="alert">
+              Definition revisions or accepted settings differ. This is not a controlled
+              same-version comparison.
+            </p>
+          )}
+          <RunMetadata run={run} />
+          <RunEvidence run={run} messages={run.evidence?.result.conversation ?? []} />
+        </article>
+      ))}
+      {runner.completed?.length === 0 && <p>No completed results yet.</p>}
+    </Disclosure>
+  );
+}
+
+function selectedRun(runner: Runner) {
+  const current = runner.current?.run;
+  if (current?.active) return current;
+  return (
+    runner.completed?.find((item) => item.id === current?.id) ?? current ?? runner.completed?.[0]
+  );
+}
+
+function conversationMessages(runner: Runner, run: SimulationRun) {
+  return runner.current?.messages ?? run.evidence?.result.conversation ?? [];
+}
+
+/** Pins the saved scenario above independently scrolling, real streamed conversation and evidence. */
 export function SimulationRunView({
   saved,
   onEdit,
   onLock,
+  runFormId,
+  enabled,
+  onStatus,
 }: {
   saved: SavedSimulationDefinition;
   onEdit: () => void;
   onLock: (locked: boolean) => void;
+  runFormId: string;
+  enabled: boolean;
+  onStatus: (id: string, status: string) => void;
 }) {
   const runner = useSimulationRun(saved);
   const locked =
     runner.current?.run.active === true ||
     runner.current?.run.persistence === "unsaved" ||
     runner.operation !== "ready";
+  const run = selectedRun(runner);
+  const status = runner.operation === "loading" && !run ? "Loading results" : runStatus(run);
   useEffect(() => {
     onLock(locked);
   }, [locked, onLock]);
+  useEffect(() => {
+    onStatus(saved.id, status);
+  }, [saved.id, status, onStatus]);
   useEffect(
     () => () => {
       onLock(false);
@@ -264,12 +267,37 @@ export function SimulationRunView({
   );
   return (
     <div className="lab-saved-run">
-      <SavedReview saved={saved} onEdit={onEdit} locked={locked} />
-      <Separator />
-      <RunControls runner={runner} />
-      <CurrentRun runner={runner} />
-      <Separator />
-      <Comparison runner={runner} saved={saved} />
+      <form
+        id={runFormId}
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (enabled && !locked) void runner.start();
+        }}
+      />
+      <div className="lab-pinned-summary">
+        <SavedReview saved={saved} />
+      </div>
+      <Separator className="lab-summary-separator" />
+      <section className="lab-run-scroll" aria-label="Scenario conversation and results">
+        <RunControls runner={runner} enabled={enabled} onEdit={onEdit} locked={locked} />
+        {run ? (
+          <ResultConversation
+            key={run.id}
+            run={run}
+            messages={conversationMessages(runner, run)}
+            reload={runner.loadResults}
+          />
+        ) : (
+          <div className="lab-welcome">
+            <h2>Ready for a conversation</h2>
+            <p>
+              Play this scenario to see how your agent responds. Each run starts with fresh
+              synthetic payments.
+            </p>
+          </div>
+        )}
+        <PreviousResults runner={runner} saved={saved} />
+      </section>
     </div>
   );
 }

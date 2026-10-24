@@ -30,6 +30,7 @@ type ChatProps = {
   workflow: AcceptedWorkflow;
   restored: RestoredAuthor | null;
   onSaved: (saved: SavedSimulationDefinition) => void;
+  onLock: (locked: boolean) => void;
 };
 const examples = [
   {
@@ -178,10 +179,20 @@ function Examples({
 }
 
 /** Distinct author role with a server-held draft and an explicit human save action. */
-export function AuthorChat({ source, workflow, restored, onSaved }: ChatProps) {
+export function AuthorChat({ source, workflow, restored, onSaved, onLock }: ChatProps) {
   const thread = useRef<ThreadHandle>(null);
   const { state, setState, agent } = useAuthor(source, restored);
   const save = useSaveProposal(state, setState, onSaved);
+  const locked = state.kind === "busy" || state.kind === "saving";
+  useEffect(() => {
+    onLock(locked);
+  }, [locked, onLock]);
+  useEffect(
+    () => () => {
+      onLock(false);
+    },
+    [onLock],
+  );
   return (
     <div className="lab-author-workspace">
       <div className="lab-conversation" inert={state.kind === "saving"}>

@@ -89,6 +89,10 @@ titles.
 Inter (sans, optical sizing) is for interface and body text.
 Both are bundled locally (SIL Open Font License) so they render offline in the desktop app.
 
+In the Sierra demo, only saved scenario User instructions use locally bundled JetBrains Mono.
+Draft instructions, expectations, conversation, and controls keep the normal UI typography
+(Ethan; ETH-93). Technical JSON may retain its existing monospace styling inside disclosure.
+
 ## Buttons
 
 ### 8. The outline button is the default
