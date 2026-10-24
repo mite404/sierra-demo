@@ -64,7 +64,6 @@ function LibraryScreen({ lab }: { lab: ReturnType<typeof useLab> }) {
     <main className="simulation-lab lab-library">
       <header className="lab-header">
         <div>
-          <h1>Sierra Agent QA Lab</h1>
           <span>Independent educational demo · synthetic accounts and payments</span>
         </div>
       </header>
@@ -94,24 +93,37 @@ export function SimulationLab() {
   const lab = useLab();
   return (
     <>
-      <div hidden={lab.library}>
-        {lab.restored ? (
-          <LabWorkspace
-            saved={lab.saved}
-            restored={lab.restored}
-            onLibrary={lab.showLibrary}
-            onWorkflow={lab.setAccepted}
-          />
-        ) : (
-          <SimulationRecovery
-            failed={lab.failed}
-            onLibrary={() => {
-              lab.showLibrary(false);
-            }}
-          />
-        )}
+      <div data-slot="desk" className="lab-desk" aria-hidden="true" />
+      <div data-slot="window" className="lab-window">
+        <header data-slot="title-bar" className="lab-title-bar chrome-surface">
+          <div data-slot="traffic-lights" className="lab-traffic-lights" aria-hidden="true">
+            {["close", "minimise", "zoom"].map((light) => (
+              <span key={light} style={{ background: `var(--traffic-${light})` }} />
+            ))}
+          </div>
+          <h1>Sierra Agent QA Lab</h1>
+        </header>
+        <div className="lab-window-body">
+          <div className="lab-retained-workspace" hidden={lab.library}>
+            {lab.restored ? (
+              <LabWorkspace
+                saved={lab.saved}
+                restored={lab.restored}
+                onLibrary={lab.showLibrary}
+                onWorkflow={lab.setAccepted}
+              />
+            ) : (
+              <SimulationRecovery
+                failed={lab.failed}
+                onLibrary={() => {
+                  lab.showLibrary(false);
+                }}
+              />
+            )}
+          </div>
+          {lab.library && <LibraryScreen lab={lab} />}
+        </div>
       </div>
-      {lab.library && <LibraryScreen lab={lab} />}
     </>
   );
 }
@@ -178,7 +190,6 @@ function LabWorkspace({
     <main className="simulation-lab">
       <header className="lab-header">
         <div>
-          <h1>Sierra Agent QA Lab</h1>
           <span>Independent educational demo · synthetic accounts and payments</span>
         </div>
         <WorkflowNavigation
