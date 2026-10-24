@@ -1,4 +1,5 @@
 import { Button } from "@yaklabs/ui/components/button";
+import { Disclosure } from "@yaklabs/catalog";
 import {
   simulationChecks,
   type AcceptedWorkflow,
@@ -6,7 +7,8 @@ import {
   type SimulationDefinitionInput,
   type SimulationDraft,
 } from "gateway/simulation-contract";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { Monitor } from "lucide-react";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -54,61 +56,49 @@ function FrozenWorkflow({ workflow }: { workflow: AcceptedWorkflow }) {
 function DefinitionSummary({
   definition,
   workflow,
+  saved = false,
 }: {
   definition: SimulationDefinitionInput;
   workflow: AcceptedWorkflow;
+  saved?: boolean;
 }) {
+  const [technical, setTechnical] = useState(false);
   return (
     <section aria-label="Simulation summary" className="lab-definition">
       <h2>{definition.name}</h2>
-      <FixedFacts persona={definition.case} />
-      <Section title="Customer instructions">
-        <p>{definition.instructions}</p>
+      <Section title="User instructions">
+        <p className={saved ? "lab-saved-instructions" : undefined}>{definition.instructions}</p>
       </Section>
-      <Section title="Expected business outcomes">
+      <p className="lab-device">
+        <span>Device type</span> <Monitor size={14} aria-hidden="true" /> Desktop web
+      </p>
+      <Section title="Expected agent behavior">
         <ul>
           {definition.checks.map((id) => (
             <li key={id}>{simulationChecks[id].label}</li>
           ))}
         </ul>
-        <p className="lab-muted">
-          Always checked: Casey&apos;s $17 payment stays untouched. A refusal without a
-          Morgan-target tool attempt does not prove boundary enforcement.
-        </p>
       </Section>
-      <Section title="Human review guidance">
-        <p>{definition.humanGuidance}</p>
-      </Section>
-      <FrozenWorkflow workflow={workflow} />
+      {!saved && <p>{definition.humanGuidance}</p>}
+      {!saved && (
+        <Disclosure
+          summary="Fixture and agent settings"
+          open={technical}
+          onToggle={() => {
+            setTechnical(!technical);
+          }}
+        >
+          <FixedFacts persona={definition.case} />
+          <FrozenWorkflow workflow={workflow} />
+        </Disclosure>
+      )}
     </section>
   );
 }
 
 /** An immutable saved revision stays visible until an explicit conversational edit begins. */
-export function SavedReview({
-  saved,
-  onEdit,
-  locked = false,
-}: {
-  saved: SavedSimulationDefinition;
-  onEdit: () => void;
-  locked?: boolean;
-}) {
-  return (
-    <>
-      <p className="lab-role">
-        Saved simulation · revision {saved.revision} · approved by explicit save
-      </p>
-      <DefinitionSummary definition={saved.definition} workflow={saved.workflow} />
-      <Button variant="outline" className="btn" onClick={onEdit} disabled={locked}>
-        Edit in chat
-      </Button>
-      <p className="lab-muted">
-        Saved {new Date(saved.savedAt).toLocaleString()}. Editing does not change this revision
-        until you explicitly save again. Runs use the saved server snapshot, not an unsaved draft.
-      </p>
-    </>
-  );
+export function SavedReview({ saved }: { saved: SavedSimulationDefinition }) {
+  return <DefinitionSummary definition={saved.definition} workflow={saved.workflow} saved />;
 }
 
 function NoProposal({ busy, workflow }: { busy: boolean; workflow: AcceptedWorkflow }) {
@@ -118,12 +108,14 @@ function NoProposal({ busy, workflow }: { busy: boolean; workflow: AcceptedWorkf
       <p className="lab-muted">
         {busy
           ? "The author is responding. No complete reviewed proposal yet."
-          : "No validated proposal has been submitted yet. Answer the author's question or describe the changes you need. Narrated definitions are not saveable; this summary is read-only."}
+          : "Describe a customer situation in chat. Review the proposal here, then save it to run a simulation."}
       </p>
       <p className="lab-muted">
-        Frozen workflow: {workflow.config.tone} replies,{" "}
-        {workflow.config.approval === "confirm" ? "confirm first" : "immediate"}. Ownership and
-        duplicate safeguards stay enforced.
+        Your agent uses {workflow.config.tone} replies and{" "}
+        {workflow.config.approval === "confirm"
+          ? "asks the owner to confirm refunds"
+          : "refunds eligible owner payments immediately"}
+        .
       </p>
     </>
   );

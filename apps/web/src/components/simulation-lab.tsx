@@ -4,7 +4,7 @@ import type { AcceptedWorkflow, SimulationSelection } from "gateway/simulation-c
 import { useEffect, useState } from "react";
 import { SimulationCustomer } from "./simulation-customer";
 import { SimulationAuthoring } from "./simulation-authoring";
-import { SimulationRecovery } from "./simulation-library";
+import { LockedScenarios, SimulationRecovery } from "./simulation-library";
 import { SimulationSetup } from "./simulation-setup";
 import {
   clearAuthor,
@@ -16,6 +16,12 @@ import {
 } from "./simulation-persistence";
 import "./simulation.css";
 
+function employeeWorkflow(
+  employee: Awaited<ReturnType<typeof restoreLab>>["employee"] | undefined,
+) {
+  return employee?.accepted ? { id: employee.id, config: employee.accepted } : null;
+}
+
 function useLab() {
   const [saved] = useState(readLab);
   const [restored, setRestored] = useState<Awaited<ReturnType<typeof restoreLab>> | null>(null);
@@ -24,12 +30,7 @@ function useLab() {
   const [create, setCreate] = useState(false);
   const [libraryEpoch, setLibraryEpoch] = useState(0);
   const [accepted, setAccepted] = useState<AcceptedWorkflow | null>();
-  const workflow =
-    accepted === undefined
-      ? restored?.employee?.accepted
-        ? { id: restored.employee.id, config: restored.employee.accepted }
-        : null
-      : accepted;
+  const workflow = accepted === undefined ? employeeWorkflow(restored?.employee) : accepted;
   const showLibrary = (newTest: boolean) => {
     if (newTest) clearAuthor();
     saveLab({ phase: "library" });
@@ -137,6 +138,36 @@ export function SimulationLab() {
   );
 }
 
+function WorkflowNavigation({
+  configuring,
+  libraryAvailable,
+  onConfigure,
+  onLibrary,
+  onRestart,
+}: {
+  configuring: boolean;
+  libraryAvailable: boolean;
+  onConfigure: () => void;
+  onLibrary: () => void;
+  onRestart: () => void;
+}) {
+  return (
+    <div className="lab-header-actions">
+      {!configuring && (
+        <Button variant="ghost" onClick={onConfigure}>
+          Configure
+        </Button>
+      )}
+      <Button variant="ghost" disabled={!libraryAvailable} onClick={onLibrary}>
+        Saved simulations
+      </Button>
+      <Button variant="outline" className="btn" onClick={onRestart}>
+        New workflow
+      </Button>
+    </div>
+  );
+}
+
 function LabWorkspace({
   saved,
   restored,
@@ -150,9 +181,7 @@ function LabWorkspace({
 }) {
   const [phase, setPhase] = useState(saved.phase === "library" ? "configure" : saved.phase);
   const [workflow, setWorkflow] = useState<AcceptedWorkflow | null>(
-    restored.employee?.accepted
-      ? { id: restored.employee.id, config: restored.employee.accepted }
-      : (restored.customer?.workflow ?? null),
+    employeeWorkflow(restored.employee) ?? restored.customer?.workflow ?? null,
   );
   const [employee, setEmployee] = useState(restored.employee);
   const [customer, setCustomer] = useState(restored.customer);
@@ -192,50 +221,21 @@ function LabWorkspace({
           <h1>Sierra Agent QA Lab</h1>
           <span>Independent educational demo · synthetic accounts and payments</span>
         </div>
-        <div className="lab-header-actions">
-          <Button
-            variant="ghost"
-            onClick={() => {
-              changePhase("configure");
-            }}
-            aria-pressed={phase === "configure"}
-          >
-            Configure
-          </Button>
-          <Button
-            variant="ghost"
-            disabled={!workflow || employeeUnavailable}
-            onClick={() => {
-              onLibrary(true);
-            }}
-          >
-            Create simulation
-          </Button>
-          <Button
-            variant="ghost"
-            onClick={() => {
-              onLibrary(false);
-            }}
-          >
-            Saved simulations
-          </Button>
-          <Button
-            variant="ghost"
-            disabled={!workflow}
-            onClick={() => {
-              changePhase("customer");
-            }}
-            aria-pressed={phase === "customer"}
-          >
-            Customer test
-          </Button>
-          <Button variant="outline" className="btn" onClick={startOver}>
-            New workflow
-          </Button>
-        </div>
+        <WorkflowNavigation
+          configuring={phase === "configure"}
+          libraryAvailable={workflow !== null || restored.employeeUnavailable}
+          onConfigure={() => {
+            changePhase("configure");
+          }}
+          onLibrary={() => {
+            onLibrary(false);
+          }}
+          onRestart={startOver}
+        />
       </header>
       <SidebarProvider className="lab-workspace">
         <div className="lab-stage" hidden={phase !== "configure"}>
+          {!workflow && <LockedScenarios />}
           {employeeUnavailable ? (
             <div className="lab-welcome" role="alert">
               <h2>Employee configuration unavailable</h2>
@@ -255,6 +255,9 @@ function LabWorkspace({
               }}
               onTry={() => {
                 changePhase("customer");
+              }}
+              onCreate={() => {
+                onLibrary(true);
               }}
             />
           )}

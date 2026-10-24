@@ -1,5 +1,7 @@
 import { Badge } from "@yaklabs/ui/components/badge";
+import { Disclosure } from "@yaklabs/catalog";
 import type { SimulationResult, SimulationRun } from "gateway/simulation-contract";
+import { useState } from "react";
 
 const dollars = (cents: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
@@ -96,7 +98,7 @@ function RunTranscript({ messages }: { messages: SimulationResult["conversation"
   for (const message of messages) {
     if (message.role === "customer") turn++;
     rows.push(
-      <div key={`${turn}-${message.role}`} className="lab-run-message">
+      <div key={`${turn}-${message.role}`} className="lab-run-message" data-role={message.role}>
         <strong>{message.role === "customer" ? "Simulated customer" : "Support agent"}</strong>
         <p>{message.text || "Support is preparing a reply…"}</p>
       </div>,
@@ -115,7 +117,7 @@ function RunTranscript({ messages }: { messages: SimulationResult["conversation"
   );
 }
 
-/** Whole-scenario checks and readable payments lead; raw executor facts remain expanded. */
+/** Whole-scenario checks and actual payments remain separate from language review. */
 export function RunBusinessEvidence({ result }: { result: SimulationResult }) {
   const completed = result.status === "completed";
   return (
@@ -200,7 +202,7 @@ export function RunMetadata({ run }: { run: SimulationRun }) {
   );
 }
 
-/** Shared expanded evidence for live partial facts and immutable completed results. */
+/** Conversation leads; executor JSON and payment facts require an explicit disclosure. */
 export function RunEvidence({
   run,
   messages,
@@ -208,14 +210,25 @@ export function RunEvidence({
   run: SimulationRun;
   messages: SimulationResult["conversation"];
 }) {
+  const [open, setOpen] = useState(false);
   const result = run.evidence?.result;
   return (
     <div className="lab-run-columns">
       <RunTranscript messages={messages} />
       {result && (
-        <RunBusinessEvidence
-          result={run.active ? { ...result, status: "running", checks: [], verdict: null } : result}
-        />
+        <Disclosure
+          summary="Business checks and execution JSON"
+          open={open}
+          onToggle={() => {
+            setOpen(!open);
+          }}
+        >
+          <RunBusinessEvidence
+            result={
+              run.active ? { ...result, status: "running", checks: [], verdict: null } : result
+            }
+          />
+        </Disclosure>
       )}
     </div>
   );
