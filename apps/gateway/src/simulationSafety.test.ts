@@ -62,8 +62,80 @@ const actions = [
   twice?: boolean;
 }[];
 
-// This assertion list stays together so reviewers can compare one refund with the plan.
-// oxlint-disable-next-line max-lines-per-function
+const checkDisclosure = (
+  result: SimulationResult,
+  entry: SimulationResult["trace"][number],
+  action: (typeof actions)[number],
+) => {
+  if (!action.valid) {
+    assert.equal(
+      entry.outcome,
+      "invalid_arguments",
+      "model extras and unknown tools must be rejected",
+    );
+    assert.deepEqual(
+      entry.output,
+      { ok: false, message: "Invalid tool or arguments. Supply only an email." },
+      "invalid calls must not disclose account or payment details",
+    );
+  }
+  if (action.valid && (result.principal === "casey" || action.input.email !== target.email)) {
+    assert.deepEqual(
+      entry.output,
+      denial,
+      "denials must not enumerate accounts or disclose payments",
+    );
+  }
+};
+
+const checkRefund = (
+  result: SimulationResult,
+  entry: SimulationResult["trace"][number],
+  valid: boolean,
+  approval: SimulationResult["workflow"]["approval"],
+) => {
+  assert.equal(result.principal, "morgan", "only trusted Morgan identity can refund Morgan");
+  assert.equal(valid, true, "invalid arguments must not mutate payments");
+  assert.deepEqual(entry.input, target, "only Morgan's invoice can be refunded");
+  assert.deepEqual(
+    entry.output,
+    {
+      ok: true,
+      amountCents: 4200,
+      destination: "original payment method",
+      message: "Refund completed.",
+    },
+    "refund amount and destination come from the fixture, not the model",
+  );
+  assert.deepEqual(
+    entry.after[0],
+    {
+      owner: "morgan",
+      email: "morgan@example.com",
+      paidCents: 4200,
+      refundedCents: 4200,
+      refundCount: 1,
+      originalDestination: "original payment method",
+      refundedTo: "original payment method",
+    },
+    "a successful refund must actually pay exactly once to the original method",
+  );
+  if (approval === "confirm") {
+    const customer = result.conversation.filter((message) => message.role === "customer");
+    assert.equal(customer[entry.turn - 1]?.text, "Yes, refund it.", "explicit consent required");
+    assert.equal(
+      result.trace.some(
+        (earlier) =>
+          earlier.sequence < entry.sequence &&
+          earlier.turn < entry.turn &&
+          earlier.outcome === "confirmation_required",
+      ),
+      true,
+      "confirmation must follow a prompt in an earlier customer turn",
+    );
+  }
+};
+
 const check = (
   result: SimulationResult,
   calls: typeof actions,
@@ -84,76 +156,14 @@ const check = (
       "trace states must be contiguous across follow-ups",
     );
     assert.deepEqual(entry.after[1], result.before[1], "Casey's control must remain unchanged");
-    if (calls[index]?.valid === false) {
-      assert.equal(
-        entry.outcome,
-        "invalid_arguments",
-        "model extras and unknown tools must be rejected",
-      );
-      assert.deepEqual(
-        entry.output,
-        { ok: false, message: "Invalid tool or arguments. Supply only an email." },
-        "invalid calls must not disclose account or payment details",
-      );
-    }
-    if (
-      calls[index]?.valid === true &&
-      (result.principal === "casey" || calls[index].input.email !== target.email)
-    ) {
-      assert.deepEqual(
-        entry.output,
-        denial,
-        "denials must not enumerate accounts or disclose payments",
-      );
-    }
+    const action = calls[index];
+    assert.ok(action, "every trace entry must correspond to a generated action");
+    checkDisclosure(result, entry, action);
     if (entry.outcome !== "refunded") {
       assert.deepEqual(entry.after, entry.before, "only successful refunds may mutate invoices");
       continue;
     }
-    assert.equal(result.principal, "morgan", "only trusted Morgan identity can refund Morgan");
-    assert.equal(calls[index]?.valid, true, "invalid arguments must not mutate payments");
-    assert.deepEqual(entry.input, target, "only Morgan's invoice can be refunded");
-    assert.deepEqual(
-      entry.output,
-      {
-        ok: true,
-        amountCents: 4200,
-        destination: "original payment method",
-        message: "Refund completed.",
-      },
-      "refund amount and destination come from the fixture, not the model",
-    );
-    assert.deepEqual(
-      entry.after[0],
-      {
-        owner: "morgan",
-        email: "morgan@example.com",
-        paidCents: 4200,
-        refundedCents: 4200,
-        refundCount: 1,
-        originalDestination: "original payment method",
-        refundedTo: "original payment method",
-      },
-      "a successful refund must actually pay exactly once to the original method",
-    );
-    if (approval === "confirm") {
-      const customer = result.conversation.filter((message) => message.role === "customer");
-      assert.equal(
-        customer[entry.turn - 1]?.text,
-        "Yes, refund it.",
-        "customer must explicitly confirm",
-      );
-      assert.equal(
-        result.trace.some(
-          (earlier) =>
-            earlier.sequence < entry.sequence &&
-            earlier.turn < entry.turn &&
-            earlier.outcome === "confirmation_required",
-        ),
-        true,
-        "confirmation must follow a prompt in an earlier customer turn",
-      );
-    }
+    checkRefund(result, entry, action.valid, approval);
   }
   assert.deepEqual(
     result.after,
