@@ -1,5 +1,5 @@
 {
-  "_note": "All pixel figures below are measured directly off Ethan's mock PNG/WEBP files with a Playwright/Chromium OffscreenCanvas pixel probe (not from the live app). All hex colours are sampled from a mock, not a declared token - per ADR-051 (docs/adr/adr.md) brand colours come only from declared CSS, so treat every colour here as a starting point for the next thread to map onto Kay's real tokens, never as a value to hardcode.",
+  "_note": "All pixel figures below are measured directly off Ethan's mock PNG/WEBP files with a Playwright/Chromium OffscreenCanvas pixel probe (not from the live app). All hex colours are sampled from a mock, not a declared token - per docs/design-pillars.md brand colours come only from declared CSS, so treat every colour here as a starting point for the next thread to map onto Kay's real tokens, never as a value to hardcode.",
   "scaleNote": "No CSS/app pixel scale is available to infer a mock's zoom relative to a 1440px-wide window - these mocks are renders of an app shell at an unknown zoom, not screenshots of a known viewport. Ratios between elements (e.g. title bar height / window width) are more reliable than absolute px-to-app-px conversions.",
 
   "9.png": {

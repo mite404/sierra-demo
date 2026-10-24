@@ -1,14 +1,15 @@
-# Design pillars - the YakLabs visual language
+# Design pillars - Sierra demo visual guidance
 
-Rules for building on-brand surfaces for Kay, reverse-engineered from yaklabs.ai and refined through
-prototyping.
+The Sierra demo reuses the catalog's visual language, originally derived from yaklabs.ai and
+refined through prototyping. These shared component rules remain applicable to this demo;
+references to inherited shell features do not expand its scope in `docs/sierra-demo/PLAN.md`.
 Each rule states what to do, then why.
 Sources are marked: **css** (declared in yaklabs.ai's stylesheet), **derived** (our choice),
 **Ethan** (Ethan's pick), **estimated** (a guess awaiting confirmation).
 No brand colour is sampled from screenshots or recordings: the screen used had a blue-light filter,
 and filters and colour profiles shift pixels (ADR-051).
-Decisions behind these rules live in `docs/adr/adr.md` (ADR-033 to ADR-035); tokens live in
-`packages/catalog/src/tokens.css`.
+Tokens live in `packages/catalog/src/tokens.css`. Historical ADR numbers below identify decisions
+from the source repository's history, not a Sierra ADR register or additional product requirements.
 
 ## Colour
 
@@ -310,8 +311,7 @@ cannot be reused by accident.
 
 Two kinds of motion, with two sets of rules: **feedback** answers a user's action (a hover, a
 menu opening) and should be brief; **status** loops while the agent works and should feel steady.
-The status glyphs live in `packages/catalog/src/motion.css` (Storybook: Motion), and the reasoning
-behind each rule below is told in `docs/FOR_ETHAN.md`.
+The status glyphs live in `packages/catalog/src/motion.css` (Storybook: Motion).
 
 | Motion | Duration | Curve | Source |
 | --- | --- | --- | --- |
@@ -575,7 +575,7 @@ Passed status text uses `--saved-ink`, the existing theme-aware positive status 
   them, or pick a look for each (Ethan's call).
 
 - Whether the stepped slider, dictation controls, links and the primary button should move from
-  olive to ink, so green only appears on button hovers (tracked in `docs/LATER.md`).
+  olive to ink, so green only appears on button hovers.
 
 - Rules 2 and 3 (and the display ink `#22251e`) rest on how the tint looked on a screen with a
   blue-light filter, which warms dark neutrals: re-check them with the filter off.

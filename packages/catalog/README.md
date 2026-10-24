@@ -1,7 +1,7 @@
-# Fieldnotes catalog lab
+# Shared component catalog
 
-A React and Storybook experiment for non-technical knowledge workers. Start with the catalog,
-not a prompt that asks an LLM to invent an interface.
+Reusable React components, conversation presentation, design tokens, and strict data-card schemas
+used by the Sierra demo and its Storybook checks.
 
 ## Run
 
@@ -11,15 +11,15 @@ story tests are hosted by `apps/storybook`; only the node unit tests run from he
 
 ```sh
 pnpm install            # from the repo root
-pnpm --filter @yaklabs/catalog dev
 pnpm storybook          # from the root: apps/storybook serves this package's stories
 pnpm test               # from the root: unit and story tests
-pnpm --filter @yaklabs/catalog build
+pnpm --filter @yaklabs/catalog typecheck
 pnpm build-storybook    # from the root
 ```
 
-The app is a deterministic evaluation workbench. It does not call a model. The JSON editor accepts
-a proposed model response and runs the same validation boundary used by every story.
+The catalog's inherited JSON workbench does not call a model. Its editor accepts a proposed model
+response and runs the same validation boundary used by every story. This is separate from Sierra's
+live agent conversations.
 
 ## Contract
 
@@ -72,8 +72,9 @@ That makes the first product evaluation easier to reason about and the renderer 
 ## Limitations
 
 This validates representation safety, not the truth of business data or the correctness of a model's
-selection. The package itself has no live model, sign-in or server storage; `apps/web`, the runtime
-worker and the gateway add those around it (ADR-088). There is no provenance verification.
+selection. The package itself has no live model, sign-in, or server storage. Sierra's model calls,
+synthetic payment execution, and saved records belong to the gateway. There is no provenance
+verification for catalog card data.
 The schema caps 100 rows and bounded finite numbers. An eventual network ingress must also cap
 request bytes before JSON parsing. The editor's character limit is only a local UX limit.
 Builds currently report upstream Zod annotation warnings and bundle-size warnings. No optimization

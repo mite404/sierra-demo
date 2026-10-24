@@ -111,22 +111,24 @@ this sample has no replay mode.
 This repository is an independent copy of `mite404/yaklabs`, imported at
 `da1073ca8ec29e08070ef312f204db118b08d662`. It retains the original package names, aesthetic, source
 notices, and unused subsystems. `THIRD_PARTY_NOTICES.md` records third-party notices. The lesson's
-scope is [PLAN.md](docs/sierra-demo/PLAN.md); older product docs are historical context.
+scope is [PLAN.md](docs/sierra-demo/PLAN.md). Inherited product plans, research, and ADRs have been
+removed; shared design guidance and source attribution remain.
 
 ## Layout
 
 A pnpm workspace run by Turborepo, laid out the way Better-T-Stack scaffolds it (`bts.jsonc`
 keeps the scaffold's metadata for `pnpm dlx create-better-t-stack@latest add`):
 
-- `apps/web`: the React Router single-page app, built to static files (ADR-083).
+- `apps/web`: the React Router single-page app, built to static files.
 - `apps/storybook`: hosts Storybook and the story tests; the stories themselves live beside their
   components in the catalog.
-- `apps/gateway`: the one Cloudflare Worker, Hono under `/api` and the web build as its static
-  files; it checks WorkOS sign-ins and streams the model's reply (ADR-085, ADR-086).
+- `apps/gateway`: the local simulation Worker, with a Hono API, streamed model replies,
+  synthetic refund execution, local D1 records, and the web build as static files. Its dedicated
+  simulation entry does not require WorkOS or use the inherited production gateway.
 - `packages/runtime`: the NDJSON line reader used by the simulation client.
 - `packages/catalog`: the data-view catalog, `@yaklabs/catalog`: components, stories, schemas
   and tests in one place, so they cannot drift apart.
-- `packages/ui`: shadcn/ui primitives, `@yaklabs/ui`, themed by Kay's tokens (ADR-082).
+- `packages/ui`: shadcn/ui primitives, `@yaklabs/ui`, themed by the shared catalog tokens.
 - `packages/config`: the shared TypeScript base config.
 - `tools/verify-ui-drift`: internal only. The team's UI drift check: it screenshots the
   foundation stories on three engines in both themes and compares them with the approved
