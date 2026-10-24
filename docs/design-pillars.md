@@ -544,6 +544,30 @@ ADR-150).
 | Dictation warning and picker | one warning, the modal's only notice (Ethan), in `--warn-bg` and `--warn-ink`, 14px under the header and 14px over the waveform: while speech cannot become text, why (blocked, unreachable, no service, no answer); otherwise with the live microphone "Speech to Text only offered via system's default microphone.", since the browser's speech service hears only the system's default; in the Demo's simulated recording "Choose Live Playground to test Speech to Text". In the live picker each input says under its name what it does in 12px `--soft-ink`: System Default "Turns speech into text", naming the device it is, the rest "Waveform only"; the device the default is now is not listed twice, and no input shows the USB ids Chrome appends ("(1532:0557)"), while "(Built-in)" and "(Virtual)" stay | Ethan |
 | Reply stamp | 11px on 16px `--soft-ink`, tabular figures, under the latest settled reply only: "just now", then 20-minute steps; no time on a user's turn | Ethan (ADR-152) |
 
+## Sierra desktop shell
+
+The lesson keeps YakLabs' presentation without its workspace runtime (Ethan; ETH-96). From 48rem,
+use a fixed window inset 16px (`--space * 2 / 3`), 12px corners (`--space / 2`), a 1px `--hairline`
+border, `--paper` fill, and `0 8px 32px var(--shadow)` over a plain `--desk`. Below 48rem it is
+full-bleed. The title bar is 44px (`--space * 2 - --btn-radius`) and uses `.chrome-surface`.
+The title uses the compact interface scale, 13px/20px medium Inter. The source is YakLabs
+`104a052309402b25b64c64b8114b69f5e4276523`, `window.tsx` and `title-bar.tsx` (css, derived).
+
+The three traffic lights use the inherited `--traffic-*` colours. Their 14px discs over 12px slots
+have 20px centre spacing, matching the source. They are decorative, hidden from assistive
+technology, absent below 48rem, and never receive focus or perform window actions. Tabs and
+notifications are outside this lesson (Ethan). Inner screens fill available frame height and
+scroll internally so focus cannot move the desk.
+
+Saved scenarios are selected only in the left panel. When a run ends, its outcomes appear in the
+existing nonmodal shadcn dialog, with its inherited surface, border, shadow, corners and motion.
+Only the ended transcript receives 2px blur (`--space / 12`, Ethan). Dismissing results removes
+the blur and reveals the read-only conversation; View results reopens them. Selected expected
+goals, actual evidence and text status labels retain the inspector's icon-led rows. Incomplete
+execution never earns a passing grade. Dialog content uses 16px horizontal padding
+(`--space * 2 / 3`) and 8px row spacing (`--space / 3`), derived from existing sidebar spacing.
+Passed status text uses `--saved-ink`, the existing theme-aware positive status token (derived).
+
 ## Open questions
 
 - The limitation in the words (pillar 29) and the basis lines under a step's outcome (pillar 30)
