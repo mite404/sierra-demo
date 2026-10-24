@@ -1,6 +1,6 @@
 // The design tooling page's evidence (ADR-160): the numbers, the beats of a run, the transcript
 // and the rows the page lays out, the tool's own words rather than copy. Ethan's copy is in the
-// components, and the copy it replaced is kept in docs/reference/verify-ui-tooling-copy.md.
+// components.
 
 /** Where the page's pictures live, under public/, with their credits beside them. */
 export const PICTURES = "/verify-ui-tooling";

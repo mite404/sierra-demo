@@ -118,7 +118,7 @@ filed: 2026-10-24
   ETH-95 is related verification, not a blocker.
 - History confirms intent. [The shell polish commit][polish] establishes the 16px desk inset.
   [The raised-canvas commit][raised] adds the optional shadow and removes the obsolete olive trim.
-  Do not restore the trim. ADR-094, ADR-111, and ADR-136 document these choices.
+  Do not restore the trim. The linked source commits preserve the original decisions.
 - Source dimensions and history were inspected during filing. No UI implementation or runtime
   verification is claimed. The repo Markdown owns the plan, Linear owns status, GitHub discussion.
 

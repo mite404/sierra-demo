@@ -5,9 +5,8 @@ These are common instructions for Ethan's agents across all scenarios.
 ## Sierra demo scope
 
 This repository is the independent `mite404/sierra-demo` teaching demo. Read
-`docs/sierra-demo/PLAN.md` before implementation. Its design pillar and scope replace the inherited
-YakLabs product journey and the Prototype scope section below for this demo only. The engineering
-standards, design language, and component rules still apply.
+`docs/sierra-demo/PLAN.md` before implementation. It defines the demo's product scope. The
+engineering standards, design language, and component rules below still apply.
 
 Use synthetic accounts and payments. Keep the agent helpful while enforcing authorization in the
 executor. Existing YakLabs deployments, WorkOS configuration, and credentials are not demo
@@ -93,21 +92,6 @@ line will not fit in 50 characters, that is usually the commit doing two things 
 
 ---
 
-## Prototype scope
-
-- The prototype build is the deployed site, running the production runtime with sign-in:
-  `VITE_AUTH=workos` and `VITE_AGENT=gateway` (ADR-154 and ADR-156 in `docs/adr/adr.md`).
-  A user signs in through AuthKit and lands on a splash with two projects. Demo plays
-  the scripted scenarios on its own clock. Live Playground is a real thread, persisted in the
-  worker and answered by the model with tools through the gateway, so they can play with it.
-- The sandbox and the levers still run sign-in off, `VITE_AUTH=none` and `VITE_AGENT=lab`,
-  the defaults in `apps/web/.env.example`; there the lab stand-in answers the live thread.
-- Sign-in is wired as ADR-084, ADR-088 and ADR-154 describe. Do not extend it (a custom auth
-  domain, new redirect URIs), and do not build telemetry or the other extras ADR-137 still cuts.
-  If one looks needed, ask Ethan.
-
----
-
 ## Design language
 
 - `docs/design-pillars.md` is the brand guide: colour, type, buttons, data visualisation,
@@ -130,16 +114,16 @@ line will not fit in 50 characters, that is usually the commit doing two things 
 - Build new components with shadcn.
 - Move an existing component to shadcn only when there is a reason to touch it, and screenshot it
   before and after the move.
-- The lab today is hand-made primitives (Disclosure, Menu, Modal, CardHeader, IconButton,
-  TextField), Recharts and Zod, with no Tailwind and no shadcn. No ADR records a decision to drop
-  them. The code drifted there, so do not treat the drift as a choice.
-- Kay's tokens stay the source of truth. Tailwind v4 is configured in CSS with custom properties,
+- The inherited hand-made primitives remain protected above. Use the existing `packages/ui`
+  shadcn components for new UI rather than treating inherited code as a reason to avoid them.
+- The catalog tokens stay the source of truth. Tailwind v4 is configured in CSS with custom
+  properties,
   and shadcn themes itself through variables like `--background`, `--foreground`, `--primary`,
   `--border` and `--ring`, so the tokens feed both. Mapped like this, every shadcn component comes
-  out in Kay's colours and contrast rules with no per-component restyling:
+  out in the demo's colours and contrast rules with no per-component restyling:
 
 ```css
-/* Kay tokens stay the source of truth */
+/* Catalog tokens stay the source of truth */
 @theme inline {
     --color-paper: var(--paper);
     --color-ink: var(--ink);
@@ -152,7 +136,7 @@ line will not fit in 50 characters, that is usually the commit doing two things 
     --muted-foreground: var(--soft-ink);
     --border: var(--hairline);
     --ring: var(--focus);
-    --primary: var(--ink); /* green stays for hovers (ADR-058) */
+    --primary: var(--ink); /* green stays for hovers */
     --radius: 4px; /* the site's button corners */
 }
 ```
