@@ -25,6 +25,7 @@
     "@types/pngjs": "^6.0.5",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "@typescript/native": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "@yaklabs/config": "workspace:*",
     "colorjs.io": "^0.6.1",

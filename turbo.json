@@ -1,6 +1,16 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "ui": "stream",
+  "globalDependencies": [
+    "*",
+    ".github/**",
+    ".agents/**",
+    ".claude/**",
+    ".amp/services.yaml",
+    "docs/**",
+    "scripts/**"
+  ],
+  "globalEnv": ["CI", "NODE_ENV"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
@@ -9,7 +19,7 @@
     // All web dependencies ship source; Vite bundles them, including the gateway schema.
     // Waiting for gateway#build would cycle through the Worker's static-asset build below.
     "web#build": {
-      "dependsOn": []
+      "dependsOn": ["^typecheck"]
     },
     // The Worker's dry run bundles the web build as its static assets (ADR-086).
     "gateway#build": {
@@ -17,10 +27,15 @@
       "outputs": ["dist/**"]
     },
     "build-storybook": {
+      "dependsOn": ["^typecheck"],
       "outputs": ["storybook-static/**"]
     },
     "typecheck": {
       "dependsOn": ["^typecheck"]
+    },
+    "web#typecheck": {
+      "dependsOn": ["^typecheck"],
+      "outputs": [".react-router/types/**"]
     },
     "test": {
       "dependsOn": ["^typecheck"],
