@@ -27,7 +27,7 @@ pre-commit:
 pre-push:
   jobs:
     - name: typecheck
-      run: pnpm typecheck --affected
+      run: TURBO_SCM_BASE=origin/main pnpm typecheck --affected
 
 # A pull or a branch switch that changes the lockfile installs what it added, so the dev server
 # never fails to resolve a package the branch brought in.
