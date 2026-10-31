@@ -21,6 +21,7 @@ await test("CI only selects affected tasks for known workspace inputs and fails 
       ["apps/web/src/root.tsx\npnpm-lock.yaml", 0, 0, "TURBO_FORCE=true\n", ""],
       [".github/workflows/ci.yml", 0, 0, "TURBO_FORCE=true\n", ""],
       ["docs/design-pillars.md", 0, 0, "TURBO_FORCE=true\n", ""],
+      ["tools/verify-ui-drift/src/cli.ts", 0, 0, "TURBO_FORCE=true\n", ""],
       ["new-shared-input/config.json", 0, 0, "TURBO_FORCE=true\n", ""],
       ["apps/new-workspace/src/index.ts", 0, 0, "TURBO_FORCE=true\n", ""],
       ["", 128, 128, "", ""],

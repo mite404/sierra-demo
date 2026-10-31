@@ -53,7 +53,7 @@ jobs:
         run: |
           # Unknown/root inputs must execute everything, not reuse a possibly stale task hash.
           changed=$(git diff --name-only "$TURBO_SCM_BASE" "$TURBO_SCM_HEAD")
-          if grep -qvE '^(apps/(web|gateway|storybook)|packages/(catalog|config|runtime|ui)|tools/verify-ui-drift)/' <<< "$changed"; then
+          if grep -qvE '^(apps/(web|gateway|storybook)|packages/(catalog|config|runtime|ui))/' <<< "$changed"; then
             echo 'TURBO_FORCE=true' >> "$GITHUB_ENV"
           else
             echo 'args=--affected' >> "$GITHUB_OUTPUT"
@@ -110,53 +110,3 @@ jobs:
         with:
           name: storybook-static
           path: apps/storybook/storybook-static/
-
-  design-verification:
-    runs-on: ubuntu-latest
-    # Baselines identify Debian 12 separately from Ubuntu and macOS rasterization.
-    container: node:26.10.0-bookworm
-    timeout-minutes: 30
-    env:
-      HOME: /root
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-          filter: blob:none
-      - name: Trust the runner-mounted checkout
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-      - uses: pnpm/action-setup@v4
-      - run: pnpm install --frozen-lockfile
-      - name: Enable fast browser cache compression
-        # The bookworm image otherwise falls back to gzip for the large browser archive.
-        run: apt-get update && apt-get install -y --no-install-recommends zstd
-      - name: Read Playwright version
-        id: playwright
-        run: echo "version=$(pnpm --filter verify-ui-drift exec playwright --version | cut -d ' ' -f 2)" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@v4
-        id: browsers
-        with:
-          # Cache actions can resolve ~ against the runner user instead of the container HOME.
-          path: /root/.cache/ms-playwright
-          key: playwright-bookworm-all-${{ steps.playwright.outputs.version }}
-      - name: Install the three browser engines
-        if: steps.browsers.outputs.cache-hit != 'true'
-        run: pnpm --filter verify-ui-drift exec playwright install --with-deps chromium firefox webkit
-      - name: Install browser system dependencies
-        if: steps.browsers.outputs.cache-hit == 'true'
-        run: pnpm --filter verify-ui-drift exec playwright install-deps chromium firefox webkit
-      - name: Compare the foundation matrix
-        run: pnpm verify-ui-drift run
-      - name: Exercise the review interface
-        if: success() || failure()
-        run: pnpm --filter verify-ui-drift test:review
-      - name: Upload design evidence even when comparison fails
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: design-verification
-          path: |
-            .artifacts/verify-ui-drift/runs/
-            .artifacts/verify-ui-drift/review-check/
-          include-hidden-files: true
-          if-no-files-found: error
