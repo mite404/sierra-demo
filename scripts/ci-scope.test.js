@@ -12,7 +12,7 @@ const command = scope
   .split("\n      - name:")[0]
   .replaceAll(/^ {10}/gm, "");
 
-test("CI only selects affected tasks for known workspace inputs and fails closed", () => {
+await test("CI only selects affected tasks for known workspace inputs and fails closed", () => {
   const directory = mkdtempSync(join(tmpdir(), "ci-scope-"));
   try {
     for (const [files, gitStatus, expectedStatus, expectedEnv, expectedOutput] of [
