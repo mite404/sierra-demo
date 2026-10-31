@@ -24,6 +24,11 @@ pre-commit:
       run: node scripts/wrap-md.js {staged_files}
       stage_fixed: true
 
+pre-push:
+  jobs:
+    - name: typecheck
+      run: pnpm typecheck --affected
+
 # A pull or a branch switch that changes the lockfile installs what it added, so the dev server
 # never fails to resolve a package the branch brought in.
 post-merge:
