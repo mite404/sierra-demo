@@ -127,6 +127,9 @@ jobs:
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - uses: pnpm/action-setup@v4
       - run: pnpm install --frozen-lockfile
+      - name: Enable fast browser cache compression
+        # The bookworm image otherwise falls back to gzip for the large browser archive.
+        run: apt-get update && apt-get install -y --no-install-recommends zstd
       - name: Read Playwright version
         id: playwright
         run: echo "version=$(pnpm --filter verify-ui-drift exec playwright --version | cut -d ' ' -f 2)" >> "$GITHUB_OUTPUT"
