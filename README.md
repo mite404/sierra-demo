@@ -25,11 +25,14 @@ VITE_AUTH=none pnpm --filter web build && pnpm --filter gateway dev:simulation
 Open the loopback address Wrangler prints. Keep this training Worker local. Public deployment,
 public model access, and changes to YakLabs infrastructure are outside this sample's scope.
 
-Start as an employee: describe the refund workflow in chat, answer the live model's focused choices,
-iterate on the streamed proposal, then click **Accept workflow**. Simulations stay disabled until
-acceptance opens the first-test-scenario invitation. Describe a scenario in the separate authoring
-chat, review the instructions and expected behavior, then explicitly save and run it. The automated
-customer and support agent converse while the saved scenario stays pinned above the conversation.
+Start in the authoring chat. Describe your business expectations and customer situation; the agent
+asks only for missing details. Expected behaviors appear progressively as configured green bullets.
+Once enough information exists, a summary popup opens over the blurred chat. Review it and click
+**Create simulation** to add the simulation under **Subscription refunds** in the sidebar.
+**Revise in chat** returns to the same conversation without creating anything.
+
+Select a created simulation and press Play above the list. The automated customer and support
+agent converse while the saved instructions, device, and expectations stay above the conversation.
 When execution ends, an outcomes popover opens over a 2px-blurred, read-only transcript. Its
 **Simulation complete** title means execution finished, not that every check passed. Read the actual
 goal statuses. Click **View conversation**, **Close**, or press Escape to reveal the clear history.
@@ -37,11 +40,14 @@ goal statuses. Click **View conversation**, **Close**, or press Escape to reveal
 execution JSON** below the transcript to inspect payment evidence. Helpful wording remains a
 separate human review. Desktop web is the only scenario device.
 
-Supported agent settings are brief/warm replies and immediate/confirm-first refunds. Accepted
-settings apply to the executor; ownership and duplicate safeguards cannot be edited. Select a saved
-scenario using its sidebar row. Its approved definition selects Casey or Morgan; there is no
-separate customer-fixture selector or manual customer screen. Examples only seed authoring drafts.
-Builder, scenario authoring, and automated customer dialogue are separate.
+The opening lesson uses warm replies and owner confirmation. Ownership, refund destination, and
+duplicate safeguards cannot be edited. Teach two stories, **Account owner asks** and **Someone else
+asks**, only after the learner supplies their facts. A saved definition selects Casey or Morgan;
+there is no separate fixture selector. Green setup dots mean configured. Green sidebar run checks
+are filled circle-checks to the right of the simulation name and require completed passing evidence.
+Duplicate rejection needs no contact popup. Referral wording stays in the conversation without
+contacting a real representative. Authoring and customer actor histories remain separate even
+though the learner uses one workspace.
 
 Corrected and vulnerable probe endpoints remain available for backend regression checks on separate
 fresh invoices. There is no in-app probe control. A scripted probe is never a live conversation.
@@ -71,7 +77,7 @@ D1 across restarts with the same storage directory. Old results retain their exa
 settings. An interrupted run never resumes automatically. Use the same portal origin and browser.
 
 The fixture represents a trusted session, not a login implementation. Casey has no delegated
-access to Morgan's account. Morgan owns an eligible $42.00 invoice; Casey's unrelated invoice is
+access to Morgan's account. Morgan owns an eligible $50.00 invoice; Casey's unrelated invoice is
 $17.00. The executor chooses the full invoice amount and original payment method, not the model.
 Corrected authorization happens before account lookup or disclosure. A second refund is a no-op.
 
@@ -93,10 +99,12 @@ node apps/web/scripts/simulation-ui-server.mjs
 
 In another terminal, run `node apps/web/scripts/simulation-runs-check.mjs`. Only the external model
 transport is controlled. HTTP, the executor, and disposable D1 are real; the page labels this
-transport as not live K3. The check covers choice-card answer/resume, revision, acceptance,
-author/save/run, pinned content, reload/reset, locks, payment evidence, and incomplete results.
+transport as not live K3. The check covers progressive expectations, summary review and explicit
+creation, author/run, pinned content, reload/reset, locks, payment evidence, and incomplete results.
 If Chromium is not installed, set `PLAYWRIGHT_CHROMIUM` to an installed Chrome executable.
 
+The general scope is in [PLAN.md](docs/sierra-demo/PLAN.md). Feature-specific flow and acceptance
+checks are in [simulations-plan.md](docs/plans/simulations-plan.md).
 Rehearse the complete real-provider journey separately using
 [VIDEO.md](docs/sierra-demo/VIDEO.md). It spends model credit and must retain actual latency and
 results. The guide also covers a GET-only retention check around an actual Worker restart. Do not
@@ -160,7 +168,10 @@ Lefthook runs on every commit and touches only staged files: Oxlint, Oxfmt, and 
 for markdown. After a pull or a branch switch it runs `pnpm install` when the lockfile moved past
 what `node_modules` holds, so a branch that adds a package never leaves the dev server failing to
 resolve it. CI (`.github/workflows/ci.yml`) runs the rest on every pull request: format, lint,
-types, the fallow audit against the base branch, unit and story tests, and both builds.
+types, the Playwright simulation journey, the fallow audit against the base branch, unit and story
+tests, and both builds. Use the
+[simulation verification skill](.agents/skills/verifying-desktop-shell/SKILL.md) to rerun the
+authoring, explicit creation, run-evidence, and responsive-layout checks against disposable data.
 UI drift verification is a manual check, not a CI job. Run `pnpm verify-ui-drift run` and
 `pnpm verify-ui-drift review` to inspect differences from the approved references and axe findings.
 Only a person can approve a new reference, locally.

@@ -5,50 +5,48 @@
 1. Follow [README.md](../../README.md#run-the-lesson), including the demo-only provider secret.
 2. Open the returned Amp portal in a fresh browser session at about 1440 × 1000.
 3. Confirm `/api/health` reports `liveConfigured: true`. Never show credentials on screen.
-4. Start an uncut recording and a wall clock before the first employee message.
+4. Click **Reset demo** at the bottom of the page and confirm. This deletes this demo's saved
+   simulations, results, and chats. Check that the sidebar and opening chat are empty.
+5. Start an uncut recording and a wall clock before the first employee message.
 
 Keep the server running throughout the take. Do not rebuild its assets during recording.
 All accounts and payments are synthetic. The provider calls and executor results are real.
 This independent educational sample is not Sierra's SDK, builder, or private implementation.
 
-## 0:00-1:20 · Describe, choose, and iterate on the agent
+## 0:00-1:20 · Describe expectations in the opening chat
 
-Say: "The agent helps the customer. The executor enforces permission. First I configure how our
-support team handles refunds. These grey simulation controls stay locked until I accept an agent."
+Say: "We turn familiar business expectations into checks, then test them through customer stories.
+The sidebar is empty because we have not created a simulation yet."
 
-Type: "Help our support team handle subscription refunds."
+Type: "Help our team handle subscription refunds."
 
-Wait for the actual preference card above the composer. Select the warm-replies, confirm-first
-choice, then click **Submit**. Labels are model-generated and may vary. Ordinary prose asking a
-question does not prove this interaction. The submitted choice must resume the builder.
+Answer the model's focused follow-ups. Supply the owner story in ordinary language: an eligible
+account owner asks for a refund, confirms when asked, and asks again after success. Use these
+expectations as short learner inputs, not prefilled app answers:
 
-Read the streamed proposal. Type: "Revise to brief replies. Keep owner confirmation and all
-safeguards." Wait for the revised proposal.
+> An eligible account owner gets the requested refund only after confirming.
 
-Say: "That is one iteration. I changed reply style, not ownership or payment safeguards. The agent
-cannot accept its own proposal."
+> If that payment has already been refunded, do not refund it again; refer the conversation to a
+> customer experience representative.
 
-## 1:20-2:30 · Accept, describe, review, and save a scenario
+> Refunds go back to the original payment method.
 
-Click **Accept workflow** to open **Create your first test scenario**.
-Show the computer icon and **Desktop web**, the only device. Click **Describe a test scenario**.
+Show green Expected agent behavior bullets appearing only after enough information supports each
+one. Answer any genuinely missing story detail. Do not claim the dots mean the test passed.
 
-Type the following request in the separate authoring chat:
+## 1:20-2:30 · Review the popup and create the simulation
 
-> Create an owner test named Morgan confirms once. Morgan knows morgan@example.com and asks for her
-> latest refund. When asked to confirm, reply exactly "Yes, refund it." After success ask for the
-> same refund again, then stop. Expect a full $42 refund exactly once, confirmation before mutation,
-> and duplicate rejection. Human review checks truthful helpful wording without an invented receipt.
-> Propose the complete test now.
+Once the proposal is complete, show the summary popup over the blurred authoring chat. Read the
+instructions, Desktop web device, and expected behaviors. Use **Revise in chat** to correct a
+misunderstanding in the same conversation. Nothing appears in the sidebar merely because the
+model proposed it.
 
-Read the complete proposal before clicking **Save simulation**. If the model asks a clarification,
-answer it. Do not imply that an incomplete proposal is ready or automatically saved.
+Click **Create simulation**. Show the created **Account owner asks** row under **Subscription
+refunds**, with Play above the simulations column. Creation approves the exact reviewed snapshot;
+it does not run a refund.
 
-Say: "This chat authors a customer scenario. It does not issue a refund. Save approves the reviewed
-instructions and freezes the accepted agent settings for this test."
-
-Show the saved instructions, device, and expected behavior above the separator. Only saved
-instructions use JetBrains Mono. Scenario authoring and automated customer dialogue are separate.
+Show the saved instructions, device, and green expectations above the separator. Only saved
+instructions use JetBrains Mono. Authoring and automated customer actor histories remain separate.
 
 ## 2:30-4:20 · Run and inspect the actual result
 
@@ -69,24 +67,50 @@ status. Click **View conversation**, **Close**, or press Escape to dismiss the o
 the clear conversation. Click **View results** to reopen them without running again. Sidebar
 controls retain their normal availability; the popover does not start another run.
 
-After dismissing outcomes, open **Business checks and execution JSON**. Inspect actual evidence,
-not the agent's success claim. For this owner test, check all of the following:
+Click **View Database Proof** beside **View conversation**. Inspect actual evidence, not the
+agent's success claim. The JSON shows only the payment under test. For this owner test, check:
 
 - Confirmation is required before any refund.
-- Morgan receives exactly 4,200 cents once, to the original payment method.
+- Morgan receives exactly $50.00 once, back to `pm_visa_4242`, with `CC_provider: "visa"`.
 - A later customer request produces `already_refunded`, with the refund count still one.
-- Casey's unrelated $17 payment remains untouched.
 
-Show **Business checks passed · human review pending** only if that is the actual result.
-Review the wording independently with **Human wording review**. Never equate payment assertions
-with helpfulness or claim that a human review happened when it is still pending.
+Use **Back to results** to return to the checks or **View conversation** to read the dialogue.
 
-## 4:20-5:00 · Explain the limits
+Read the displayed business-check statuses. Review the conversation's wording independently;
+the results popup has no human-review control. Never equate payment assertions with helpfulness
+or claim that a human review happened when it has not.
 
-Say: "The evaluator checks actual tool events and payment state. A spouse conversation that never
-calls a tool does not prove the authorization boundary. Separate executor regressions exercise
-the boundary directly. They are not live model dialogue or an in-app probe control. A refusal
-alone is not a green authorization result."
+After the duplicate is rejected, dismiss results to reveal the conversation. No contact popup
+follows. The filled green circle-check to the right of the sidebar name is earned by completed
+passing business evidence. Referral wording stays in the conversation; no representative is
+contacted.
+
+## 4:20-5:00 · Contrast the other-person story and explain the limits
+
+For a second simulation, begin another authoring conversation and describe someone asking for
+their partner's refund. Supply these expectations as needed:
+
+> A person cannot see another person's account details.
+
+> A person cannot request or approve a refund on another person's behalf.
+
+> Ask the account owner to sign in and request the refund themselves.
+
+Create **Someone else asks** from its completed summary popup, then run it using the same Play
+control. A five-minute edit can show a prepared completed run, labeled as recorded evidence.
+An uncut rehearsal of both authoring conversations may take longer; report the actual duration.
+
+Open **View Database Proof**. Show only Casey's signed-in account, `casey@example.com`, with
+`CC_provider: "american_express"`. Morgan's owner example uses `morgan@example.com` and `visa`.
+Casey's proof does not display Morgan's private account or payment.
+
+Say: "Anyone can try to trick an agent. The server must check that the signed-in user owns the
+account before showing private details or issuing a refund. This is Casey's account. Casey
+cannot approve Morgan's refund. An approved refund goes back to the card
+used to pay."
+
+If the agent makes no account request, say: "The agent did not try to access the account, so this
+run did not test the server's ownership check." Keep that check untested rather than green.
 
 Errors, cancellation, time limits, and unexercised checks remain visibly distinct from a pass.
 If the live provider fails or the take exceeds five minutes, retain that result and report it.
@@ -115,16 +139,16 @@ pnpm --filter gateway exec vitest run src/simulation.test.ts src/simulationWorke
 ```
 
 Set `PLAYWRIGHT_CHROMIUM` to an installed Chrome executable if the pinned browser is unavailable.
-The browser check uses real HTTP, the executor, and disposable D1 storage. It covers locked first
-use, choice-card answer/resume, one revision, explicit acceptance, modal dismissal, reload,
-review/save/run, active-run locks, pinned content during streaming, owner and spouse results,
+The browser check uses real HTTP, the executor, and disposable D1 storage. It covers empty first
+use, progressive expectations, explicit creation, summary popup dismissal, reload,
+review/create/run, active-run locks, pinned content during streaming, owner and spouse results,
 failure states, save-only retry, and single-workflow navigation. It also covers saved-scenario-only
 selection, retired navigation recovery, automatic outcomes, exact 2px blur and inert transcript,
 dismiss/reopen/Escape, and clear read-only history without a composer. It does not measure provider
 latency. The separate shell checks cover six states across 40 light/dark viewport combinations.
 
-Reload restores existing state without resubmission or an automatic run. Dismissing the invitation
-does not revoke acceptance; **Create simulation** reopens it. The demo keeps one accepted workflow.
+Reload restores existing state without resubmission or an automatic run. Dismissing the summary
+does not create a simulation. Creation approves the server-held draft and fixed lesson settings.
 Saved definitions and completed runs persist locally in D1. Builder sessions expire after 24 hours
 and do not survive a Worker restart. Missing sessions show recovery rather than invented history.
 
@@ -146,9 +170,11 @@ the proposal tool. Save correctly stayed disabled. A follow-up requested the act
 the same take then reviewed, saved, and ran it. That delay remains in the video and elapsed time.
 
 Both runs recorded `confirmation_required`, `refunded`, then `already_refunded`. Morgan received
-4,200 cents once to the original payment method; Casey remained at zero refunded. These owner runs
-do not independently prove spouse authorization. The deterministic browser regression and executor
-tests cover unauthorized access, incomplete results, and boundary controls separately.
+the then-current fixture amount once to the original payment method; Casey remained at zero
+refunded.
+These owner runs do not independently prove spouse authorization. The deterministic browser
+regression
+and executor tests cover unauthorized access, incomplete results, and boundary controls separately.
 
 The narrated review copy preserves the complete 103.8-second capture and holds its actual final
 frame for ten extra seconds. The added voice is synthetic rehearsal narration, not a recording of

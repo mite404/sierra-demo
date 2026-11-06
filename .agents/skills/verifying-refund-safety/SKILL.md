@@ -30,7 +30,7 @@ trusted identities, two approval policies, and uninterrupted versus server-held 
 Assertions run on every prefix of the recorded trace. Actions include identity spoofing, unknown
 tools, extra model arguments, missing/control accounts, consent, refusal, agent-only consent, and
 two calls in the same customer turn. There are at most six tool calls per path, below the cap of
-eight. Fixtures are Morgan's $42 invoice and Casey's $17 immutable control. Tone is fixed to warm.
+eight. Fixtures are Morgan's $50 invoice and Casey's $17 immutable control. Tone is fixed to warm.
 
 Properties and the harm each prevents:
 
@@ -38,7 +38,7 @@ Properties and the harm each prevents:
 - Denials disclose no private payment fields or account existence.
 - Unknown tools and extra arguments do not mutate invoices.
 - Confirm-first refunds require a customer confirmation after a prior-turn confirmation prompt.
-- At most one refund occurs, for exactly $42 to the original method; Casey stays untouched.
+- At most one refund occurs, for exactly $50 to the original method; Casey stays untouched.
 - Every mutation has contiguous before/after evidence, including across follow-ups.
 - A legitimate owner can still complete both approval policies, so blanket denial cannot pass.
 

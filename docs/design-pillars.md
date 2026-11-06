@@ -59,6 +59,13 @@ hero photo.
 Ethan: the word **Saved** is an exception, using a clear go-green `--saved-ink`, not muted olive.
 Its light/dark values clear 4.5:1 on both paper and paper-deep; the rest of the status stays gray.
 
+Ethan: configured Expected agent behavior bullets and completed passing simulation row checks
+also use `--saved-ink`. Dots mean configured; run check icons mean completed passing evidence.
+Neither incomplete authoring nor an unrun simulation receives a passing icon.
+Row checks are filled circles to the right of the simulation name, matching the Sierra reference
+(Ethan; 2026-11-06). Reuse the existing 14px icon size, `--saved-ink` fill, `--paper` check stroke,
+and an 8px minimum gap (`--space / 3`, derived). Keep the icon visible when a long name truncates.
+
 ### 6. Every colour goes through a semantic token
 
 Components use only named tokens, never raw hex. The core set uses yaklabs.ai's own names and values
@@ -574,17 +581,29 @@ horizontal padding
 (`--space * 2 / 3`) and 8px row spacing (`--space / 3`), derived from existing sidebar spacing.
 Passed status text uses `--saved-ink`, the existing theme-aware positive status token (derived).
 
-The execution disclosure reuses Workflow goals from the results dialog and aligns its heading
-flush with the conversation (Ethan). Raw JSON remains selectable and keyboard-scrollable. Keys
-and values supporting passed selected goals use `--saved-ink`; other evidence stays `--ink`
-(Ethan; derived from the existing passed-status token). Partial runs and failed executor safety
+Reset demo sits in a page footer below the workspace (Ethan). Reuse the outline button and
+confirmation dialog. Footer padding uses 8px vertically (`--space / 3`) and 24px horizontally
+(`--space`), with the existing `--hairline` divider (derived from toolbar and header spacing).
+At narrow widths, the pinned summary may use the available height minus 72px (`--space * 3`),
+preserving a conversation scroll region while accommodating the footer (derived).
+
+View Database Proof sits beside View conversation in results and shows only the authenticated
+user's account and payment, with one email-form username (Ethan). Morgan's card uses
+`CC_provider: "visa"`; Casey's uses `CC_provider: "american_express"` (Ethan). The execution
+disclosure uses the same evidence view. JSON remains selectable and
+keyboard-scrollable. Keys and values supporting passed selected goals use `--saved-ink`; other
+evidence stays `--ink` (Ethan; derived from the existing passed-status token). Do not display
+another customer's private record or an ownership-mismatch highlight in this view (Ethan).
+Partial runs and failed executor safety
 never receive green evidence highlights. Previous-run comparison, technical details and human
 wording review controls are absent from this view (Ethan).
 
-During authoring, the review panel sits to the right of the chat (Ethan). Its width reuses the
-scenario sidebar's 12 × `--space`, capped at 40% of the authoring workspace to preserve chat space
-(derived). The panel scrolls independently. At the existing 800px breakpoint it stacks below the
-chat, retaining the prior 45% height cap (css).
+During authoring, show established expectations while the learner continues the same conversation.
+Once complete, the summary opens in the existing shadcn dialog over the grayed authoring chat
+(Ethan; 2026-11-06). Reuse the saved-results 2px blur (`--space / 12`) and inert background.
+Create simulation is the explicit approval action; Revise in chat returns to that conversation.
+Keep the dialog's inherited surface, spacing, keyboard behavior, and motion. This replaces the
+earlier permanent full-review panel beside a separate authoring chat.
 
 ## Open questions
 

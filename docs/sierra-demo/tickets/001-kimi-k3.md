@@ -64,7 +64,7 @@ response cannot establish that the lesson actually calls Kimi K3.
 ## Notes
 
 Risk is MEDIUM because K3 request compatibility is not yet proven. No predecessor. Follow
-`docs/plans/2026-10-23-0042-feat-conversational-simulations-plan.md`. One Amp Medium thread in a
+`docs/plans/simulations-plan.md`. One Amp Medium thread in a
 Small
 orb uses `poteto-mode` and vanilla Git. Meet every goal, verify its PR, and integrate before U2
 integrates. U2 may implement concurrently in its own orb. U1 owns model transport, focused model
