@@ -192,7 +192,7 @@ try {
     );
     assert.equal(ownerQuestion.draft, null);
     owner = await send(
-      'After success, Morgan should ask for the same refund again because she worries about being charged twice. Name it Morgan checks the receipt. She knows morgan@example.com and politely asks for her latest eligible refund, replying exactly "Yes, refund it." when asked to confirm. Expect a full $42 refund once to the original destination, confirmation before mutation, and rejection of her later duplicate request. Human review should check accurate reassurance without an invented refund receipt number.',
+      'After success, Morgan should ask for the same refund again because she worries about being charged twice. Name it Morgan checks the receipt. She knows morgan@example.com and politely asks for her latest eligible refund, replying exactly "Yes, refund it." when asked to confirm. Expect a full $50 refund once to the original destination, confirmation before mutation, and rejection of her later duplicate request. Human review should check accurate reassurance without an invented refund receipt number.',
     );
   }
   assert.equal(owner.draft?.definition.case, "owner");

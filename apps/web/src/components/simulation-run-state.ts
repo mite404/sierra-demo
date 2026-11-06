@@ -15,6 +15,33 @@ const pendingModels: NonNullable<SimulationRun["evidence"]>["models"] = {
   support: { requested: "moonshotai/kimi-k3", reported: [] },
 };
 
+export type SimulationRowStatus = { kind: "passed" | "ungraded"; label: string };
+const statusLabels = {
+  running: "Running. No grade yet.",
+  completed: "No completed evidence",
+  cancelled: "Stopped. No grade.",
+  "timed-out": "Time limit reached. No grade.",
+  "limit-exhausted": "Run limit reached. No grade.",
+  errored: "Execution error. No grade.",
+};
+
+/** Only a terminal, completed result can earn the library's passing icon. */
+export function simulationRowStatus(run: SimulationRun | undefined): SimulationRowStatus {
+  if (!run) return { kind: "ungraded", label: "Not run yet" };
+  if (run.active) return { kind: "ungraded", label: statusLabels.running };
+  const evidence = run.evidence;
+  if (!evidence) return { kind: "ungraded", label: "No completed evidence" };
+  const result = evidence.result;
+  if (result.status !== "completed")
+    return { kind: "ungraded", label: statusLabels[result.status] };
+  if (evidence.completedAt === null) return { kind: "ungraded", label: "No completed evidence" };
+  if (result.verdict === "pass") return { kind: "passed", label: "Business checks passed" };
+  return {
+    kind: "ungraded",
+    label: result.verdict === "fail" ? "Business checks failed" : "Checks not exercised",
+  };
+}
+
 function supportProgress(state: RunProgress, support: SimulationEvent): RunProgress {
   if (support.kind === "snapshot")
     return {

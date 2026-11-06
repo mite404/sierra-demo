@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { fileURLToPath, URL } from "node:url";
 import { expect, it } from "vitest";
 import { unstable_dev } from "wrangler";
-import { simulationRun } from "./simulationContract";
+import { savedSimulationDefinition, simulationDraft, simulationRun } from "./simulationContract";
 import { listSimulationRuns, reserveSimulationRun, saveSimulationRun } from "./simulationStorage";
 import {
   appWith,
@@ -65,6 +65,77 @@ it("retains two across revisions and deduplicates immutable delivery", async () 
     }),
   ).rejects.toThrow("conflict");
   expect((await app.fetch(http(`simulation-runs/${first.id}`), env())).status).toBe(410);
+});
+
+it("resets saved revisions and run evidence durably and can start a clean recording", async () => {
+  const { app, third } = await threeCompletions();
+  const draftResponse = await app.fetch(
+    http("simulation-drafts", { ...saved.definition, lesson: "subscription-refunds" }),
+    env(),
+  );
+  const draft = simulationDraft.parse(await draftResponse.json());
+  expect((await app.fetch(http("simulation-reset", { confirm: false }), env())).status).toBe(400);
+  expect(
+    (
+      await app.fetch(
+        new Request(http("simulation-reset", { confirm: true }), {
+          headers: { "content-type": "application/json", "sec-fetch-site": "cross-site" },
+        }),
+        env(),
+      )
+    ).status,
+  ).toBe(403);
+  expect((await app.fetch(http(`simulation-runs/${third.id}`), env())).status).toBe(200);
+  expect((await app.fetch(http("simulation-reset", { confirm: true }), env())).status).toBe(204);
+  expect((await app.fetch(http(`simulation-runs/${third.id}`), env())).status).toBe(410);
+  expect(
+    (await app.fetch(http(`simulation-drafts/${draft.id}/save`, { expectedRevision: 0 }), env()))
+      .status,
+  ).toBe(409);
+  const restarted = createSimulationApp();
+  expect(await (await restarted.fetch(http("simulation-definitions"), env())).json()).toEqual([]);
+  expect((await restarted.fetch(http(`simulation-runs/${third.id}`), env())).status).toBe(410);
+  expect((await app.fetch(http("simulation-reset", { confirm: true }), env())).status).toBe(204);
+  const freshDraft = simulationDraft.parse(
+    await (
+      await app.fetch(
+        http("simulation-drafts", { ...saved.definition, lesson: "subscription-refunds" }),
+        env(),
+      )
+    ).json(),
+  );
+  const fresh = savedSimulationDefinition.parse(
+    await (
+      await app.fetch(
+        http(`simulation-drafts/${freshDraft.id}/save`, { expectedRevision: 0 }),
+        env(),
+      )
+    ).json(),
+  );
+  expect(
+    (await finished(await app.fetch(start(crypto.randomUUID(), fresh), env()))).persistence,
+  ).toBe("saved");
+  await seed(saved);
+});
+
+it("rolls back the entire reset on storage failure and permits an explicit retry", async () => {
+  const { app, third } = await threeCompletions();
+  const before = await (await app.fetch(http("simulation-definitions"), env())).json();
+  await db()
+    .prepare(
+      "CREATE TRIGGER fail_demo_reset BEFORE DELETE ON simulation_definitions BEGIN SELECT RAISE(ABORT, 'test reset failure'); END",
+    )
+    .run();
+  try {
+    expect((await app.fetch(http("simulation-reset", { confirm: true }), env())).status).toBe(503);
+    expect(await (await app.fetch(http("simulation-definitions"), env())).json()).toEqual(before);
+    expect((await app.fetch(http(`simulation-runs/${third.id}`), env())).status).toBe(200);
+  } finally {
+    await db().prepare("DROP TRIGGER fail_demo_reset").run();
+  }
+  expect((await app.fetch(http("simulation-reset", { confirm: true }), env())).status).toBe(204);
+  expect(await (await app.fetch(http("simulation-definitions"), env())).json()).toEqual([]);
+  await seed(saved);
 });
 
 it("rolls back failed pruning and retries only saving, preserving human review", async () => {

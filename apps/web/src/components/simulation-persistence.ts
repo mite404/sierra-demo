@@ -33,6 +33,20 @@ export function saveLab(patch: Partial<SavedLab>) {
   localStorage.setItem(key, JSON.stringify({ ...readLab(), ...patch }));
 }
 
+/** Clears this demo's saved work and browser handles after explicit confirmation.
+ * @throws If the reset cannot be acknowledged or browser storage cannot be cleared.
+ */
+export async function resetDemo() {
+  const response = await fetch("/api/simulation-reset", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ confirm: true }),
+    signal: AbortSignal.timeout(10000),
+  });
+  if (response.status !== 204) throw new Error("Demo reset was not acknowledged.");
+  localStorage.removeItem(key);
+}
+
 /** Releases the author handle without affecting saved definitions.
  * @throws When browser storage cannot be updated.
  */

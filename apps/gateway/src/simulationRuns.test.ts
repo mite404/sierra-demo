@@ -41,7 +41,7 @@ it("runs the whole approved scenario sequentially and grades once", async () => 
           { turn: 3, outcome: "already_refunded" },
         ],
         after: [
-          { refundedCents: 4200, refundCount: 1 },
+          { refundedCents: 5000, refundCount: 1 },
           { refundedCents: 0, refundCount: 0 },
         ],
       },
@@ -69,7 +69,7 @@ it("keeps customer context private and reacts to actual visible dialogue", async
       "tool_result",
       "principal",
       "1700",
-      "4200",
+      "5000",
     ])
       expect(JSON.stringify(request)).not.toContain(hidden);
     expect(request).toMatchObject({
@@ -79,7 +79,7 @@ it("keeps customer context private and reacts to actual visible dialogue", async
       tools: [],
     });
   }
-  expect(JSON.stringify(customerRequests[2])).toContain("Your $42 refund completed.");
+  expect(JSON.stringify(customerRequests[2])).toContain("Your $50 refund completed.");
 });
 
 it("rejects stale revisions, posted authority, missing storage and cross-site starts without inference", async () => {

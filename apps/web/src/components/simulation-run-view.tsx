@@ -11,32 +11,10 @@ import type { SavedSimulationDefinition, SimulationRun } from "gateway/simulatio
 import { useEffect, useRef, useState } from "react";
 import { SavedReview } from "./simulation-definition";
 import { useSimulationRun } from "./simulation-run";
-import { RunEvidence, WorkflowGoals } from "./simulation-run-evidence";
+import { RunBusinessEvidence, RunEvidence, WorkflowGoals } from "./simulation-run-evidence";
+import { simulationRowStatus, type SimulationRowStatus } from "./simulation-run-state";
 
 type Runner = ReturnType<typeof useSimulationRun>;
-const statusLabels = {
-  running: "Running. No grade yet.",
-  completed: "Completed",
-  cancelled: "Stopped. No grade.",
-  "timed-out": "Time limit reached. No grade.",
-  "limit-exhausted": "Run limit reached. No grade.",
-  errored: "Execution error. No grade.",
-};
-
-function runStatus(run: SimulationRun | undefined) {
-  if (!run) return "Not run yet";
-  if (run.active) return statusLabels.running;
-  const result = run.evidence?.result;
-  if (!result) return "No completed evidence";
-  if (result.status !== "completed") return statusLabels[result.status];
-  const verdict =
-    result.verdict === "pass"
-      ? "Business checks passed"
-      : result.verdict === "fail"
-        ? "Business checks failed"
-        : "Checks not exercised";
-  return verdict;
-}
 
 function RunRecoveryActions({ runner }: { runner: Runner }) {
   const run = runner.current?.run;
@@ -123,18 +101,18 @@ function ResultConversation({
   messages: NonNullable<Runner["current"]>["messages"];
   definition: SavedSimulationDefinition["definition"];
 }) {
-  const [resultsDismissed, setResultsDismissed] = useState(false);
+  const [view, setView] = useState<"results" | "proof" | "conversation">("results");
   const resultsButton = useRef<HTMLButtonElement>(null);
   const result = run.evidence?.result;
   const completed = result?.status === "completed";
-  const resultsOpen = !run.active && !resultsDismissed;
+  const resultsOpen = !run.active && view !== "conversation";
   return (
     <article
       aria-label={completed ? "Latest completed result" : "Current run evidence"}
       data-results-open={resultsOpen || undefined}
     >
       <div className="lab-run-heading">
-        <h2 className="lab-run-status">{runStatus(run)}</h2>
+        <h2 className="lab-run-status">{simulationRowStatus(run).label}</h2>
         {!run.active && (
           <>
             <span className="lab-muted">Conversation ended · Read-only</span>
@@ -142,7 +120,7 @@ function ResultConversation({
               ref={resultsButton}
               variant="outline"
               onClick={() => {
-                setResultsDismissed(false);
+                setView("results");
               }}
             >
               View results
@@ -162,24 +140,50 @@ function ResultConversation({
         modal={false}
         open={resultsOpen}
         onOpenChange={(open) => {
-          setResultsDismissed(!open);
+          if (!open) setView("conversation");
         }}
       >
         <DialogContent className="lab-results-popover" initialFocus finalFocus={resultsButton}>
           <DialogHeader>
-            <DialogTitle>{completed ? "Simulation complete" : "Simulation incomplete"}</DialogTitle>
-            <DialogDescription>{runStatus(run)}</DialogDescription>
+            <DialogTitle>
+              {view === "proof"
+                ? "Database proof"
+                : completed
+                  ? "Simulation complete"
+                  : "Simulation incomplete"}
+            </DialogTitle>
+            <DialogDescription>
+              {view === "proof"
+                ? "Recorded synthetic payment state and tool attempts, not the agent's success claim."
+                : simulationRowStatus(run).label}
+            </DialogDescription>
           </DialogHeader>
           <div className="lab-results-body">
-            <WorkflowGoals definition={definition} run={run} />
-            <Button
-              variant="outline"
-              onClick={() => {
-                setResultsDismissed(true);
-              }}
-            >
-              View conversation
-            </Button>
+            {view === "proof" && result ? (
+              <RunBusinessEvidence result={result} />
+            ) : (
+              <WorkflowGoals definition={definition} run={run} />
+            )}
+            <div className="lab-header-actions">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setView("conversation");
+                }}
+              >
+                View conversation
+              </Button>
+              {result && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setView(view === "proof" ? "results" : "proof");
+                  }}
+                >
+                  {view === "proof" ? "Back to results" : "View Database Proof"}
+                </Button>
+              )}
+            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -213,7 +217,7 @@ export function SimulationRunView({
   onLock: (locked: boolean) => void;
   runFormId: string;
   enabled: boolean;
-  onStatus: (id: string, status: string) => void;
+  onStatus: (id: string, status: SimulationRowStatus) => void;
 }) {
   const runner = useSimulationRun(saved);
   const locked =
@@ -221,13 +225,15 @@ export function SimulationRunView({
     runner.current?.run.persistence === "unsaved" ||
     runner.operation !== "ready";
   const run = selectedRun(runner);
-  const status = runner.operation === "loading" && !run ? "Loading results" : runStatus(run);
+  const status = simulationRowStatus(run);
+  const statusKind = status.kind;
+  const statusLabel = runner.operation === "loading" && !run ? "Loading results" : status.label;
   useEffect(() => {
     onLock(locked);
   }, [locked, onLock]);
   useEffect(() => {
-    onStatus(saved.id, status);
-  }, [saved.id, status, onStatus]);
+    onStatus(saved.id, { kind: statusKind, label: statusLabel });
+  }, [saved.id, statusKind, statusLabel, onStatus]);
   useEffect(
     () => () => {
       onLock(false);

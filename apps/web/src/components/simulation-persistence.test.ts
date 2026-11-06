@@ -40,7 +40,7 @@ it("keeps author recovery independent of an expired employee without resubmittin
   });
   expect(restored).toEqual({
     employee: null,
-    author,
+    author: { ...author, expectedChecks: [] },
     employeeUnavailable: true,
     authorUnavailable: false,
   });

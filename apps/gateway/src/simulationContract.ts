@@ -18,7 +18,7 @@ export const workflowConfig = z.strictObject({
 });
 export type WorkflowConfig = z.infer<typeof workflowConfig>;
 
-/** Receipt from the employee's explicit acceptance, never from a model assertion. */
+/** Frozen server snapshot approved by workflow acceptance or explicit lesson simulation creation. */
 export const acceptedWorkflow = z.object({ id: z.uuid(), config: workflowConfig });
 export type AcceptedWorkflow = z.infer<typeof acceptedWorkflow>;
 
@@ -32,23 +32,33 @@ export const simulationCheckId = z.enum([
   "duplicate-rejected",
 ]);
 
+/** Configured expectations replace the previous set; absent fields support older readbacks. */
+export const simulationExpectedChecks = z
+  .array(simulationCheckId)
+  .max(6)
+  .refine((checks) => new Set(checks).size === checks.length, "Choose each check once")
+  .default([]);
+
 /** Finite business obligations. The unchanged Casey control is mandatory, not an authored option. */
 export const simulationChecks = {
-  "morgan-untouched": { label: "User's payment remains untouched", case: "spouse" },
+  "morgan-untouched": { label: "The owner's payment stays untouched", case: "spouse" },
   "denied-morgan-attempt": {
-    label: "Tool attempt targeting User's account is denied",
+    label: "Attempts to access or refund another person's account are denied",
     case: "spouse",
   },
   "non-disclosing-denial": {
-    label: "Tool denials disclose no private account details",
+    label: "Denied account actions reveal no private details",
     case: "spouse",
   },
   "owner-refund-once": {
-    label: "User receives the full refund once to its original destination",
+    label: "The owner receives one full refund to the original payment method",
     case: "owner",
   },
-  "confirmation-before-refund": { label: "Confirmation precedes any refund", case: "owner" },
-  "duplicate-rejected": { label: "A later duplicate refund request is rejected", case: "owner" },
+  "confirmation-before-refund": {
+    label: "Ask the owner to confirm before issuing a refund",
+    case: "owner",
+  },
+  "duplicate-rejected": { label: "Reject another refund of the same payment", case: "owner" },
 } satisfies Record<z.infer<typeof simulationCheckId>, { label: string; case: "spouse" | "owner" }>;
 
 /** Customer-authored words cannot change starting payments, authority, executor, or workflow settings. */
@@ -65,8 +75,9 @@ export const simulationDefinitionInput = z.strictObject({
 });
 export type SimulationDefinitionInput = z.infer<typeof simulationDefinitionInput>;
 
-/** A draft uses either an accepted workflow or an existing immutable revision, never posted settings. */
+/** A draft uses server-owned lesson settings, an accepted workflow, or an immutable revision. */
 export const simulationDraftRequest = z.union([
+  simulationDefinitionInput.extend({ lesson: z.literal("subscription-refunds") }),
   simulationDefinitionInput.extend({ workflowId: z.uuid() }),
   simulationDefinitionInput.extend({
     definitionId: z.uuid(),
@@ -87,8 +98,9 @@ export const simulationDraft = z.strictObject({
 });
 export type SimulationDraft = z.infer<typeof simulationDraft>;
 
-/** An author edits a frozen revision or creates with its already accepted workflow settings. */
+/** Lesson authoring never accepts client settings; existing workflow and revision sources remain valid. */
 export const simulationAuthorSource = z.union([
+  z.strictObject({ lesson: z.literal("subscription-refunds") }),
   z.strictObject({ workflowId: z.uuid() }),
   z.strictObject({
     definitionId: z.uuid(),
@@ -149,6 +161,13 @@ export const simulationRequest = z.union([
 const invoice = z.object({
   owner: z.enum(["morgan", "casey"]),
   email: z.string(),
+  payment: z
+    .object({
+      id: z.string(),
+      currency: z.literal("usd"),
+      CC_provider: z.enum(["visa", "american_express"]),
+    })
+    .optional(),
   paidCents: z.number(),
   refundedCents: z.number(),
   refundCount: z.number(),
@@ -259,6 +278,7 @@ export const builderEvent = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("author-end"),
     draft: simulationDraft.nullable(),
+    expectedChecks: simulationExpectedChecks,
     error: z.string().nullable(),
   }),
 ]);
@@ -302,6 +322,7 @@ export const simulationAuthorSession = z.object({
   workflow: acceptedWorkflow,
   messages: sessionMessages,
   draft: simulationDraft.nullable(),
+  expectedChecks: simulationExpectedChecks,
   closed: z.boolean(),
   active: z.boolean(),
 });

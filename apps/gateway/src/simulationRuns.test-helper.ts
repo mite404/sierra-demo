@@ -127,7 +127,7 @@ export const ownerReplies = () => [
   text('Please reply exactly "Yes, refund it." to proceed.'),
   actor("Yes, refund it."),
   tool(),
-  text("Your $42 refund completed."),
+  text("Your $50 refund completed."),
   actor("You said it completed. Can you refund that same payment again?"),
   tool(),
   text("It was already refunded. No second refund issued."),

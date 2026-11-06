@@ -252,7 +252,7 @@ const startRoutes = (registry: Registry, clientFor: (key: string) => Anthropic) 
 export function createSimulationRunApp(clientFor: (key: string) => Anthropic) {
   // ponytail: one installation-wide actor; use per-account scheduling if multi-user execution is needed.
   const registry: Registry = { sessions: new Map(), active: null };
-  return new Hono<{ Bindings: Env }>()
+  const app = new Hono<{ Bindings: Env }>()
     .use("/api/simulation-runs/:id/*", async (c, next) => {
       if (!z.uuid().safeParse(c.req.param("id")).success)
         return c.json({ error: "Invalid run ID." }, 400);
@@ -263,4 +263,15 @@ export function createSimulationRunApp(clientFor: (key: string) => Anthropic) {
     .route("/", controlRoutes(registry.sessions))
     .route("/", persistenceRoutes(registry.sessions))
     .route("/", startRoutes(registry, clientFor));
+  return {
+    app,
+    /** Includes cancellation and final persistence until the actor actually terminates. */
+    get active() {
+      return registry.active !== null;
+    },
+    /** Releases idle handles after the demo's durable reset succeeds. */
+    reset() {
+      registry.sessions.clear();
+    },
+  };
 }

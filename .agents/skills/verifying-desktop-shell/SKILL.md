@@ -1,77 +1,113 @@
 ---
 name: verifying-desktop-shell
 description: >-
-  Checks Sierra's rendered window geometry and lesson continuity after shell or layout changes.
+  Checks Sierra's simulation authoring, explicit creation, run evidence, and window geometry.
+  Use after changing authoring, the simulation sidebar, run results, or shell layout.
 ---
 
-# Verify the desktop shell
+# Verify the simulation flow and desktop shell
 
-Check that the lesson fits the available window height while its navigation preserves the session.
-A viewport-height inner screen clips controls once desktop insets and title-bar height are added.
+Check the running app through Playwright, real HTTP routes, the executor, and disposable D1.
+Control only external model transport. Preserve learner records in the live lesson service.
 
 ## Run
 
-From the repository root, build the web app and start its deterministic acceptance server. Stop an
-existing `shell-qa` service before rebuilding, and reuse the service if the build is already
-current.
+From the repository root, build the no-login lesson and start the acceptance server:
 
 ```sh
-pnpm --filter web build
+VITE_AUTH=none pnpm --filter web build
 amp orb service start shell-qa --port 8790 --command 'node apps/web/scripts/simulation-ui-server.mjs'
-curl --retry 10 --retry-connrefused --retry-delay 1 -fsS http://127.0.0.1:8790/__qa
+curl --retry 15 --retry-connrefused --retry-delay 1 -fsS http://127.0.0.1:8790/__qa
 PLAYWRIGHT_CHROMIUM="$(ls -d "$HOME"/.agent-browser/browsers/chrome-*/chrome | sort -V | tail -1)" \
   node apps/web/scripts/simulation-runs-check.mjs \
-  --out /tmp/desktop-shell-captures --logs /tmp/desktop-shell-logs
+  --out /tmp/simulation-flow-captures --logs /tmp/simulation-flow-logs
 ```
 
-Require exit status zero and the journey's `PASS` output. Inspect the viewport screenshots for
-setup, question, saved simulation, completed results, frozen conversation, dark/narrow layout,
-and recovery. A full-page screenshot does not establish that the composer is reachable inside
-the frame.
+Restart an existing `shell-qa` service before each journey. Its fresh disposable database is
+required by the empty-library assertions. Outside an orb, run the server in a separate foreground
+terminal. Omit `PLAYWRIGHT_CHROMIUM` when using the repository's installed Playwright Chromium.
 
-## Coverage and limits
+Require exit zero and `PASS single author chat, empty library, progressive/retracted/restored
+expectations`. CI runs this same journey with source-mapped coverage in
+`.github/workflows/ci.yml`. Inspect the viewport captures for empty authoring, partial expectations,
+the creation summary, saved-but-unrun state, results, execution JSON, narrow dark layout, and
+recovery. Put only captures selected for user review in `.amp/in/artifacts/`.
 
-- `apps/web/src/components/simulation-lab.tsx`, `SimulationLab`, owns the stable frame around all
-  screen branches. Old manual-customer navigation must recover the accepted employee without
-  replaying requests. The manual screen and selector are retired. Existing journey assertions
-  retain single-workflow and sidebar-only scenario/run controls.
-- `apps/web/src/components/simulation.css` owns frame geometry and available-height layout.
-  `apps/web/scripts/simulation-shell-check.mjs` checks actual browser rectangles, not a CSS model.
-- `verifyShellSizes` generates every combination of widths 390, 767, 768, 769, 799, 800, 801, 1024,
-  1280, and 1440px; heights 720 and 900px; and light/dark media. Each of five stable lesson states
-  receives all 40 combinations. Streaming is checked by the existing journey at its default size.
-- Results open only after execution stops. The journey checks 2px transcript-only blur, inert
-  obscured chat, dismiss/reopen, Escape and focus return, read-only completed conversation,
-  selected goal counts, and incomplete/not-exercised outcomes. Popup bounds are checked at 390,
-  800, 801, 1024 and 1280px widths; narrow light/dark captures accompany desktop results.
-- Assertions cover 16px desktop insets from 768px, full-bleed narrow layout, 44px nonshrinking
-  chrome,
-  one visible main, frame-height content, decorative desktop-only lights, document scroll bounds,
-  and desktop conversation/summary bounds. The journey also exercises keyboard and internal
-  scrolling.
-- This is bounded generated-input verification in Chromium, not an unbounded formal proof. No CSS
-  verifier is configured. The real HTTP routes, executor, and disposable D1 run with controlled
-  external model transport. Live model output, Safari, touch, all possible content, and arbitrary
-  viewport sizes are outside this check.
-- Verified with Node 26.12.1, pnpm 10.33.0, locked Playwright 1.63.0, and Chromium 156.0.8078.47.
+## Properties and covered code
+
+Requirements come from `docs/sierra-demo/PLAN.md` and `docs/plans/simulations-plan.md`.
+
+- `simulation-author-chat.tsx`, `AuthorChat`, and `simulation-definition.tsx`, `ProposalReview`:
+  insufficient details create no proposal or sidebar record. Validated expectations appear,
+  retract, restore without model replay, and clear after error or cancellation. The complete
+  summary blurs and disables the same chat, receives keyboard focus, and saves nothing on Escape
+  or Revise. Only Create simulation persists. A second proposal preserves the first saved record.
+- `simulation-authoring.tsx` and `simulation-library.tsx`: actual saved stories appear under
+  Subscription refunds. Play is disabled before creation. Configured green dots never substitute
+  for completed passing run evidence. Passing rows show a circular check to the right of the name.
+- `simulation-run-view.tsx`, `simulation-run-state.ts`, and `simulation-run-evidence.tsx`:
+  owner execution records confirmation, one $50.00 refund, and duplicate rejection while the
+  control invoice stays unchanged. Dismissing results never opens a contact popup. Frozen JSON
+  shows two-place decimal dollars derived from stored integer cents, including Casey's $17.00
+  control payment. Fresh reruns start untouched; reload, restart, and save-only retry do
+  not replay models.
+  Error, timeout, cancellation, turn limit, and unexercised checks never earn passing icons.
+- `simulationAuthor.ts`, `simulationAuthorModel.ts`, `simulationContract.ts`, `simulationWorker.ts`,
+  and `simulationWorkflow.ts` in `apps/gateway/src/`: the real lesson-source, progressive authoring,
+  explicit draft save, run, and persistence routes remain in the journey. The deterministic model
+  transport lives only in `apps/web/scripts/simulation-ui-server.mjs`.
+- `simulation-lab.tsx`, `SimulationLab`, and `simulation.css`:
+  `apps/web/scripts/simulation-shell-check.mjs` measures real browser rectangles. The frame keeps
+  16px desktop insets, 44px chrome, one visible main, internal scrolling, and reachable controls.
+  Keyboard scrolling preserves the pinned summary. Legacy routes redirect to the lesson.
+
+Component paths above are under `apps/web/src/components/` unless otherwise stated. The executable
+journey is `apps/web/scripts/simulation-runs-check.mjs`.
+
+## Bounds and assumptions
+
+This is bounded executable verification, not formal proof of the whole app. Playwright checks the
+actual React and Worker code rather than a parallel state-machine model. No verifier is configured
+for arbitrary React events, generated language, or CSS.
+
+`verifyShellSizes` enumerates all 40 combinations of ten widths, two heights, and two themes for
+empty authoring and saved-but-unrun states. Widths are 390, 767, 768, 769, 799, 800, 801, 1024,
+1280, and 1440px. Heights are 720 and 900px. Creation actions are checked at five widths in both
+themes at 720px height. Results bounds use those five widths. Other journey transitions use
+1280 × 720px; a completed dark layout uses 390 × 844px.
+
+The two controlled stories cover owner-confirm-repeat and another person's request without tool
+attempts. The latter must remain `not-exercised`, not an authorization-tool pass. Model wording,
+all possible event interleavings, concurrent tabs, arbitrary content and viewports, Safari, touch,
+and production infrastructure are excluded. For exhaustive bounded executor authorization,
+consent, and idempotency checks, run `.agents/skills/verifying-refund-safety/SKILL.md` too.
+
+Verified with Node 26.12.1, pnpm 10.33.0, locked Playwright 1.63.0, and Chromium 157.0.8103.38.
 
 ## Prove a regression is caught
 
-Temporarily change only `.simulation-lab`'s `height: 100%` to `height: 100dvh` in the real CSS
-source.
-Rebuild, restart the acceptance server, and rerun the command. Require failure at
-`The lesson uses frame height, not viewport height`. Restore that one line, rebuild, and require
-the complete journey to pass again. Keep unrelated working changes intact.
+Temporarily change the **Revise in chat** button in `ProposalReview` from `onClick={onRevise}` to
+`onClick={onCreate}`. Rebuild, restart the disposable server, and run the journey. Require failure
+at `Revise returns to authoring without saving a simulation`, with one saved definition instead
+of an empty array. Restore only that handler, rebuild, restart, and require the full journey to
+pass again. Keep unrelated working changes intact. If a live lesson shares the build directory,
+stop it while testing the mutation and restart it only after restoring the correct build.
 
-This mutation establishes sensitivity of the inner-height property. Other assertions are exercised
-by the matrix but are not separately mutation-proven. A failing browser rectangle is a product
-counterexample unless the sourced shell contract intentionally changed. Update the expectation only
-after checking the design guide and actual rendered result.
+This mutation was observed failing on 2026-11-06, followed by a restored full pass. It establishes
+sensitivity of explicit creation, not every property above. The previous shell-height mutation
+changed `.simulation-lab` from `height: 100%` to `height: 100dvh` and failed at `The lesson uses
+frame height, not viewport height`. Repeat that mutation when changing the height contract.
+
+The contact-popup removal and circular-icon assertions also failed against their previous UI on
+2026-11-06, then passed after removing the popup and rendering the trailing circle-check.
+
+A failure is a product counterexample unless the test assumptions disagree with an intentional
+product change. Inspect the HTTP evidence and failing screenshot before changing assertions.
 
 ## Keep in sync
 
-The shell baseline is `b0c964315ac2f4b1f045d73622caa604d54e2ff0`. This record also covers the
-follow-up removing the manual screen and adding post-run results. Review the covered source and
-journey diff together before rerunning. Re-run the real-source mutation when changing the height
-contract. Use `/maintain-formal-verification-skill` if the implementation changed without updating
-this coverage record.
+The last committed base inspected is `4a20530893252583b74e734460af687b710dd4a5`. This record also
+covers the uncommitted two-simulation implementation verified on 2026-11-06. Review the covered
+source and journey diff together, rerun the check, and advance the sync commit only when the
+coverage still describes that revision. Use `/maintain-formal-verification-skill` after changes
+that skipped verification.

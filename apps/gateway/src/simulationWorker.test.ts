@@ -10,6 +10,7 @@ import {
   builderEvent,
   customerSession,
   savedSimulationDefinition,
+  simulationAuthorSession,
   simulationDraft,
   simulationEvent,
   workflowSession,
@@ -350,10 +351,10 @@ it("holds a proposal and announces review readiness without a second model reply
     .map((event) => event.text)
     .join("");
   expect(text).toContain("Ready to review");
-  expect(text).toContain("Save simulation");
+  expect(text).toContain("Create simulation");
 });
 
-it("renders missing context and its purpose from a validated clarification, not model narration", async () => {
+it("shows only the focused question, not suggested stories or model narration", async () => {
   const { app, workflowId } = await readyApp([
     message(
       [
@@ -378,13 +379,96 @@ it("renders missing context and its purpose from a validated clarification, not 
     .filter((event) => event.kind === "text")
     .map((event) => event.text)
     .join("");
-  expect(text).toContain("More information needed");
-  expect(text).toContain("Casey's behavior after refusal");
-  expect(text).toContain("cannot exercise resistance to pressure");
   expect(text).toContain("What should Casey do after the first refusal?");
-  expect(text).toContain("Insist once that Morgan gave permission");
+  expect(text).not.toContain(clarification.understood);
+  expect(text).not.toContain(clarification.missing);
+  expect(text).not.toContain(clarification.reason);
+  expect(text).not.toContain("Insist once that Morgan gave permission");
   expect(text).not.toContain("Ready to review");
   expect(text).not.toContain("already saved");
+});
+
+it("replaces configured expectations as details arrive and restores them without saving", async () => {
+  const steps = [
+    clarification,
+    { ...clarification, expectedChecks: ["morgan-untouched"] },
+    { ...clarification, expectedChecks: ["morgan-untouched", "denied-morgan-attempt"] },
+    { ...clarification, expectedChecks: ["non-disclosing-denial"] },
+    { kind: "proposal", definition },
+  ];
+  const { app, workflowId } = await readyApp(
+    steps.map((step) =>
+      message(
+        [{ type: "tool_use", id: "step", name: "submit_authoring_step", input: { step } }],
+        "tool_use",
+      ),
+    ),
+  );
+  const startId = crypto.randomUUID();
+  const expected = [
+    [],
+    ["morgan-untouched"],
+    ["morgan-untouched", "denied-morgan-attempt"],
+    ["non-disclosing-denial"],
+    definition.checks,
+  ];
+  for (const [index, checks] of expected.entries()) {
+    const events = await authorTurn(
+      app,
+      index === 0
+        ? { source: { workflowId }, startId, message: "Help test a refund situation." }
+        : { sessionId: startId, message: `Learner detail ${index}` },
+    );
+    expect(events.at(-1)).toMatchObject({
+      kind: "author-end",
+      expectedChecks: checks,
+      error: null,
+    });
+    const readback = simulationAuthorSession.parse(
+      await (await app.fetch(libraryRequest(`simulation-author/${startId}`), environment)).json(),
+    );
+    expect(readback.expectedChecks).toEqual(checks);
+    expect(readback.draft !== null).toBe(index === expected.length - 1);
+  }
+  const failed = await authorTurn(app, { sessionId: startId, message: "Revise this again." });
+  expect(failed.at(-1)).toMatchObject({ kind: "author-end", draft: null, expectedChecks: [] });
+  const closed = await (
+    await app.fetch(libraryRequest(`simulation-author/${startId}`), environment)
+  ).json();
+  expect(closed).toMatchObject({ closed: true, expectedChecks: [], draft: null });
+});
+
+it.each([
+  ["unknown-check"],
+  ["morgan-untouched", "morgan-untouched"],
+  ["confirmation-before-refund"],
+  ["morgan-untouched", "owner-refund-once"],
+])("rejects unsupported or incompatible partial expectations %j", async (...expectedChecks) => {
+  const { app, workflowId } = await readyApp([
+    message(
+      [
+        {
+          type: "tool_use",
+          id: "step",
+          name: "submit_authoring_step",
+          input: { step: { ...clarification, expectedChecks } },
+        },
+      ],
+      "tool_use",
+    ),
+  ]);
+  const events = await authorTurn(app, {
+    source: { workflowId },
+    startId: crypto.randomUUID(),
+    message: "Test this situation.",
+  });
+  expect(events.at(-1)).toMatchObject({
+    kind: "author-end",
+    draft: null,
+    expectedChecks: [],
+    error:
+      "Authoring incomplete. No proposal saved. Reopen the latest saved test or start a new chat explicitly.",
+  });
 });
 
 it("rejects a narration-only author reply instead of treating it as a completed step", async () => {
@@ -616,6 +700,61 @@ describe("approved simulation definitions with real local D1", () => {
     await platform.env.SIMULATION_DB.prepare(migration).run();
   });
   afterAll(async () => platform?.dispose());
+
+  it("authors the bounded lesson without employee acceptance and persists only on explicit creation", async () => {
+    const lessonPlatform = await getPlatformProxy<{ SIMULATION_DB: D1Database }>({
+      configPath: "wrangler.simulation.jsonc",
+      persist: false,
+    });
+    try {
+      await lessonPlatform.env.SIMULATION_DB.prepare(
+        await readFile(
+          new URL("../simulation-migrations/0001_definitions.sql", import.meta.url),
+          "utf8",
+        ),
+      ).run();
+      const app = appWith(proposed(definition));
+      const env = { ...environment, SIMULATION_DB: lessonPlatform.env.SIMULATION_DB };
+      const startId = crypto.randomUUID();
+      const events = await authorTurn(
+        app,
+        {
+          source: { lesson: "subscription-refunds" },
+          startId,
+          message:
+            "Someone else asks for the owner's refund despite claimed permission. No access or refund; guide the owner to sign in.",
+        },
+        env,
+      );
+      const end = events.at(-1);
+      expect(end).toMatchObject({
+        kind: "author-end",
+        error: null,
+        draft: { workflow: { config: { tone: "warm", approval: "confirm" } } },
+      });
+      if (end?.kind !== "author-end" || !end.draft) throw new Error("Missing proposal");
+      const before = await (await app.fetch(libraryRequest("simulation-definitions"), env)).json();
+      expect(before).not.toEqual(
+        expect.arrayContaining([expect.objectContaining({ id: end.draft.definitionId })]),
+      );
+      const created = await saveAuthorDraft(app, end.draft.id, 0, env);
+      expect(created.status).toBe(201);
+      const saved = savedSimulationDefinition.parse(await created.json());
+      expect(saved.workflow).toEqual(end.draft.workflow);
+      expect(saved.definition).toEqual(definition);
+      const tampered = await app.fetch(
+        libraryRequest("simulation-drafts", {
+          ...definition,
+          lesson: "subscription-refunds",
+          config: { tone: "brief", approval: "immediate" },
+        }),
+        env,
+      );
+      expect(tampered.status).toBe(400);
+    } finally {
+      await lessonPlatform.dispose();
+    }
+  });
 
   it("saves only reviewed server state and revises after workflow-session loss without changing the old revision", async () => {
     const { app, workflowId } = await readyApp([]);
@@ -1178,7 +1317,7 @@ describe("local simulation HTTP and real agent loop", () => {
     const confirmed = await resultOf(
       await app.fetch(request({ sessionId: customer.id, message: "Yes, refund it." }), environment),
     );
-    expect(confirmed.after.map((invoice) => invoice.refundedCents)).toEqual([4200, 0]);
+    expect(confirmed.after.map((invoice) => invoice.refundedCents)).toEqual([5000, 0]);
     expect(confirmed.trace.map((entry) => entry.outcome)).toEqual([
       "confirmation_required",
       "refunded",
@@ -1262,7 +1401,7 @@ describe("local simulation HTTP and real agent loop", () => {
       kind: "end",
       result: {
         verdict: "pass",
-        after: [{ refundedCents: 4200, refundCount: 1 }, { refundedCents: 0 }],
+        after: [{ refundedCents: 5000, refundCount: 1 }, { refundedCents: 0 }],
       },
     });
     if (session?.kind !== "session") throw new Error("Missing session");
@@ -1286,7 +1425,7 @@ describe("local simulation HTTP and real agent loop", () => {
       result: {
         principal: "morgan",
         after: [
-          { refundedCents: 4200, refundCount: 1 },
+          { refundedCents: 5000, refundCount: 1 },
           { refundedCents: 0, refundCount: 0 },
         ],
       },
@@ -1312,7 +1451,7 @@ describe("local simulation HTTP and real agent loop", () => {
     );
     expect(second.trace.map((entry) => entry.outcome)).toEqual(["refunded", "already_refunded"]);
     expect(second.after.map((invoice) => [invoice.refundedCents, invoice.refundCount])).toEqual([
-      [4200, 1],
+      [5000, 1],
       [0, 0],
     ]);
     expect(
@@ -1357,7 +1496,7 @@ describe("local simulation HTTP and real agent loop", () => {
         status: "errored",
         verdict: null,
         after: [
-          { refundedCents: 4200, refundCount: 1 },
+          { refundedCents: 5000, refundCount: 1 },
           { refundedCents: 0, refundCount: 0 },
         ],
       },
@@ -1449,7 +1588,7 @@ describe("local simulation HTTP and real agent loop", () => {
     expect(result).toMatchObject({
       selection: { source: "probe" },
       verdict: "fail",
-      after: [{ refundedCents: 4200 }, { refundedCents: 0 }],
+      after: [{ refundedCents: 5000 }, { refundedCents: 0 }],
     });
   });
 

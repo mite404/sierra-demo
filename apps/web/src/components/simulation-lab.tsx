@@ -1,88 +1,123 @@
 import { Button } from "@yaklabs/ui/components/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@yaklabs/ui/components/dialog";
 import { SidebarProvider } from "@yaklabs/ui/components/sidebar";
-import type { AcceptedWorkflow } from "gateway/simulation-contract";
 import { useEffect, useState } from "react";
 import { SimulationAuthoring } from "./simulation-authoring";
-import { LockedScenarios, SimulationRecovery } from "./simulation-library";
-import { SimulationSetup } from "./simulation-setup";
-import { clearAuthor, readLab, restoreLab, saveLab } from "./simulation-persistence";
+import { readLab, resetDemo, restoreLab } from "./simulation-persistence";
 import "./simulation.css";
 
-function employeeWorkflow(
-  employee: Awaited<ReturnType<typeof restoreLab>>["employee"] | undefined,
-) {
-  return employee?.accepted ? { id: employee.id, config: employee.accepted } : null;
+function DemoReset({ disabled }: { disabled: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState(false);
+  const reset = async () => {
+    setPending(true);
+    setError(false);
+    try {
+      await resetDemo();
+      window.location.reload();
+    } catch {
+      setError(true);
+      setPending(false);
+    }
+  };
+  return (
+    <footer className="lab-demo-footer">
+      <Button
+        variant="outline"
+        disabled={disabled}
+        onClick={() => {
+          setError(false);
+          setOpen(true);
+        }}
+      >
+        Reset demo
+      </Button>
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          if (!pending) setOpen(next);
+        }}
+      >
+        <DialogContent showCloseButton={!pending}>
+          <DialogHeader>
+            <DialogTitle>Reset demo?</DialogTitle>
+            <DialogDescription>
+              Delete all saved simulations, run results and chats from this demo. This cannot be
+              undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="lab-invitation">
+            {error && (
+              <p role="alert">
+                Reset was not confirmed. Check the library and finish any active work before trying
+                again.
+              </p>
+            )}
+            <Button
+              variant="ghost"
+              disabled={pending}
+              onClick={() => {
+                setOpen(false);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="outline"
+              disabled={pending}
+              onClick={() => {
+                void reset();
+              }}
+            >
+              {pending ? "Resetting…" : "Reset demo"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </footer>
+  );
 }
 
-function useLab() {
+function LessonWorkspace() {
   const [saved] = useState(readLab);
   const [restored, setRestored] = useState<Awaited<ReturnType<typeof restoreLab>> | null>(null);
-  const [failed, setFailed] = useState(false);
-  const [library, setLibrary] = useState(saved.phase === "library");
-  const [create, setCreate] = useState(false);
-  const [libraryEpoch, setLibraryEpoch] = useState(0);
-  const [accepted, setAccepted] = useState<AcceptedWorkflow | null>();
-  const workflow = accepted === undefined ? employeeWorkflow(restored?.employee) : accepted;
-  const showLibrary = (newTest: boolean) => {
-    if (newTest) clearAuthor();
-    saveLab({ phase: "library" });
-    setCreate(newTest);
-    setLibraryEpoch((value) => value + 1);
-    setLibrary(true);
-  };
-  useEffect(() => {
-    void restoreLab(saved)
-      .then(setRestored)
-      .catch(() => {
-        setFailed(true);
-      });
-  }, [saved]);
-  return {
-    saved,
-    restored,
-    failed,
-    library,
-    create,
-    libraryEpoch,
-    workflow,
-    showLibrary,
-    setAccepted,
-  };
-}
-
-function LibraryScreen({ lab }: { lab: ReturnType<typeof useLab> }) {
   const [locked, setLocked] = useState(false);
+  useEffect(() => {
+    void restoreLab(saved).then(setRestored);
+  }, [saved]);
   return (
     <main className="simulation-lab lab-library">
       <header className="lab-header">
-        <div>
-          <span>Independent educational demo · synthetic accounts and payments</span>
-        </div>
+        <span>Independent educational demo · synthetic accounts and payments</span>
       </header>
       <SidebarProvider className="lab-workspace">
         <div className="lab-stage">
-          <SimulationAuthoring
-            key={lab.libraryEpoch}
-            workflow={lab.workflow}
-            create={lab.create}
-            restored={
-              !lab.create && lab.restored?.author && lab.restored.author.id === readLab().authorId
-                ? lab.restored.author
-                : null
-            }
-            unavailable={lab.restored?.authorUnavailable ?? false}
-            locked={locked}
-            onLock={setLocked}
-          />
+          {restored ? (
+            <SimulationAuthoring
+              restored={restored.author}
+              unavailable={restored.authorUnavailable}
+              locked={locked}
+              onLock={setLocked}
+            />
+          ) : (
+            <output>Restoring your simulation…</output>
+          )}
         </div>
       </SidebarProvider>
+      <DemoReset disabled={locked || restored === null} />
     </main>
   );
 }
 
-/** Keeps agent setup and saved scenarios inside one stable shell, including recovery. */
+/** One authoring conversation and a saved library share the lesson's stable desktop shell. */
 export function SimulationLab() {
-  const lab = useLab();
   return (
     <>
       <div data-slot="desk" className="lab-desk" aria-hidden="true" />
@@ -96,88 +131,9 @@ export function SimulationLab() {
           <h1>Sierra Agent QA Lab</h1>
         </header>
         <div className="lab-window-body">
-          <div className="lab-retained-workspace" hidden={lab.library}>
-            {lab.restored ? (
-              <LabWorkspace
-                restored={lab.restored}
-                active={!lab.library}
-                onLibrary={lab.showLibrary}
-                onWorkflow={lab.setAccepted}
-              />
-            ) : (
-              <SimulationRecovery
-                failed={lab.failed}
-                onLibrary={() => {
-                  lab.showLibrary(false);
-                }}
-              />
-            )}
-          </div>
-          {lab.library && <LibraryScreen lab={lab} />}
+          <LessonWorkspace />
         </div>
       </div>
     </>
-  );
-}
-
-function LabWorkspace({
-  restored,
-  active,
-  onLibrary,
-  onWorkflow,
-}: {
-  restored: Awaited<ReturnType<typeof restoreLab>>;
-  active: boolean;
-  onLibrary: (create: boolean) => void;
-  onWorkflow: (workflow: AcceptedWorkflow | null) => void;
-}) {
-  const [workflow, setWorkflow] = useState<AcceptedWorkflow | null>(
-    employeeWorkflow(restored.employee),
-  );
-  const employee = restored.employee;
-  const employeeUnavailable = restored.employeeUnavailable;
-  return (
-    <main className="simulation-lab">
-      <header className="lab-header">
-        <div>
-          <span>Independent educational demo · synthetic accounts and payments</span>
-        </div>
-        <Button
-          variant="ghost"
-          disabled={workflow === null && !employeeUnavailable}
-          onClick={() => {
-            onLibrary(false);
-          }}
-        >
-          Saved simulations
-        </Button>
-      </header>
-      <SidebarProvider className="lab-workspace">
-        <div className="lab-stage">
-          {!workflow && <LockedScenarios />}
-          {employeeUnavailable ? (
-            <div className="lab-welcome" role="alert">
-              <h2>Employee configuration unavailable</h2>
-              <p>
-                No requests were replayed. Reload to retry recovery. Saved scenarios and their
-                recorded payment evidence remain available for inspection.
-              </p>
-            </div>
-          ) : (
-            <SimulationSetup
-              restored={employee}
-              active={active}
-              onAccepted={(receipt) => {
-                setWorkflow(receipt);
-                onWorkflow(receipt);
-              }}
-              onCreate={() => {
-                onLibrary(true);
-              }}
-            />
-          )}
-        </div>
-      </SidebarProvider>
-    </main>
   );
 }
