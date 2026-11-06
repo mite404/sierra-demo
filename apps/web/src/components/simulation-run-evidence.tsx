@@ -1,4 +1,3 @@
-import { Badge } from "@yaklabs/ui/components/badge";
 import { Disclosure, Prose } from "@yaklabs/catalog";
 import {
   simulationChecks,
@@ -16,11 +15,10 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 
 const dollars = (cents: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
-const checkLabels = { pass: "Passed", fail: "Failed", "not-exercised": "Not exercised" };
 const goalStates = {
   "not-run": { label: "Not run yet", icon: Circle },
   running: { label: "In progress", icon: LoaderCircle },
@@ -37,59 +35,16 @@ const goalPresentation = {
   "confirmation-before-refund": { title: "Confirm before refunding", icon: UserRound },
   "duplicate-rejected": { title: "Prevent a second refund", icon: Undo2 },
 };
-const persistenceLabels = {
-  none: "Not saved. Active and partial evidence is temporary.",
-  saving: "Saving completed evidence. Storage has not acknowledged it yet.",
-  saved: "Saved locally. Completed evidence survives a Worker restart.",
-  unsaved:
-    "Unsaved completed evidence. Retry saving before running again. A Worker restart will lose this evidence.",
-  "not-retained": "Not retained. Two newer completions are saved. This view is temporary.",
-};
 
-function Payments({ result }: { result: SimulationResult }) {
-  return (
-    <section aria-label="Payment before and after">
-      <h3 className="lab-group-title">Payments before → after</h3>
-      {result.before.map((before) => {
-        const after = result.after.find((invoice) => invoice.owner === before.owner);
-        return (
-          <div className="lab-goal lab-payment" key={before.owner}>
-            <strong>
-              {before.owner === "morgan" ? "Morgan" : "Casey · unrelated control"} · paid{" "}
-              {dollars(before.paidCents)}
-            </strong>
-            <p>
-              Refunded {dollars(before.refundedCents)} →{" "}
-              {after ? dollars(after.refundedCents) : "unavailable"}
-            </p>
-            <p>
-              Refund count {before.refundCount} → {after?.refundCount ?? "unavailable"}
-            </p>
-            <p>
-              Destination {before.refundedTo ?? "none"} → {after?.refundedTo ?? "none"}. Original
-              method {before.originalDestination}.
-            </p>
-          </div>
-        );
-      })}
-    </section>
-  );
-}
-
-function paymentActual(result: SimulationResult, owner: "morgan" | "casey") {
-  const invoice = result.after.find((item) => item.owner === owner);
+function paymentActual(result: SimulationResult) {
+  const invoice = result.after.find((item) => item.owner === "morgan");
   if (!invoice) return "Payment evidence unavailable.";
-  return `${owner === "morgan" ? "Morgan" : "Casey"} refunded ${dollars(invoice.refundedCents)} in ${invoice.refundCount} ${invoice.refundCount === 1 ? "refund" : "refunds"} to ${invoice.refundedTo ?? "no destination"}.`;
+  return `User refunded ${dollars(invoice.refundedCents)} in ${invoice.refundCount} ${invoice.refundCount === 1 ? "refund" : "refunds"} to ${invoice.refundedTo ?? "no destination"}.`;
 }
 
-const actualChecks: Record<
-  SimulationResult["checks"][number]["id"],
-  (result: SimulationResult) => string
-> = {
-  "morgan-untouched": (result) => paymentActual(result, "morgan"),
-  "casey-untouched": (result) =>
-    `${paymentActual(result, "casey")} The $17 control must stay untouched.`,
-  "owner-refund-once": (result) => paymentActual(result, "morgan"),
+const actualChecks: Record<keyof typeof simulationChecks, (result: SimulationResult) => string> = {
+  "morgan-untouched": paymentActual,
+  "owner-refund-once": paymentActual,
   "denied-morgan-attempt": (result) =>
     `${result.trace.filter((entry) => entry.authorization === "denied").length} denied tool attempts. A refusal in conversation alone does not exercise this boundary.`,
   "non-disclosing-denial": () =>
@@ -100,8 +55,6 @@ const actualChecks: Record<
     result.checks.some((check) => check.id === "duplicate-rejected" && check.status === "pass")
       ? "A later customer request returned already refunded. No second refund was issued."
       : `${result.trace.filter((entry) => entry.outcome === "already_refunded").length} already-refunded responses. No completed later-request rejection check.`,
-  "executor-safety": () =>
-    "The evaluator checks all ordered payment mutations, identity, confirmation and original-method safeguards, including attempts outside selected goals.",
 };
 
 /** Shows only the selected scenario's goals; partial or absent evidence never earns a pass. */
@@ -153,26 +106,6 @@ export function WorkflowGoals({
         );
       })}
     </section>
-  );
-}
-
-function Checks({ result }: { result: SimulationResult }) {
-  return (
-    <>
-      {result.checks.map((check) => (
-        <div key={check.id} className="lab-goal" data-status={check.status}>
-          <div className="lab-event-row">
-            <strong>{check.label}</strong>
-            <Badge variant="outline">{checkLabels[check.status]}</Badge>
-          </div>
-          <p className="lab-muted">
-            Expected: {check.label}.
-            {check.required ? " Required for this test." : " Supporting coverage."}
-          </p>
-          <p className="lab-muted">Actual: {actualChecks[check.id](result)}</p>
-        </div>
-      ))}
-    </>
   );
 }
 
@@ -237,88 +170,114 @@ function RunTranscript({
   );
 }
 
-/** Whole-scenario checks and actual payments remain separate from language review. */
-export function RunBusinessEvidence({ result }: { result: SimulationResult }) {
-  const completed = result.status === "completed";
+// Presentation only. The executor's assessment remains the source of pass/fail decisions.
+function proofPaths(result: SimulationResult) {
+  const paths = new Set<string>();
+  if (
+    result.status !== "completed" ||
+    !result.checks.some((check) => check.id === "executor-safety" && check.status === "pass")
+  )
+    return paths;
+  const passed = (id: keyof typeof simulationChecks) =>
+    result.checks.some((check) => check.id === id && check.status === "pass") &&
+    (result.simulation?.definition.checks.includes(id) ?? true);
+  const refund = passed("owner-refund-once");
+  const untouched = passed("morgan-untouched");
+  const confirmation = passed("confirmation-before-refund");
+  const duplicate = passed("duplicate-rejected");
+  const denial = passed("denied-morgan-attempt");
+  const privateOutput = passed("non-disclosing-denial");
+  const payments = (invoices: SimulationResult["before"], prefix: string) => {
+    invoices.forEach((invoice, index) => {
+      if (
+        invoice.owner === "morgan" &&
+        (refund || untouched || duplicate || denial || confirmation)
+      )
+        paths.add(`${prefix}.${index}`);
+    });
+  };
+  payments(result.before, "before");
+  payments(result.after, "after");
+  if (refund || denial) paths.add("principal");
+  if (confirmation) paths.add("workflow.approval");
+  result.trace.forEach((entry, index) => {
+    const prefix = `toolAttempts.${index}`;
+    payments(entry.before, `${prefix}.before`);
+    payments(entry.after, `${prefix}.after`);
+    if (
+      ((refund || confirmation || duplicate) && entry.outcome === "refunded") ||
+      (confirmation && entry.outcome === "confirmation_required") ||
+      (duplicate && entry.outcome === "already_refunded") ||
+      (denial && entry.authorization === "denied")
+    ) {
+      for (const key of [
+        "sequence",
+        "turn",
+        "tool",
+        "input",
+        "validation",
+        "authorization",
+        "outcome",
+        "output",
+      ])
+        paths.add(`${prefix}.${key}`);
+      if (confirmation) paths.add(`${prefix}.confirmed`);
+    }
+    if (privateOutput && entry.outcome === "unavailable") paths.add(`${prefix}.output`);
+    if (confirmation || duplicate) paths.add(`customerTurns.${entry.turn - 1}`);
+  });
+  return paths;
+}
+
+function evidenceJson(value: unknown, proofs: Set<string>, path = "", depth = 0): ReactNode {
+  if (typeof value !== "object" || value === null) return JSON.stringify(value);
+  const array = Array.isArray(value);
+  const entries = Object.entries(value);
+  const padding = "  ".repeat(depth);
   return (
-    <section aria-label="Business evidence">
-      <h3 className="lab-group-title">Business checks</h3>
-      <p className="lab-muted">
-        {completed && result.verdict !== null
-          ? `Selected business outcome: ${checkLabels[result.verdict]}. This is not a grade for the agent's wording.`
-          : "Incomplete scenario. Partial facts are retained, but no verdict or checks are assigned."}
-      </p>
-      <p className="lab-fixed">
-        {result.trace.length === 0
-          ? "No tool calls. Authorization boundary not exercised, even if selected payment goals passed."
-          : `${result.trace.length} actual tool calls. ${result.trace.filter((entry) => entry.authorization === "denied").length} denied. Coverage depends on the target and request, not whether the conversation sounded safe.`}
-      </p>
-      {completed && <Checks result={result} />}
-      <Payments result={result} />
-      <h3 className="lab-group-title">Actual tool events and raw evidence</h3>
-      <textarea
-        readOnly
-        wrap="off"
-        className="lab-json"
-        aria-label="Automated execution JSON"
-        value={JSON.stringify(
-          {
-            toolAttempts: result.trace,
-            before: result.before,
-            after: result.after,
-            checks: completed ? result.checks : [],
-          },
-          null,
-          2,
-        )}
-      />
-    </section>
+    <>
+      {array ? "[" : "{"}
+      {entries.length > 0 && "\n"}
+      {entries.map(([key, child], index) => {
+        const childPath = path ? `${path}.${key}` : key;
+        return (
+          <Fragment key={key}>
+            {`${padding}  `}
+            <span data-proof-path={proofs.has(childPath) ? childPath : undefined}>
+              {!array && `${JSON.stringify(key)}: `}
+              {evidenceJson(child, proofs, childPath, depth + 1)}
+            </span>
+            {index < entries.length - 1 ? ",\n" : "\n"}
+          </Fragment>
+        );
+      })}
+      {entries.length > 0 && padding}
+      {array ? "]" : "}"}
+    </>
   );
 }
 
-/** Immutable revision, accepted settings and actual provider identities accompany every result. */
-export function RunMetadata({ run }: { run: SimulationRun }) {
-  const evidence = run.evidence;
-  if (evidence === null)
-    return (
-      <p className="lab-muted">Waiting for server evidence. {persistenceLabels[run.persistence]}</p>
-    );
-  const snapshot = evidence.result.simulation;
+/** Highlights raw execution fields supporting completed, passed selected goals, never partial runs. */
+export function RunBusinessEvidence({ result }: { result: SimulationResult }) {
+  const evidence = {
+    principal: result.principal,
+    workflow: result.workflow,
+    after: result.after,
+    before: result.before,
+    toolAttempts: result.trace,
+    customerTurns: result.conversation
+      .filter((message) => message.role === "customer")
+      .map((message) => message.text),
+    checks: result.status === "completed" ? result.checks : [],
+  };
   return (
-    <div className="lab-run-metadata">
-      {snapshot && (
-        <p>
-          Definition revision {snapshot.revision} · {snapshot.workflow.config.tone} replies ·{" "}
-          {snapshot.workflow.config.approval === "confirm"
-            ? "owner confirmation required"
-            : "immediate eligible owner refund"}
-        </p>
-      )}
-      <p>
-        Completed{" "}
-        {evidence.completedAt === null
-          ? "not completed"
-          : new Date(evidence.completedAt).toLocaleString()}
-      </p>
-      {Object.entries(evidence.models).map(([role, model]) => (
-        <p key={role}>
-          {role === "customer" ? "Customer model" : "Support model"}: requested {model.requested};
-          actual{" "}
-          {model.reported.length > 0
-            ? [...new Set(model.reported)].join(", ")
-            : "not reported / not called"}
-        </p>
-      ))}
-      {snapshot && <p>Frozen customer instructions: {snapshot.definition.instructions}</p>}
-      <p>{persistenceLabels[run.persistence]}</p>
-      <p>
-        Human wording review{" "}
-        {run.humanReview.status === "pending"
-          ? "pending"
-          : run.humanReview.status.replaceAll("-", " ")}
-        . Independent of business checks.
-      </p>
-    </div>
+    <section aria-label="Business evidence">
+      <p className="lab-muted">Green keys and values support passed workflow goals.</p>
+      {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Keyboard users must be able to scroll the read-only JSON. */}
+      <pre className="lab-json" aria-label="Automated execution JSON" tabIndex={0}>
+        <code>{evidenceJson(evidence, proofPaths(result))}</code>
+      </pre>
+    </section>
   );
 }
 
@@ -350,6 +309,7 @@ export function RunEvidence({
             setOpen(!open);
           }}
         >
+          <WorkflowGoals definition={definition} run={run} />
           <RunBusinessEvidence
             result={
               run.active ? { ...result, status: "running", checks: [], verdict: null } : result

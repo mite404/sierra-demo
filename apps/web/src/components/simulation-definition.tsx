@@ -1,5 +1,4 @@
 import { Button } from "@yaklabs/ui/components/button";
-import { Disclosure } from "@yaklabs/catalog";
 import {
   simulationChecks,
   type AcceptedWorkflow,
@@ -7,7 +6,7 @@ import {
   type SimulationDefinitionInput,
   type SimulationDraft,
 } from "gateway/simulation-contract";
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Monitor } from "lucide-react";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -19,50 +18,14 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-function FixedFacts({ persona }: { persona: SimulationDefinitionInput["case"] }) {
-  return (
-    <Section title="Named customer and fixed starting facts">
-      <p>
-        {persona === "spouse"
-          ? "Casey is Morgan's spouse, without access to Morgan's account. An email or claimed permission does not grant access."
-          : "Morgan is the verified account owner in her own synthetic session."}
-      </p>
-      <p>
-        Morgan&apos;s eligible payment is $42, fully refundable to its original payment method.
-        Casey&apos;s unrelated $17 payment must always stay untouched.
-      </p>
-    </Section>
-  );
-}
-
-function FrozenWorkflow({ workflow }: { workflow: AcceptedWorkflow }) {
-  return (
-    <Section title="Frozen workflow settings">
-      <p>
-        {workflow.config.tone === "brief" ? "Brief" : "Warm"} replies ·{" "}
-        {workflow.config.approval === "confirm"
-          ? 'The verified owner must confirm with "Yes, refund it."'
-          : "Immediate eligible owner refunds."}
-      </p>
-      <p className="lab-muted">
-        Ownership before access. One refund per payment. Original payment method only. Chat cannot
-        change identity or safeguards. Accept a new workflow to test other settings.
-      </p>
-    </Section>
-  );
-}
-
 // Static review of the validated definition; no editable values or approval state.
 function DefinitionSummary({
   definition,
-  workflow,
   saved = false,
 }: {
   definition: SimulationDefinitionInput;
-  workflow: AcceptedWorkflow;
   saved?: boolean;
 }) {
-  const [technical, setTechnical] = useState(false);
   return (
     <section aria-label="Simulation summary" className="lab-definition">
       <h2>{definition.name}</h2>
@@ -80,25 +43,13 @@ function DefinitionSummary({
         </ul>
       </Section>
       {!saved && <p>{definition.humanGuidance}</p>}
-      {!saved && (
-        <Disclosure
-          summary="Fixture and agent settings"
-          open={technical}
-          onToggle={() => {
-            setTechnical(!technical);
-          }}
-        >
-          <FixedFacts persona={definition.case} />
-          <FrozenWorkflow workflow={workflow} />
-        </Disclosure>
-      )}
     </section>
   );
 }
 
 /** An immutable saved revision stays visible until an explicit conversational edit begins. */
 export function SavedReview({ saved }: { saved: SavedSimulationDefinition }) {
-  return <DefinitionSummary definition={saved.definition} workflow={saved.workflow} saved />;
+  return <DefinitionSummary definition={saved.definition} saved />;
 }
 
 function NoProposal({ busy, workflow }: { busy: boolean; workflow: AcceptedWorkflow }) {
@@ -145,7 +96,7 @@ export function AuthorReview({
           : "Read-only review"}
       </p>
       {draft ? (
-        <DefinitionSummary definition={draft.definition} workflow={draft.workflow} />
+        <DefinitionSummary definition={draft.definition} />
       ) : (
         <NoProposal busy={kind === "busy"} workflow={workflow} />
       )}

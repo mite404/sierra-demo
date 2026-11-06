@@ -1,4 +1,3 @@
-import { Disclosure } from "@yaklabs/catalog";
 import { Button } from "@yaklabs/ui/components/button";
 import { Separator } from "@yaklabs/ui/components/separator";
 import {
@@ -12,8 +11,7 @@ import type { SavedSimulationDefinition, SimulationRun } from "gateway/simulatio
 import { useEffect, useRef, useState } from "react";
 import { SavedReview } from "./simulation-definition";
 import { useSimulationRun } from "./simulation-run";
-import { RunEvidence, RunMetadata, WorkflowGoals } from "./simulation-run-evidence";
-import { RunHumanReview } from "./simulation-run-review";
+import { RunEvidence, WorkflowGoals } from "./simulation-run-evidence";
 
 type Runner = ReturnType<typeof useSimulationRun>;
 const statusLabels = {
@@ -37,7 +35,7 @@ function runStatus(run: SimulationRun | undefined) {
       : result.verdict === "fail"
         ? "Business checks failed"
         : "Checks not exercised";
-  return `${verdict} · ${run.humanReview.status === "pending" ? "human review pending" : run.humanReview.status.replaceAll("-", " ")}`;
+  return verdict;
 }
 
 function RunRecoveryActions({ runner }: { runner: Runner }) {
@@ -116,44 +114,13 @@ function RunControls({
   );
 }
 
-function ResultDetails({ run, reload }: { run: SimulationRun; reload: Runner["loadResults"] }) {
-  const [technical, setTechnical] = useState(false);
-  const [review, setReview] = useState(false);
-  return (
-    <>
-      <Disclosure
-        summary="Technical details"
-        open={technical}
-        onToggle={() => {
-          setTechnical(!technical);
-        }}
-      >
-        <RunMetadata run={run} />
-      </Disclosure>
-      {!run.active && run.evidence?.result.status === "completed" && (
-        <Disclosure
-          summary="Human wording review"
-          open={review}
-          onToggle={() => {
-            setReview(!review);
-          }}
-        >
-          <RunHumanReview key={run.id} run={run} reload={reload} />
-        </Disclosure>
-      )}
-    </>
-  );
-}
-
 function ResultConversation({
   run,
   messages,
-  reload,
   definition,
 }: {
   run: SimulationRun;
   messages: NonNullable<Runner["current"]>["messages"];
-  reload: Runner["loadResults"];
   definition: SavedSimulationDefinition["definition"];
 }) {
   const [resultsDismissed, setResultsDismissed] = useState(false);
@@ -162,7 +129,10 @@ function ResultConversation({
   const completed = result?.status === "completed";
   const resultsOpen = !run.active && !resultsDismissed;
   return (
-    <article aria-label={completed ? "Latest completed result" : "Current run evidence"}>
+    <article
+      aria-label={completed ? "Latest completed result" : "Current run evidence"}
+      data-results-open={resultsOpen || undefined}
+    >
       <div className="lab-run-heading">
         <h2 className="lab-run-status">{runStatus(run)}</h2>
         {!run.active && (
@@ -198,18 +168,10 @@ function ResultConversation({
         <DialogContent className="lab-results-popover" initialFocus finalFocus={resultsButton}>
           <DialogHeader>
             <DialogTitle>{completed ? "Simulation complete" : "Simulation incomplete"}</DialogTitle>
-            <DialogDescription>
-              {runStatus(run)}
-              <br />
-              The conversation is now read-only.
-            </DialogDescription>
+            <DialogDescription>{runStatus(run)}</DialogDescription>
           </DialogHeader>
           <div className="lab-results-body">
             <WorkflowGoals definition={definition} run={run} />
-            <p className="lab-review">
-              Human wording review {run.humanReview.status.replaceAll("-", " ")}. Business checks do
-              not grade helpfulness, privacy, or truthful wording.
-            </p>
             <Button
               variant="outline"
               onClick={() => {
@@ -221,56 +183,7 @@ function ResultConversation({
           </div>
         </DialogContent>
       </Dialog>
-      <ResultDetails run={run} reload={reload} />
     </article>
-  );
-}
-
-function PreviousResults({ runner, saved }: { runner: Runner; saved: SavedSimulationDefinition }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <Disclosure
-      summary="Previous runs and comparison"
-      open={open}
-      onToggle={() => {
-        setOpen(!open);
-      }}
-    >
-      <p className="lab-muted">
-        Latest two completions. Stopped or failed attempts do not replace these results. Repeated
-        success does not establish model reliability.
-      </p>
-      {runner.completed?.length === 2 &&
-        JSON.stringify(runner.completed[0]?.evidence?.models) !==
-          JSON.stringify(runner.completed[1]?.evidence?.models) && (
-          <p role="alert">
-            Model identities or reported calls differ. Compare the actual identities below; these
-            trials are not guaranteed equivalent.
-          </p>
-        )}
-      {runner.completed?.map((run, index) => (
-        <article key={run.id} aria-label={`${index === 0 ? "Latest" : "Previous"} saved evidence`}>
-          <h3>
-            {index === 0 ? "Latest" : "Previous"} · {runStatus(run)}
-          </h3>
-          {(run.evidence?.result.simulation?.revision !== saved.revision ||
-            JSON.stringify(run.evidence?.result.workflow) !==
-              JSON.stringify(saved.workflow.config)) && (
-            <p role="alert">
-              Definition revisions or accepted settings differ. This is not a controlled
-              same-version comparison.
-            </p>
-          )}
-          <RunMetadata run={run} />
-          <RunEvidence
-            run={run}
-            messages={run.evidence?.result.conversation ?? []}
-            definition={saved.definition}
-          />
-        </article>
-      ))}
-      {runner.completed?.length === 0 && <p>No completed results yet.</p>}
-    </Disclosure>
   );
 }
 
@@ -341,7 +254,6 @@ export function SimulationRunView({
             key={run.id}
             run={run}
             messages={conversationMessages(runner, run)}
-            reload={runner.loadResults}
             definition={saved.definition}
           />
         ) : (
@@ -356,7 +268,6 @@ export function SimulationRunView({
             <WorkflowGoals definition={saved.definition} />
           </>
         )}
-        <PreviousResults runner={runner} saved={saved} />
       </section>
     </div>
   );
