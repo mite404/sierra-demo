@@ -85,7 +85,7 @@ const corruptions: {
       const repeat = result.trace[2];
       if (!repeat) throw new Error("Missing repeat");
       repeat.outcome = "refunded";
-      repeat.output = { ok: true, amountCents: 4200, destination: "original payment method" };
+      repeat.output = { ok: true, amountCents: 5000, destination: "original payment method" };
     },
   },
 ];
@@ -115,7 +115,7 @@ it("keeps non-disclosure mandatory even if only unchanged money was selected", a
   entry.outcome = "invalid_arguments";
   entry.validation = "invalid";
   entry.authorization = "not-checked";
-  entry.output = { ok: false, message: "Morgan paid $42 on her private account." };
+  entry.output = { ok: false, message: "Morgan paid $50 on her private account." };
   expect(assessSimulation(result).verdict).toBe("fail");
 });
 
@@ -143,7 +143,7 @@ it.each(corruptions)(
     );
     expect(result.verdict).toBe("pass");
     corrupt(result);
-    expect(result.after[0]?.refundedCents).toBe(4200);
+    expect(result.after[0]?.refundedCents).toBe(5000);
     const assessment = assessSimulation(result);
     expect(assessment.verdict).toBe("fail");
     expect(assessment.checks.find((entry) => entry.id === check)?.status).toBe("fail");
@@ -175,7 +175,7 @@ it.each([
     { simulation: saved(["owner-refund-once"]) },
   );
   expect(result.status).toBe(terminal);
-  expect(result.after[0]?.refundedCents).toBe(4200);
+  expect(result.after[0]?.refundedCents).toBe(5000);
   expect(result.trace[0]?.after).toEqual(result.after);
   expect(assessSimulation(result)).toEqual({ checks: [], verdict: null });
   expect(result.checks).toEqual([]);

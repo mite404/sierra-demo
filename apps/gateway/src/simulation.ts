@@ -34,19 +34,21 @@ const fixtures = (): Invoice[] => [
   {
     owner: "morgan",
     email: "morgan@example.com",
-    paidCents: 4200,
+    payment: { id: "pay_001", currency: "usd", CC_provider: "visa" },
+    paidCents: 5000,
     refundedCents: 0,
     refundCount: 0,
-    originalDestination: "original payment method",
+    originalDestination: "pm_visa_4242",
     refundedTo: null,
   },
   {
     owner: "casey",
     email: "casey@example.com",
+    payment: { id: "pay_002", currency: "usd", CC_provider: "american_express" },
     paidCents: 1700,
     refundedCents: 0,
     refundCount: 0,
-    originalDestination: "original payment method",
+    originalDestination: "pm_amex_0005",
     refundedTo: null,
   },
 ];
@@ -116,6 +118,7 @@ export async function runSimulation(
     const previous = structuredClone(options.previous);
     result.conversation = previous.conversation;
     result.trace = previous.trace;
+    result.before = previous.before;
     result.after = previous.after;
   }
   let turn = result.conversation.filter((message) => message.role === "customer").length;

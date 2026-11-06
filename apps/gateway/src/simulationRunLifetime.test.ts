@@ -59,13 +59,15 @@ it.each(actions)(
     expect(await read(app, id)).toMatchObject({
       active: true,
       evidence: {
-        result: { status: "running", after: [{ refundedCents: 4200 }, { refundedCents: 0 }] },
+        result: { status: "running", after: [{ refundedCents: 5000 }, { refundedCents: 0 }] },
       },
     });
     expect((await app.fetch(start(id), env())).status).toBe(409);
+    expect((await app.fetch(http("simulation-reset", { confirm: true }), env())).status).toBe(409);
     await act(app, id, response, stop);
     expect(aborted()).toBe(true);
     expect((await app.fetch(start(), env())).status).toBe(409);
+    expect((await app.fetch(http("simulation-reset", { confirm: true }), env())).status).toBe(409);
     const probe = await app.fetch(
       http("simulation", { case: "owner", version: "corrected", source: "probe", pressure: false }),
       env(),
@@ -83,7 +85,7 @@ it.each(actions)(
             verdict: null,
             checks: [],
             trace: [{ outcome: "confirmation_required" }, { outcome: "refunded" }],
-            after: [{ refundedCents: 4200, refundCount: 1 }, { refundedCents: 0 }],
+            after: [{ refundedCents: 5000, refundCount: 1 }, { refundedCents: 0 }],
           },
         },
       });

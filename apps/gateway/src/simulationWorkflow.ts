@@ -4,12 +4,21 @@ import { Hono } from "hono";
 import { z } from "zod";
 import {
   workflowConfig,
+  type AcceptedWorkflow,
   type BuilderEvent,
   type WorkflowConfig,
   type workflowSession,
 } from "./simulationContract";
 import { streamModel } from "./simulationModel";
 import { simulationStream } from "./simulationStream";
+
+/** Server-chosen lesson snapshot, approved with the simulation rather than an employee receipt. */
+export function subscriptionRefundWorkflow(): AcceptedWorkflow {
+  return {
+    id: "00000000-0000-4000-8000-000000000042",
+    config: { tone: "warm", approval: "confirm" },
+  };
+}
 
 type EmployeeSession = {
   messages: Anthropic.MessageParam[];
@@ -213,6 +222,14 @@ export function createWorkflowApp(clientFor: (key: string) => Anthropic) {
   });
   return {
     app,
+    /** Prevents a demo reset while workflow generation is pending. */
+    get active() {
+      return [...sessions.values()].some((session) => session.active);
+    },
+    /** Releases idle workflow handles after a successful durable reset. */
+    reset() {
+      sessions.clear();
+    },
     accepted: (id: string) => {
       const session = sessions.get(id);
       return session && session.expires >= Date.now() ? session.accepted : undefined;

@@ -11,6 +11,7 @@ import {
   workflowSession,
   type SimulationAuthorSource,
 } from "./simulationContract";
+import { subscriptionRefundWorkflow } from "./simulationWorkflow";
 
 type State = {
   sessions: Map<string, Author>;
@@ -29,6 +30,7 @@ function clear(state: State, id: string) {
 }
 
 async function readSource(options: AuthorOptions, source: SimulationAuthorSource, env: AuthorEnv) {
+  if ("lesson" in source) return { workflow: subscriptionRefundWorkflow(), original: null };
   if ("workflowId" in source) {
     const response = await options.request(`/api/workflow/${source.workflowId}`, {}, env);
     if (!response.ok)
@@ -72,6 +74,7 @@ async function start(state: State, id: string, source: SimulationAuthorSource, e
       messages: [],
       display: [],
       draft: null,
+      expectedChecks: [],
       active: false,
       closed: false,
       turns: 0,
@@ -109,6 +112,7 @@ async function readAuthor(state: State, c: AuthorContext) {
     workflow: session.workflow,
     messages: session.display,
     draft,
+    expectedChecks: session.closed || session.active ? [] : session.expectedChecks,
     active: session.active,
     closed: session.closed,
   });
@@ -138,6 +142,7 @@ async function authorMessage(state: State, c: AuthorContext) {
   session.turns++;
   if (session.draft) state.options.discard(session.draft.id);
   session.draft = null;
+  session.expectedChecks = [];
   return authorReply(state.options, session, id, input.message, c.env, c.req.raw.signal);
 }
 
@@ -153,6 +158,16 @@ export function createSimulationAuthorApp(options: AuthorOptions) {
   app.post("/api/simulation-author", (c) => authorMessage(state, c));
   return {
     app,
+    /** Prevents a demo reset while an authoring response or source read is pending. */
+    get active() {
+      return (
+        state.starting.size > 0 || [...state.sessions.values()].some((session) => session.active)
+      );
+    },
+    /** Invalidates idle conversations and proposals after a successful durable reset. */
+    reset() {
+      for (const id of state.sessions.keys()) clear(state, id);
+    },
     clearWorkflow(workflowId: string) {
       for (const [id, session] of [...state.sessions, ...state.starting])
         if ("workflowId" in session.source && session.source.workflowId === workflowId)

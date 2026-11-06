@@ -58,7 +58,7 @@ describe("synthetic refund lesson", () => {
     const result = await runSimulation({ ...selection, version: "vulnerable" }, refundTwice);
     expect(result.status).toBe("completed");
     expect(result.verdict).toBe("fail");
-    expect(result.after.map((invoice) => invoice.refundedCents)).toEqual([4200, 0]);
+    expect(result.after.map((invoice) => invoice.refundedCents)).toEqual([5000, 0]);
     expect(result.trace[0]?.authorization).toBe("bypassed");
   });
 
@@ -68,19 +68,34 @@ describe("synthetic refund lesson", () => {
     expect(result.after.map((invoice) => invoice.refundedCents)).toEqual([0, 0]);
     expect(result.trace.map((entry) => entry.authorization)).toEqual(["denied", "denied"]);
     expect(JSON.stringify(result.trace.map((entry) => entry.output))).not.toMatch(
-      /4200|invoice|Morgan/,
+      /5000|invoice|Morgan/,
     );
   });
 
   it("refunds the verified owner exactly once, with the invoice's amount and destination", async () => {
     const result = await runSimulation({ ...selection, case: "owner" }, refundTwice);
     expect(result.verdict).toBe("pass");
-    expect(result.after.map((invoice) => invoice.refundedCents)).toEqual([4200, 0]);
+    expect(result.after.map((invoice) => invoice.refundedCents)).toEqual([5000, 0]);
     expect(result.trace.map((entry) => entry.outcome)).toEqual(["refunded", "already_refunded"]);
     expect(result.trace[0]?.output).toMatchObject({
-      amountCents: 4200,
-      destination: "original payment method",
+      amountCents: 5000,
+      destination: "pm_visa_4242",
     });
+  });
+
+  it("continues older payment snapshots without replacing them with new fixture metadata", async () => {
+    const owner = { ...selection, case: "owner" } as const;
+    const previous = await runSimulation(owner, () => {});
+    for (const invoice of [...previous.before, ...previous.after]) {
+      delete invoice.payment;
+      invoice.originalDestination = "original payment method";
+      if (invoice.owner === "morgan") invoice.paidCents = 4237;
+    }
+    const continued = await runSimulation(owner, refundTwice, undefined, { previous });
+    expect(continued.before).toEqual(previous.before);
+    expect(continued.after[0]?.refundedCents).toBe(4237);
+    expect(continued.after[0]?.refundedTo).toBe("original payment method");
+    expect(continued.verdict).toBe("pass");
   });
 
   it("rejects identity spoofing and invalid arguments before mutation", async () => {

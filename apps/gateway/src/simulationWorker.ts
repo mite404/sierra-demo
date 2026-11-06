@@ -27,7 +27,7 @@ import {
   saveSimulationDefinition,
 } from "./simulationStorage";
 import { simulationStream } from "./simulationStream";
-import { createWorkflowApp } from "./simulationWorkflow";
+import { createWorkflowApp, subscriptionRefundWorkflow } from "./simulationWorkflow";
 import { openRouterClient } from "./upstream";
 
 type SimulationEnv = { OPENROUTER_API_KEY?: string; SIMULATION_DB?: D1Database };
@@ -62,6 +62,9 @@ export function createSimulationApp(clientFor: (key: string) => Anthropic = open
   const sessions = new Map<string, Session>();
   const drafts = new Map<string, SimulationDraft>();
   const workflows = createWorkflowApp(clientFor);
+  const runs = createSimulationRunApp(clientFor);
+  let resetting = false;
+  let mutations = 0;
   const app = new Hono<{ Bindings: SimulationEnv }>();
   const authors = createSimulationAuthorApp({
     clientFor,
@@ -74,7 +77,15 @@ export function createSimulationApp(clientFor: (key: string) => Anthropic = open
     c.header("Cache-Control", "no-store");
     if (c.req.header("sec-fetch-site") === "cross-site")
       return c.json({ error: "Same-origin requests only" }, 403);
-    return next();
+    if (resetting) return c.json({ error: "Demo reset in progress. Try again shortly." }, 409);
+    const mutation = c.req.method !== "GET" && c.req.path !== "/api/simulation-reset";
+    if (mutation) mutations++;
+    try {
+      await next();
+    } finally {
+      if (mutation) mutations--;
+    }
+    return c.res;
   });
   app.use("/api/*", bodyLimit({ maxSize: 8192 }));
   app.use("/api/workflow/:id", async (c, next) => {
@@ -98,7 +109,40 @@ export function createSimulationApp(clientFor: (key: string) => Anthropic = open
   });
   app.route("/", workflows.app);
   app.route("/", authors.app);
-  app.route("/", createSimulationRunApp(clientFor));
+  app.route("/", runs.app);
+  app.post("/api/simulation-reset", async (c) => {
+    const parsed = z
+      .strictObject({ confirm: z.literal(true) })
+      .safeParse(await c.req.json<unknown>().catch(() => null));
+    if (!parsed.success) return c.json({ error: "Confirm the demo reset explicitly." }, 400);
+    if (
+      resetting ||
+      mutations > 0 ||
+      runs.active ||
+      authors.active ||
+      workflows.active ||
+      [...sessions.values()].some((session) => session.active)
+    )
+      return c.json({ error: "Finish or stop active work before resetting the demo." }, 409);
+    const db = c.env.SIMULATION_DB;
+    if (!db) return c.json({ error: "Simulation storage is not configured." }, 503);
+    resetting = true;
+    try {
+      await db.batch([
+        db.prepare("DELETE FROM simulation_runs"),
+        db.prepare("DELETE FROM simulation_run_handles"),
+        db.prepare("DELETE FROM simulation_definitions"),
+      ]);
+      runs.reset();
+      authors.reset();
+      workflows.reset();
+      sessions.clear();
+      drafts.clear();
+      return c.body(null, 204);
+    } finally {
+      resetting = false;
+    }
+  });
   app.get("/api/simulation-definitions", async (c) => {
     if (!c.env.SIMULATION_DB)
       return c.json({ error: "Simulation storage is not configured." }, 503);
@@ -139,7 +183,14 @@ export function createSimulationApp(clientFor: (key: string) => Anthropic = open
     const { name, case: customer, instructions, checks, humanGuidance } = input;
     const definition = { name, case: customer, instructions, checks, humanGuidance };
     let base: Pick<SimulationDraft, "definitionId" | "expectedRevision" | "workflow" | "createdAt">;
-    if ("workflowId" in input) {
+    if ("lesson" in input) {
+      base = {
+        definitionId: crypto.randomUUID(),
+        expectedRevision: 0,
+        workflow: subscriptionRefundWorkflow(),
+        createdAt: new Date().toISOString(),
+      };
+    } else if ("workflowId" in input) {
       const config = workflows.accepted(input.workflowId);
       if (!config)
         return c.json({ error: "Accept a complete workflow before creating a simulation." }, 409);

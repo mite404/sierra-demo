@@ -101,8 +101,8 @@ const checkRefund = (
     entry.output,
     {
       ok: true,
-      amountCents: 4200,
-      destination: "original payment method",
+      amountCents: 5000,
+      destination: "pm_visa_4242",
       message: "Refund completed.",
     },
     "refund amount and destination come from the fixture, not the model",
@@ -112,11 +112,12 @@ const checkRefund = (
     {
       owner: "morgan",
       email: "morgan@example.com",
-      paidCents: 4200,
-      refundedCents: 4200,
+      payment: { id: "pay_001", currency: "usd", CC_provider: "visa" },
+      paidCents: 5000,
+      refundedCents: 5000,
       refundCount: 1,
-      originalDestination: "original payment method",
-      refundedTo: "original payment method",
+      originalDestination: "pm_visa_4242",
+      refundedTo: "pm_visa_4242",
     },
     "a successful refund must actually pay exactly once to the original method",
   );

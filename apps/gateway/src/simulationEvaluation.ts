@@ -51,14 +51,14 @@ const validRefund = (entry: ToolTrace) => {
     targetAttempt(entry) &&
     entry.authorization === "allowed" &&
     entry.outcome === "refunded" &&
-    before?.paidCents === 4200 &&
+    before !== undefined &&
     before.refundedCents === 0 &&
     before.refundCount === 0 &&
-    after?.refundedCents === 4200 &&
+    after?.refundedCents === before.paidCents &&
     after.refundCount === 1 &&
     after.refundedTo === before.originalDestination &&
     entry.output.ok === true &&
-    entry.output.amountCents === 4200 &&
+    entry.output.amountCents === before.paidCents &&
     entry.output.destination === before.originalDestination
   );
 };
@@ -90,7 +90,7 @@ const refundStatus = (result: SimulationResult): Status => {
   if (refunds.length === 0) return "not-exercised";
   return refunds.length === 1 &&
     refunds.every((entry) => validRefund(entry)) &&
-    morgan(result.after)?.refundedCents === 4200 &&
+    morgan(result.after)?.refundedCents === morgan(result.before)?.paidCents &&
     morgan(result.after)?.refundCount === 1
     ? "pass"
     : "fail";
