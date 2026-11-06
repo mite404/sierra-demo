@@ -3,10 +3,12 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { arg, launch } from "./harness.mjs";
 import { verifyShell, verifyShellSizes } from "./simulation-shell-check.mjs";
+import { writeSimulationCoverage } from "./simulation-coverage.mjs";
 
 const base = arg("--base", "http://127.0.0.1:8790");
 const out = path.resolve(arg("--out", ".amp/in/artifacts/journey-deterministic"));
 const logs = path.resolve(arg("--logs", "/tmp/journey-deterministic-logs"));
+const coverage = arg("--coverage");
 await Promise.all([mkdir(out, { recursive: true }), mkdir(logs, { recursive: true })]);
 const browser = await launch();
 const context = await browser.newContext({
@@ -14,12 +16,25 @@ const context = await browser.newContext({
   deviceScaleFactor: 2,
 });
 const page = await context.newPage();
+if (coverage) await page.coverage.startJSCoverage({ resetOnNavigation: false });
+const coverageEntries = [];
+const collectCoverage = async () => {
+  if (!coverage) return;
+  coverageEntries.push(...(await page.coverage.stopJSCoverage()));
+  await page.coverage.startJSCoverage({ resetOnNavigation: false });
+};
 const errors = [];
 page.on("pageerror", (error) => errors.push(error.message));
 const current = () => page.locator(".simulation-lab:visible");
 const button = (name) => current().getByRole("button", { name, exact: true });
-const capture = (name) =>
-  page.screenshot({ path: path.join(out, `${name}.png`), animations: "disabled" });
+const capture = async (name) => {
+  await collectCoverage();
+  return page.screenshot({ path: path.join(out, `${name}.png`), animations: "disabled" });
+};
+const reload = async () => {
+  await collectCoverage();
+  await page.reload();
+};
 const qa = async (settings) => {
   const response = await page.request.post(`${base}/__qa`, { data: settings });
   assert.equal(response.status(), 200);
@@ -176,7 +191,7 @@ try {
     "Question card must leave the composer inside the frame",
   );
   const questionReloadCalls = (await qa({})).modelCalls;
-  await page.reload();
+  await reload();
   await choices.waitFor();
   assert.equal(
     (await qa({})).modelCalls,
@@ -210,7 +225,7 @@ try {
   await choices.waitFor({ state: "hidden" });
   await current().getByRole("heading", { name: "Your refund workflow", exact: true }).waitFor();
   assert.equal((await current().locator(".quiet-prose strong").count()) > 0, true);
-  await page.reload();
+  await reload();
   await current().getByRole("heading", { name: "Your refund workflow", exact: true }).waitFor();
   assert.equal(await button("Accept workflow").isEnabled(), true);
   assert.equal(await button("Saved simulations").isDisabled(), true);
@@ -239,7 +254,7 @@ try {
   await page.keyboard.press("Escape");
   await dialog.waitFor({ state: "hidden" });
   assert.equal(await button("Workflow accepted").isVisible(), true);
-  await page.reload();
+  await reload();
   await button("Workflow accepted").waitFor();
   assert.equal(await dialog.count(), 0);
   const employeeHandle = await page.evaluate(
@@ -258,7 +273,7 @@ try {
       }),
     );
   });
-  await page.reload();
+  await reload();
   await button("Workflow accepted").waitFor();
   assert.equal(await button("Try it as a customer").count(), 0);
   assert.equal(await current().getByLabel("Customer fixture").count(), 0);
@@ -535,7 +550,7 @@ try {
     [0, 0],
   );
   const beforeReload = (await qa({})).modelCalls;
-  await page.reload();
+  await reload();
   await button("Rerun selected simulation").waitFor();
   await page
     .getByRole("dialog", { name: "Simulation complete", exact: true })
@@ -625,17 +640,23 @@ try {
   await conversationTop();
   await capture("14-spouse-no-tool-coverage");
   await context.storageState({ path: path.join(logs, "browser-state.json") });
-  await page.reload();
+  await reload();
   await button("Run selected simulation").waitFor();
   assert.equal(await button("Back to workflow").count(), 0);
   assert.equal(await button("New workflow").count(), 0);
   await qa({ restart: true, mode: "owner", delay: 5 });
-  await page.reload();
-  await page.waitForFunction(() =>
-    [...document.querySelectorAll("button")].some(
-      (control) => control.textContent.trim() === "Create new test" && !control.disabled,
-    ),
-  );
+  await reload();
+  // The library list and selected definition restore independently; wait for both controls.
+  await page.waitForFunction(() => {
+    const controls = [...document.querySelectorAll("button")];
+    return ["Create new test", "Run selected simulation"].every((name) =>
+      controls.some(
+        (control) =>
+          (control.getAttribute("aria-label") ?? control.textContent.trim()) === name &&
+          !control.disabled,
+      ),
+    );
+  });
   assert.equal(await button("Configure agent").count(), 0);
   assert.equal(await button("Run selected simulation").isEnabled(), true);
   await verifyShellSizes(page);
@@ -680,11 +701,12 @@ try {
       }),
     );
   });
-  await page.reload();
+  await reload();
   await page.getByRole("heading", { name: "Employee configuration unavailable" }).waitFor();
   await verifyShellSizes(page);
   await capture("15-recovery");
   for (const legacy of ["/lab", "/t/old-thread", "/playground", "/demo/weekly-brief/x"]) {
+    await collectCoverage();
     await page.goto(`${base}${legacy}`);
     await page.waitForURL(`${base}/`);
     assert.equal(await page.locator("canvas, .shell, .browser-panel").count(), 0);
@@ -694,9 +716,17 @@ try {
     path.join(logs, "browser-evidence.json"),
     JSON.stringify({ owner, first, second, errors, http: await qa({}) }, null, 2),
   );
+  if (coverage) {
+    coverageEntries.push(...(await page.coverage.stopJSCoverage()));
+    await writeFile(path.join(logs, "browser-coverage.json"), JSON.stringify(coverageEntries));
+    await writeSimulationCoverage(coverageEntries, coverage);
+  }
   process.stdout.write(
     "PASS first-use/clarification/proposal gating, choice answer/resume, workflow revision + frozen acceptance, accessible acceptance modal + Escape + recovery, draft/save, Desktop web only, instruction-only JetBrains Mono, sidebar-only scenario/play/rerun, retired manual recovery, single-workflow navigation, busy/unsaved locks, streamed YakLabs conversation, pinned summary/separator, post-run 2px blur + read-only transcript, results dismiss/reopen/outside click + focus return, honest selected-goal outcomes, real payment evidence, disclosures, search/settings, dark/light/narrow, error/stop/timeout/not-exercised, save-only retry, and legacy redirects. Deterministic external transport; real HTTP/executor/disposable D1.\n",
   );
+} catch (error) {
+  await page.screenshot({ path: path.join(out, "failure.png"), animations: "disabled" });
+  throw error;
 } finally {
   await browser.close();
 }

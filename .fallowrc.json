@@ -24,11 +24,10 @@
     // complexity gates police the components.
     "ignore": ["scripts/**", "apps/web/scripts/**"],
     // Use the same measured coverage in automatic commit gates and CI audits.
-    // Run pnpm --filter gateway test:coverage before auditing or committing.
-    "coverage": "apps/gateway/coverage/coverage-final.json",
+    // Generate gateway coverage, then run simulation-runs-check.mjs --coverage with a mapped build.
+    "coverage": "coverage/coverage-final.json",
     // Reviewed Sierra exceptions are per-function ceilings, not exclusions or a count baseline.
-    // Real gateway coverage is supplied by CI. Frontend CRAP is estimated: the live browser
-    // regression exercises these paths, but its coverage is not an Istanbul input to this audit.
+    // CI merges gateway tests and the real browser journey. Unmeasured modules retain estimates.
     // Retain default limits everywhere else; a new function or growth beyond these caps fails.
     "thresholdOverrides": [
       {

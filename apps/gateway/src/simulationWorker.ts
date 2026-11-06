@@ -11,6 +11,7 @@ import {
   simulationRequest,
   simulationSaveRequest,
   type customerSession,
+  type SavedSimulationDefinition,
   type SimulationDraft,
   type SimulationEvent,
   type SimulationResult,
@@ -42,6 +43,18 @@ type Session = {
   turns: number;
   expires: number;
 };
+
+// A new test inherits frozen settings, but never the saved test's identity or revision history.
+function draftBase(saved: SavedSimulationDefinition, create = false) {
+  const identity = create
+    ? {
+        definitionId: crypto.randomUUID(),
+        expectedRevision: 0,
+        createdAt: new Date().toISOString(),
+      }
+    : { definitionId: saved.id, expectedRevision: saved.revision, createdAt: saved.createdAt };
+  return { ...identity, workflow: saved.workflow };
+}
 
 /** Loopback-only training API; business authority and accepted settings stay server-owned. */
 export function createSimulationApp(clientFor: (key: string) => Anthropic = openRouterClient) {
@@ -142,12 +155,7 @@ export function createSimulationApp(clientFor: (key: string) => Anthropic = open
       const saved = await readSimulationDefinition(c.env.SIMULATION_DB, input.definitionId);
       if (!saved || saved.revision !== input.expectedRevision)
         return c.json({ error: "Reopen the latest saved revision before editing." }, 409);
-      base = {
-        definitionId: input.create ? crypto.randomUUID() : saved.id,
-        expectedRevision: input.create ? 0 : saved.revision,
-        workflow: saved.workflow,
-        createdAt: input.create ? new Date().toISOString() : saved.createdAt,
-      };
+      base = draftBase(saved, input.create);
     }
     if (!compatibleSimulationDefinition(definition, base.workflow.config))
       return c.json(
