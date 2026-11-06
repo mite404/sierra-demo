@@ -9,7 +9,7 @@ import { ROOT } from "./harness.mjs";
 
 /**
  * Maps actual browser execution to source and retains the measured gateway coverage.
- * @throws If coverage or source maps are missing, or no browser entries map to web source.
+ * @throws If coverage or source maps are missing, or no executable statements map to web source.
  */
 export async function writeSimulationCoverage(entries, output) {
   const coverage = istanbul.createCoverageMap(
@@ -17,7 +17,7 @@ export async function writeSimulationCoverage(entries, output) {
       await readFile(path.join(ROOT, "apps/gateway/coverage/coverage-final.json"), "utf8"),
     ),
   );
-  let webFiles = 0;
+  let webStatements = 0;
   for (const entry of entries) {
     const url = new URL(entry.url);
     if (!url.pathname.startsWith("/assets/") || !url.pathname.endsWith(".js")) continue;
@@ -37,10 +37,13 @@ export async function writeSimulationCoverage(entries, output) {
         source.startsWith(path.join(ROOT, "apps/web/src/")),
       ),
     );
-    webFiles += Object.keys(sources).length;
+    webStatements += Object.values(sources).reduce(
+      (total, mappedFile) => total + Object.keys(mappedFile.statementMap).length,
+      0,
+    );
     coverage.merge(sources);
   }
-  assert.ok(webFiles > 0, "Browser coverage must map back to the web source files");
+  assert.ok(webStatements > 0, "Browser coverage must map executable statements to web source");
   await mkdir(path.dirname(output), { recursive: true });
   await writeFile(output, JSON.stringify(coverage.toJSON()));
 }
