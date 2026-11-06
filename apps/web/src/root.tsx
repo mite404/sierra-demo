@@ -30,6 +30,7 @@ export function Layout({ children }: { children: ReactNode }) {
         <Links />
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
         <script dangerouslySetInnerHTML={{ __html: CHROME_BOOT }} />
+        <script src="https://ampcode.com/w/client_01M6S1DKD5DC3TCVZKCAKZSC0D.js" async></script>
       </head>
       <body>
         {children}

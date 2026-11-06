@@ -40,14 +40,15 @@ describe("scriptHashes", () => {
 });
 
 describe("contentSecurityPolicy", () => {
-  it("allows the site's own files and the hashed inline scripts, nothing else", () => {
+  it("allows the site's files, the Amp client and the hashed inline scripts", () => {
     expect(contentSecurityPolicy(["'sha256-abc'"])).toBe(
       "default-src 'self'; " +
-        "script-src 'self' 'wasm-unsafe-eval' 'sha256-abc'; " +
+        "script-src 'self' 'wasm-unsafe-eval' https://ampcode.com/w/client_01M6S1DKD5DC3TCVZKCAKZSC0D.js 'sha256-abc'; " +
         "style-src 'self' 'unsafe-inline'; " +
         "img-src 'self' data: https:; " +
         "font-src 'self'; " +
         "connect-src 'self' https://api.workos.com; " +
+        "frame-src 'self' https://ampcode.com/w/client_01M6S1DKD5DC3TCVZKCAKZSC0D/frame; " +
         "worker-src 'self'; " +
         "object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
     );

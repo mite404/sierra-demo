@@ -49,11 +49,12 @@ export function scriptHashes(scripts) {
 export function contentSecurityPolicy(hashes) {
   return [
     "default-src 'self'",
-    `script-src 'self' 'wasm-unsafe-eval' ${hashes.join(" ")}`,
+    `script-src 'self' 'wasm-unsafe-eval' https://ampcode.com/w/client_01M6S1DKD5DC3TCVZKCAKZSC0D.js ${hashes.join(" ")}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https:",
     "font-src 'self'",
     "connect-src 'self' https://api.workos.com",
+    "frame-src 'self' https://ampcode.com/w/client_01M6S1DKD5DC3TCVZKCAKZSC0D/frame",
     "worker-src 'self'",
     "object-src 'none'",
     "base-uri 'none'",
