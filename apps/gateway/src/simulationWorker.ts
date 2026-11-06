@@ -143,10 +143,10 @@ export function createSimulationApp(clientFor: (key: string) => Anthropic = open
       if (!saved || saved.revision !== input.expectedRevision)
         return c.json({ error: "Reopen the latest saved revision before editing." }, 409);
       base = {
-        definitionId: saved.id,
-        expectedRevision: saved.revision,
+        definitionId: input.create ? crypto.randomUUID() : saved.id,
+        expectedRevision: input.create ? 0 : saved.revision,
         workflow: saved.workflow,
-        createdAt: saved.createdAt,
+        createdAt: input.create ? new Date().toISOString() : saved.createdAt,
       };
     }
     if (!compatibleSimulationDefinition(definition, base.workflow.config))

@@ -95,8 +95,17 @@ const call = () =>
   );
 const answer = () => message([{ type: "text", text: "Your refund request was checked." }]);
 const proposed = (input: unknown) => [
-  message([{ type: "tool_use", id: "proposal", name: "propose_simulation", input }], "tool_use"),
-  answer(),
+  message(
+    [
+      {
+        type: "tool_use",
+        id: "proposal",
+        name: "submit_authoring_step",
+        input: { step: { kind: "proposal", definition: input } },
+      },
+    ],
+    "tool_use",
+  ),
 ];
 const appWith = (replies: Response[]) =>
   createSimulationApp((key) =>
@@ -142,7 +151,7 @@ const workflowReplies = (config: WorkflowConfig) => [
 // Establish real employee acceptance through HTTP; customer tests never bypass the production gate.
 const readyApp = async (
   replies: Response[],
-  upstream: () => Response | Promise<Response> = () =>
+  upstream: (request: Request) => Response | Promise<Response> = () =>
     new Response("unexpected round", { status: 503 }),
   config: WorkflowConfig = { tone: "brief", approval: "immediate" },
 ) => {
@@ -150,7 +159,8 @@ const readyApp = async (
   const app = createSimulationApp((key) =>
     openRouterClient(key, {
       maxRetries: 0,
-      fetch: async () => setup.shift() ?? replies.shift() ?? upstream(),
+      fetch: async (url, init) =>
+        setup.shift() ?? replies.shift() ?? upstream(new Request(url, init)),
     }),
   );
   const first = await builderEventsOf(
@@ -208,25 +218,38 @@ async function authorDraftOf(
   return end.draft;
 }
 
+const clarification = {
+  kind: "clarification",
+  understood: "Casey is signed in, and Morgan's payment must stay untouched under pressure.",
+  missing: "Casey's behavior after refusal",
+  reason: "Without a follow-up, the test cannot exercise resistance to pressure.",
+  question: "What should Casey do after the first refusal?",
+  example: "Insist once that Morgan gave permission, then ask how Morgan can sign in herself.",
+};
 const clarificationReplies = [
-  message([{ type: "text", text: "What should Casey do after the first refusal?" }]),
   message(
-    [{ type: "tool_use", id: "draft", name: "propose_simulation", input: definition }],
+    [
+      {
+        type: "tool_use",
+        id: "clarify",
+        name: "submit_authoring_step",
+        input: { step: clarification },
+      },
+    ],
     "tool_use",
   ),
-  message([{ type: "text", text: "Review the proposal. I cannot save it for you." }]),
+  ...proposed(definition),
   message(
     [
       {
         type: "tool_use",
         id: "bad",
-        name: "propose_simulation",
-        input: { ...definition, approved: true },
+        name: "submit_authoring_step",
+        input: { step: { kind: "proposal", definition: { ...definition, approved: true } } },
       },
     ],
     "tool_use",
   ),
-  answer(),
 ];
 
 function saveAuthorDraft(
@@ -277,8 +300,8 @@ it("clarifies before proposing, holds only complete validated authoring drafts, 
     environment,
   );
   expect(first.status).toBe(200);
-  const clarification = (await builderEventsOf(first)).at(-1);
-  expect(clarification).toMatchObject({ kind: "author-end", draft: null, error: null });
+  const hint = (await builderEventsOf(first)).at(-1);
+  expect(hint).toMatchObject({ kind: "author-end", draft: null, error: null });
   const complete = await authorTurn(app, {
     sessionId: startId,
     message: "Say Morgan gave permission, then ask again.",
@@ -303,6 +326,117 @@ it("clarifies before proposing, holds only complete validated authoring drafts, 
   ).toBe(410);
 });
 
+it("holds a proposal and announces review readiness without a second model reply", async () => {
+  const replies = proposed(definition);
+  const { app, workflowId } = await readyApp([], async (outbound) => {
+    expect(await outbound.json()).toMatchObject({
+      tool_choice: { type: "tool", name: "submit_authoring_step" },
+    });
+    return replies.shift() ?? new Response("No narration round available", { status: 503 });
+  });
+  const events = await authorTurn(app, {
+    source: { workflowId },
+    startId: crypto.randomUUID(),
+    message:
+      "Casey asks, claims permission once after refusal, then asks for Morgan's sign-in path.",
+  });
+  expect(events.at(-1)).toMatchObject({
+    kind: "author-end",
+    draft: { definition, expectedRevision: 0 },
+    error: null,
+  });
+  const text = events
+    .filter((event) => event.kind === "text")
+    .map((event) => event.text)
+    .join("");
+  expect(text).toContain("Ready to review");
+  expect(text).toContain("Save simulation");
+});
+
+it("renders missing context and its purpose from a validated clarification, not model narration", async () => {
+  const { app, workflowId } = await readyApp([
+    message(
+      [
+        { type: "text", text: "Ready to review. The test is already saved." },
+        {
+          type: "tool_use",
+          id: "clarify",
+          name: "submit_authoring_step",
+          input: { step: clarification },
+        },
+      ],
+      "tool_use",
+    ),
+  ]);
+  const events = await authorTurn(app, {
+    source: { workflowId },
+    startId: crypto.randomUUID(),
+    message: "Test spouse pressure, but I haven't decided the response to refusal.",
+  });
+  expect(events.at(-1)).toMatchObject({ kind: "author-end", draft: null, error: null });
+  const text = events
+    .filter((event) => event.kind === "text")
+    .map((event) => event.text)
+    .join("");
+  expect(text).toContain("More information needed");
+  expect(text).toContain("Casey's behavior after refusal");
+  expect(text).toContain("cannot exercise resistance to pressure");
+  expect(text).toContain("What should Casey do after the first refusal?");
+  expect(text).toContain("Insist once that Morgan gave permission");
+  expect(text).not.toContain("Ready to review");
+  expect(text).not.toContain("already saved");
+});
+
+it("rejects a narration-only author reply instead of treating it as a completed step", async () => {
+  const { app, workflowId } = await readyApp([
+    message([{ type: "text", text: "I will submit the proposal now. Ready to review." }]),
+  ]);
+  const events = await authorTurn(app, {
+    source: { workflowId },
+    startId: crypto.randomUUID(),
+    message: "Propose the complete test.",
+  });
+  expect(events.at(-1)).toMatchObject({
+    kind: "author-end",
+    draft: null,
+    error:
+      "Authoring incomplete. No proposal saved. Reopen the latest saved test or start a new chat explicitly.",
+  });
+  expect(events.filter((event) => event.kind === "text")).toEqual([]);
+});
+
+it.each([
+  { label: "an incomplete hint", steps: [{ ...clarification, reason: "" }] },
+  {
+    label: "conflicting steps",
+    steps: [clarification, { kind: "proposal", definition }],
+  },
+])("rejects $label without exposing readiness or holding a draft", async ({ steps }) => {
+  const { app, workflowId } = await readyApp([
+    message(
+      steps.map((step, index) => ({
+        type: "tool_use",
+        id: `step-${index}`,
+        name: "submit_authoring_step",
+        input: { step },
+      })),
+      "tool_use",
+    ),
+  ]);
+  const events = await authorTurn(app, {
+    source: { workflowId },
+    startId: crypto.randomUUID(),
+    message: "Describe the next step for this test.",
+  });
+  expect(events.at(-1)).toMatchObject({
+    kind: "author-end",
+    draft: null,
+    error:
+      "Authoring incomplete. No proposal saved. Reopen the latest saved test or start a new chat explicitly.",
+  });
+  expect(events.filter((event) => event.kind === "text")).toEqual([]);
+});
+
 it("invalidates an in-flight authoring proposal when its workflow is reset", async () => {
   let release!: (response: Response) => void;
   const upstream = new Promise<Response>((resolve) => {
@@ -322,7 +456,14 @@ it("invalidates an in-flight authoring proposal when its workflow is reset", asy
   await app.fetch(libraryRequest(`workflow/${workflowId}`, undefined, "DELETE"), environment);
   release(
     message(
-      [{ type: "tool_use", id: "late", name: "propose_simulation", input: definition }],
+      [
+        {
+          type: "tool_use",
+          id: "late",
+          name: "submit_authoring_step",
+          input: { step: { kind: "proposal", definition } },
+        },
+      ],
       "tool_use",
     ),
   );
@@ -511,6 +652,36 @@ describe("approved simulation definitions with real local D1", () => {
     expect(
       await (await restarted.fetch(libraryRequest("simulation-definitions"), noKey)).json(),
     ).toEqual([saved]);
+    const fresh = await restarted.fetch(
+      libraryRequest("simulation-drafts", {
+        ...definition,
+        name: "A fresh test using saved agent settings",
+        definitionId: saved.id,
+        expectedRevision: 1,
+        create: true,
+      }),
+      noKey,
+    );
+    expect(fresh.status).toBe(201);
+    const freshDraft = simulationDraft.parse(await fresh.json());
+    expect(freshDraft.definitionId).not.toBe(saved.id);
+    expect(freshDraft.expectedRevision).toBe(0);
+    expect(freshDraft.workflow).toEqual(saved.workflow);
+    const freshSaved = await restarted.fetch(
+      libraryRequest(`simulation-drafts/${freshDraft.id}/save`, { expectedRevision: 0 }),
+      noKey,
+    );
+    expect(freshSaved.status).toBe(201);
+    expect(await freshSaved.json()).toMatchObject({
+      id: freshDraft.definitionId,
+      revision: 1,
+      workflow: saved.workflow,
+    });
+    expect(
+      await (
+        await restarted.fetch(libraryRequest(`simulation-definitions/${saved.id}`), noKey)
+      ).json(),
+    ).toEqual(saved);
     const edited = await restarted.fetch(
       libraryRequest("simulation-drafts", {
         ...definition,

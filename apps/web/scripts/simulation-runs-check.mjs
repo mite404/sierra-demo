@@ -74,6 +74,10 @@ const finished = async () => {
   );
   const results = page.getByRole("dialog", { name: /Simulation (complete|incomplete)/u });
   await results.waitFor();
+  assert.doesNotMatch(
+    await results.innerText(),
+    /human review pending|The conversation is now read-only\.|Human wording review pending\.|Business checks do not grade helpfulness, privacy, or truthful wording\./iu,
+  );
   assert.equal(
     await page
       .locator(".lab-run-transcript")
@@ -82,11 +86,24 @@ const finished = async () => {
         filter: getComputedStyle(element).filter,
         inert: element.inert,
       }))
-      .then((value) => value.filter === "blur(2px)" && value.inert),
+      .then((value) => value.filter === "none" && value.inert),
     true,
   );
+  for (const selector of [".lab-pinned-summary", ".lab-run-scroll"]) {
+    assert.equal(
+      await page.locator(selector).evaluate((element) => getComputedStyle(element).filter),
+      "blur(2px)",
+    );
+  }
+  assert.equal(await results.evaluate((element) => getComputedStyle(element).filter), "none");
   await results.getByRole("button", { name: "View conversation", exact: true }).click();
   await results.waitFor({ state: "hidden" });
+  for (const selector of [".lab-pinned-summary", ".lab-run-scroll"]) {
+    assert.equal(
+      await page.locator(selector).evaluate((element) => getComputedStyle(element).filter),
+      "none",
+    );
+  }
   assert.equal(
     await page
       .locator(".lab-run-transcript")
@@ -207,8 +224,13 @@ try {
   assert.equal(revised.accepted, null, "A revision never accepts itself");
   assert.equal(await button("Saved simulations").isDisabled(), true);
   await button("Accept workflow").click();
-  const dialog = page.getByRole("dialog", { name: "Create your first test scenario" });
+  const dialog = page.getByRole("dialog", { name: "Create Test Scenario" });
   await dialog.waitFor();
+  assert.match(await dialog.innerText(), /Test an edge case\./u);
+  assert.match(
+    await dialog.innerText(),
+    /Do not allow another account to gain access to the account belonging to the order\./u,
+  );
   assert.deepEqual(await dialog.getByLabel("Device type").locator("option").allTextContents(), [
     "Desktop web",
   ]);
@@ -252,13 +274,29 @@ try {
   const callsBeforeExample = (await qa({})).modelCalls;
   await button("Owner confirm + repeat").click();
   assert.equal((await qa({})).modelCalls, callsBeforeExample);
+  assert.equal(await button("Save simulation").isDisabled(), true);
+  await verifyShellSizes(page);
   await capture("05-authoring");
   await send(
     "Test the owner. Request a refund, confirm, then ask for it again.",
     "/api/simulation-author",
   );
   await button("Save simulation").scrollIntoViewIfNeeded();
+  const review = current().getByRole("complementary", { name: "Read-only simulation review" });
+  assert.equal(await review.getByRole("button", { name: "Fixture and agent settings" }).count(), 0);
+  assert.doesNotMatch(
+    await review.innerText(),
+    /Named customer and fixed starting facts|Frozen workflow settings/u,
+  );
+  await verifyShellSizes(page);
   await capture("05b-reviewed-proposal");
+  await page.emulateMedia({ colorScheme: "dark" });
+  await capture("05c-dark-reviewed-proposal");
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.setViewportSize({ width: 390, height: 900 });
+  await button("Save simulation").scrollIntoViewIfNeeded();
+  await capture("05d-narrow-reviewed-proposal");
+  await page.setViewportSize({ width: 1280, height: 720 });
   const owner = await save();
   assert.deepEqual(owner.workflow.config, { tone: "brief", approval: "confirm" });
   assert.deepEqual(
@@ -321,7 +359,7 @@ try {
   assert.equal(await button("Rerun selected simulation").isDisabled(), true);
   assert.equal(await button("Back to workflow").count(), 0);
   assert.equal(await button("New workflow").count(), 0);
-  assert.equal(await button("Create another simulation").isDisabled(), true);
+  assert.equal(await button("Create new test").isDisabled(), true);
   assert.equal(await page.locator('.lab-library-item[aria-current="page"]').isDisabled(), true);
   assert.equal(await button("Edit in chat").isDisabled(), true);
   await page.getByText("Support agent", { exact: true }).first().waitFor();
@@ -370,6 +408,7 @@ try {
   await results.waitFor();
   assert.equal(await results.locator('.lab-goal[data-status="pass"]').count(), 3);
   assert.equal(await results.locator(".lab-goal").count(), owner.definition.checks.length);
+  const goalSummary = await results.getByRole("region", { name: "Workflow goals" }).innerText();
   assert.equal(await results.evaluate((element) => element.contains(document.activeElement)), true);
   await capture("08a-results-popover");
   for (const width of [390, 800, 801, 1024, 1280]) {
@@ -388,9 +427,9 @@ try {
   await capture("08c-dark-results-popover");
   await page.emulateMedia({ colorScheme: "light" });
   await page.setViewportSize({ width: 1280, height: 720 });
-  await button("Agent settings").click();
-  await page.getByRole("region", { name: "Accepted agent settings" }).waitFor();
+  await button("Search simulations").click();
   await results.waitFor({ state: "hidden" });
+  await button("Search simulations").click();
   await button("View results").click();
   await results.waitFor();
   await page.keyboard.press("Escape");
@@ -400,10 +439,10 @@ try {
     true,
   );
   assert.equal(await current().getByRole("textbox", { name: "Message", exact: true }).count(), 0);
-  await page
-    .getByRole("heading", { name: "Business checks passed · human review pending", exact: true })
-    .waitFor();
-  assert.equal(await page.getByRole("textbox", { name: "Automated execution JSON" }).count(), 0);
+  await page.getByRole("heading", { name: "Business checks passed", exact: true }).waitFor();
+  assert.equal(await page.locator('[aria-label="Automated execution JSON"]').count(), 0);
+  for (const name of ["Technical details", "Human wording review", "Previous runs and comparison"])
+    assert.equal(await button(name).count(), 0);
   const scroll = page.getByRole("region", { name: "Scenario conversation and results" });
   await scroll.focus();
   await page.keyboard.press("End");
@@ -424,9 +463,43 @@ try {
   assert.equal(await support.locator(".quiet-prose").count(), 1);
   await capture("08-completed-conversation");
   await button("Business checks and execution JSON").click();
-  await page.getByRole("textbox", { name: "Automated execution JSON" }).waitFor();
-  assert.equal(await page.getByText("Refunded $0.00 → $42.00", { exact: true }).count(), 1);
+  const json = page.locator('[aria-label="Automated execution JSON"]');
+  await json.waitFor();
+  const shown = JSON.parse(await json.innerText());
+  assert.deepEqual(shown.toolAttempts, first.evidence.result.trace);
+  assert.deepEqual(shown.before, first.evidence.result.before);
+  assert.deepEqual(shown.after, first.evidence.result.after);
+  assert.deepEqual(shown.checks, first.evidence.result.checks);
+  assert.equal(await json.locator('[data-proof-path="after.0"]').count(), 1);
+  assert.equal(await json.locator('[data-proof-path="after.1"]').count(), 0);
+  assert.equal(await json.locator('[data-proof-path="toolAttempts.1.confirmed"]').count(), 1);
+  assert.equal(
+    await page.getByRole("region", { name: "Workflow goals" }).locator(".lab-goal").count(),
+    3,
+  );
+  assert.equal(await page.getByRole("region", { name: "Workflow goals" }).innerText(), goalSummary);
+  const header = button("Business checks and execution JSON");
+  assert.equal(await header.evaluate((element) => getComputedStyle(element).paddingLeft), "0px");
+  assert.equal(
+    await json
+      .locator('[data-proof-path="after.0"]')
+      .evaluate(
+        (element) =>
+          getComputedStyle(element).color !== getComputedStyle(element.closest("pre")).color,
+      ),
+    true,
+  );
+  await page.setViewportSize({ width: 1280, height: 1100 });
+  await header.evaluate((element) => element.scrollIntoView({ block: "start" }));
   await capture("09-execution-disclosure");
+  await page.emulateMedia({ colorScheme: "dark" });
+  await capture("09b-dark-execution-disclosure");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await json.scrollIntoViewIfNeeded();
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  await capture("09c-narrow-execution-disclosure");
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.emulateMedia({ colorScheme: "light" });
   await button("Business checks and execution JSON").click();
   await page.emulateMedia({ colorScheme: "dark" });
   await conversationTop();
@@ -451,15 +524,6 @@ try {
   await page.emulateMedia({ colorScheme: "light" });
   await capture("12-narrow-light");
   await page.setViewportSize({ width: 1280, height: 720 });
-  await button("Human wording review").click();
-  await page.getByLabel("Your assessment").selectOption("needs-improvement");
-  await page
-    .getByLabel("Optional review note")
-    .fill("Check the wording independently of payment checks.");
-  await button("Save human review").click();
-  await page
-    .getByRole("heading", { name: "Business checks passed · needs improvement", exact: true })
-    .waitFor();
   assert.deepEqual((await read(`simulation-runs/${firstId}`)).evidence, first.evidence);
   await qa({ delay: 5 });
   const secondId = await start("Rerun selected simulation", owner.id);
@@ -490,13 +554,17 @@ try {
     .getByRole("dialog", { name: "Simulation complete", exact: true })
     .getByRole("button", { name: "View conversation", exact: true })
     .click();
-  await button("Agent settings").click();
-  await page.getByRole("region", { name: "Accepted agent settings" }).waitFor();
+  assert.equal(await button("Agent settings").getAttribute("aria-disabled"), "true");
+  await button("Agent settings").hover();
+  await page.locator('[data-slot="tooltip-content"]').filter({ hasText: "Out of scope" }).waitFor();
+  await capture("12b-settings-out-of-scope");
+  await button("Agent settings").click({ force: true });
+  assert.equal(await page.getByRole("region", { name: "Accepted agent settings" }).count(), 0);
   for (const [mode, heading] of [
     ["error", "Execution error. No grade."],
     ["hold", "Stopped. No grade."],
     ["timeout", "Time limit reached. No grade."],
-    ["early", "Checks not exercised · human review pending"],
+    ["early", "Checks not exercised"],
   ]) {
     await qa({ mode });
     const id = await start();
@@ -520,6 +588,9 @@ try {
     );
     await capture(`13-${mode}-results`);
     await outcome.getByRole("button", { name: "View conversation", exact: true }).click();
+    await button("Business checks and execution JSON").click();
+    assert.equal(await page.locator(".lab-json [data-proof-path]").count(), 0);
+    await button("Business checks and execution JSON").click();
     await conversationTop();
     await capture(`13-${mode}`);
   }
@@ -532,7 +603,7 @@ try {
   await button("Retry save only").waitFor({ state: "hidden" });
   assert.equal((await read(`simulation-runs/${unsavedId}`)).persistence, "saved");
   assert.equal((await qa({})).modelCalls, beforeSave);
-  await button("Create another simulation").click();
+  await button("Create new test").click();
   await dialog.waitFor();
   await dialog.getByRole("button", { name: "Describe a test scenario", exact: true }).click();
   await send("Test the spouse asking for Morgan's refund.", "/api/simulation-author");
@@ -547,9 +618,10 @@ try {
     [0, 0],
   );
   await button("Business checks and execution JSON").click();
-  await page
-    .getByText("No tool calls. Authorization boundary not exercised", { exact: false })
-    .waitFor();
+  const spouseJson = page.locator('[aria-label="Automated execution JSON"]');
+  assert.deepEqual(JSON.parse(await spouseJson.innerText()).toolAttempts, []);
+  assert.equal(await spouseJson.locator('[data-proof-path^="toolAttempts."]').count(), 0);
+  assert.equal(await page.locator(".lab-goals .lab-goal").count(), spouse.definition.checks.length);
   await conversationTop();
   await capture("14-spouse-no-tool-coverage");
   await context.storageState({ path: path.join(logs, "browser-state.json") });
@@ -557,6 +629,48 @@ try {
   await button("Run selected simulation").waitFor();
   assert.equal(await button("Back to workflow").count(), 0);
   assert.equal(await button("New workflow").count(), 0);
+  await qa({ restart: true, mode: "owner", delay: 5 });
+  await page.reload();
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll("button")].some(
+      (control) => control.textContent.trim() === "Create new test" && !control.disabled,
+    ),
+  );
+  assert.equal(await button("Configure agent").count(), 0);
+  assert.equal(await button("Run selected simulation").isEnabled(), true);
+  await verifyShellSizes(page);
+  await capture("15-create-after-session-expiry");
+  const recoveryCalls = (await qa({})).modelCalls;
+  await button("Create new test").click();
+  await dialog.getByRole("button", { name: "Describe a test scenario", exact: true }).click();
+  await current()
+    .getByRole("heading", { name: "What should this customer test?", exact: true })
+    .waitFor();
+  assert.equal(
+    await current().getByText("Revise your saved test in chat.", { exact: true }).count(),
+    0,
+  );
+  assert.equal((await qa({})).modelCalls, recoveryCalls, "Opening a new test never resubmits chat");
+  await send("Create an owner-confirm-repeat test.", "/api/simulation-author");
+  const recovered = await save();
+  assert.notEqual(recovered.id, spouse.id, "Creating a test never overwrites its settings source");
+  assert.deepEqual(await read(`simulation-definitions/${spouse.id}`), spouse);
+  assert.deepEqual(recovered.workflow, spouse.workflow);
+  assert.ok(await button("Open Spouse payment protection").count(), "Recovery retains saved tests");
+  const firstRecoveredRun = await start("Run selected simulation", recovered.id);
+  await finished();
+  const secondRecoveredRun = await start("Rerun selected simulation", recovered.id);
+  await finished();
+  assert.notEqual(firstRecoveredRun, secondRecoveredRun, "Each explicit run has its own evidence");
+  const recoveredRuns = await Promise.all(
+    [firstRecoveredRun, secondRecoveredRun].map((id) => read(`simulation-runs/${id}`)),
+  );
+  for (const result of recoveredRuns) {
+    assert.equal(result.evidence.result.verdict, "pass");
+  }
+  assert.equal(await button("Create new test").isEnabled(), true);
+  await capture("15-recovered-repeat-run");
+  await context.storageState({ path: path.join(logs, "recovered-state.json") });
   await page.evaluate(() => {
     localStorage.setItem(
       "sierra-simulation-session-v1",
