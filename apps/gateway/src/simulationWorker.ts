@@ -204,7 +204,7 @@ export function createSimulationApp(clientFor: (key: string) => Anthropic = open
       if (!c.env.SIMULATION_DB)
         return c.json({ error: "Simulation storage is not configured." }, 503);
       const saved = await readSimulationDefinition(c.env.SIMULATION_DB, input.definitionId);
-      if (!saved || saved.revision !== input.expectedRevision)
+      if (saved?.revision !== input.expectedRevision)
         return c.json({ error: "Reopen the latest saved revision before editing." }, 409);
       base = draftBase(saved, input.create);
     }

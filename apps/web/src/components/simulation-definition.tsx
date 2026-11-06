@@ -24,8 +24,8 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-/** Configured checks describe the test setup, never its execution grade. */
-export function ExpectedBehavior({ checks }: { checks: SimulationDefinitionInput["checks"] }) {
+// Configured checks describe the test setup, never its execution grade.
+function ExpectedBehavior({ checks }: { checks: SimulationDefinitionInput["checks"] }) {
   return (
     <section className="lab-definition" aria-label="Expected agent behavior">
       <Section title="Expected agent behavior">

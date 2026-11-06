@@ -9,7 +9,7 @@ import {
 import { SidebarContent, SidebarHeader } from "@yaklabs/ui/components/sidebar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@yaklabs/ui/components/tooltip";
 import type { SavedSimulationDefinition } from "gateway/simulation-contract";
-import { CircleCheck, Monitor, Play, RotateCcw, Search, Settings, LockKeyhole } from "lucide-react";
+import { CircleCheck, Monitor, Play, RotateCcw, Search, Settings } from "lucide-react";
 import { useState } from "react";
 import type { SimulationRowStatus } from "./simulation-run-state";
 
@@ -76,63 +76,6 @@ export function ScenarioInvitation({
         </div>
       </DialogContent>
     </Dialog>
-  );
-}
-
-/** First-use controls explain their prerequisite and cannot submit any simulation request. */
-export function LockedScenarios() {
-  return (
-    <aside className="lab-sidebar lab-scenarios" aria-label="Simulation scenarios">
-      <SidebarHeader>
-        <div className="lab-library-toolbar" aria-label="Simulation tools">
-          {[
-            { label: "Search simulations", icon: Search },
-            { label: "Agent settings", icon: Settings },
-            { label: "Rerun selected simulation", icon: RotateCcw },
-            { label: "Run selected simulation", icon: Play },
-          ].map(({ label, icon: Icon }) => (
-            <Button key={label} variant="ghost" size="icon" aria-label={label} disabled>
-              <Icon size={16} />
-            </Button>
-          ))}
-        </div>
-        <h2>Test scenarios</h2>
-        <p className="lab-muted">
-          <LockKeyhole size={14} aria-hidden="true" /> Describe your agent, answer its questions,
-          then accept the workflow to unlock simulations.
-        </p>
-      </SidebarHeader>
-      <SidebarContent className="lab-sidebar-content">
-        <Button variant="outline" disabled>
-          Create simulation
-        </Button>
-      </SidebarContent>
-    </aside>
-  );
-}
-
-/** Recovery does not gate access to the durable library or replay expired role requests. */
-export function SimulationRecovery({
-  failed,
-  onLibrary,
-}: {
-  failed: boolean;
-  onLibrary: () => void;
-}) {
-  return (
-    <main className="simulation-lab">
-      <div className="lab-welcome">
-        <h1>{failed ? "Saved session unavailable" : "Restoring your simulation"}</h1>
-        <p aria-live="polite">
-          {failed
-            ? "The server may have restarted, the session expired, or the connection is unavailable. No messages were resent and no invoices were recreated. Reload to retry. Saved scenarios remain available for inspection."
-            : "Loading conversation and payment evidence from the same server sessions."}
-        </p>
-        <Button variant="outline" className="btn" onClick={onLibrary}>
-          Saved simulations
-        </Button>
-      </div>
-    </main>
   );
 }
 
