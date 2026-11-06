@@ -7,6 +7,7 @@ type ModelRequest = {
   system: string;
   tools: Anthropic.Tool[];
   initialTool?: string;
+  stopAfterTool?: boolean;
   onModel?: (model: string) => void;
 };
 type ModelRun = Pick<
@@ -101,6 +102,7 @@ export function streamModel(
         };
       }),
     });
+    if (request.stopAfterTool) return;
     return nextRound(round + 1);
   };
   return nextRound(0);

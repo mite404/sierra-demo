@@ -217,4 +217,32 @@ describe("human builder adapter", () => {
     await collect(createBuilderAgent({ ...options, resume: { id, closed: true } }));
     expect(fetch).toHaveBeenCalledTimes(2);
   });
+
+  it("marks an author clarification as waiting for an answer, not ready for review", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        response([
+          { kind: "tool-start", id: "step", tool: "submit_authoring_step" },
+          { kind: "text", text: "More information needed. What happens after refusal?" },
+          { kind: "author-end", draft: null, error: null },
+        ]),
+      ),
+    );
+    const agent = createBuilderAgent({
+      endpoint: "/api/simulation-author",
+      initial: { source: { workflowId: id } },
+      observe: () => {},
+    });
+    const chunks = await collect(agent);
+    expect(chunks).toContainEqual({
+      kind: "step",
+      step: {
+        id: "step",
+        label: "Understanding your test",
+        status: "done",
+        outcome: "Waiting for your answer",
+      },
+    });
+  });
 });

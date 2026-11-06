@@ -187,14 +187,17 @@ const controlledModel = async (url, init) => {
         )
       : tool("propose_refund_workflow", { tone, approval: "confirm" }, init.signal);
   }
-  if (body.tools.some((item) => item.name === "propose_simulation") === true)
-    return isResult
-      ? text("Review the complete test and save explicitly.", init.signal)
-      : tool(
-          "propose_simulation",
-          definition(JSON.stringify(body.messages).includes("spouse")),
-          init.signal,
-        );
+  if (body.tools.some((item) => item.name === "submit_authoring_step") === true)
+    return tool(
+      "submit_authoring_step",
+      {
+        step: {
+          kind: "proposal",
+          definition: definition(JSON.stringify(body.messages).includes("spouse")),
+        },
+      },
+      init.signal,
+    );
   if (body.tools.length === 0) return customer(last, init.signal);
   if (mode === "spouse")
     return text(
