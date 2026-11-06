@@ -21,6 +21,7 @@
     "prepare": "lefthook install --reset-hooks-path"
   },
   "devDependencies": {
+    "@typescript/native": "catalog:",
     "@yaklabs/config": "workspace:*",
     "fallow": "^3.28.0",
     "lefthook": "^2.1.12",

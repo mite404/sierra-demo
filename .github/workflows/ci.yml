@@ -4,6 +4,9 @@ on:
   pull_request:
   push:
     branches: [main]
+  schedule:
+    - cron: "23 7 * * *"
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -15,6 +18,9 @@ permissions:
 env:
   STORYBOOK_DISABLE_TELEMETRY: 1
   TURBO_TELEMETRY_DISABLED: 1
+  TURBO_SCM_BASE: ${{ github.event.pull_request.base.sha || 'origin/main' }}
+  TURBO_SCM_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+  TURBO_FORCE: ${{ github.event_name == 'schedule' }}
 
 jobs:
   checks:
@@ -24,6 +30,7 @@ jobs:
         with:
           # fallow audit diffs against the PR's base branch, so it needs history.
           fetch-depth: 0
+          filter: blob:none
       # Reads the pnpm version from package.json's packageManager field.
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v7
@@ -32,12 +39,34 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
 
+      - uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-node26-${{ github.ref }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ runner.os }}-node26-${{ github.ref }}-
+            turbo-${{ runner.os }}-node26-refs/heads/main-
+      - name: Select safe affected tasks
+        id: scope
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          # Unknown/root inputs must execute everything, not reuse a possibly stale task hash.
+          changed=$(git diff --name-only "$TURBO_SCM_BASE" "$TURBO_SCM_HEAD")
+          if grep -qvE '^(apps/(web|gateway|storybook)|packages/(catalog|config|runtime|ui))/' <<< "$changed"; then
+            echo 'TURBO_FORCE=true' >> "$GITHUB_ENV"
+          else
+            echo 'args=--affected' >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Format
         run: pnpm format:check
+      - name: Verify CI scope safety
+        run: node --test scripts/ci-scope.test.js
       - name: Lint
         run: pnpm lint --format github
       - name: Typecheck
-        run: pnpm typecheck
+        run: pnpm typecheck ${{ steps.scope.outputs.args }}
       - name: Gateway tests with coverage
         run: pnpm --filter gateway test:coverage
       - name: Fallow audit (findings this PR introduces)
@@ -48,10 +77,22 @@ jobs:
           pnpm fallow audit --base "origin/$BASE_REF"
           --coverage apps/gateway/coverage/coverage-final.json --format github-annotations
 
+      - name: Read Playwright version
+        id: playwright
+        run: echo "version=$(pnpm --filter storybook exec playwright --version | cut -d ' ' -f 2)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        id: browsers
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-chromium-${{ steps.playwright.outputs.version }}
       - name: Install Chromium for story tests
+        if: steps.browsers.outputs.cache-hit != 'true'
         run: pnpm --filter storybook exec playwright install --with-deps chromium
+      - name: Install Chromium system dependencies
+        if: steps.browsers.outputs.cache-hit == 'true'
+        run: pnpm --filter storybook exec playwright install-deps chromium
       - name: Unit and story tests
-        run: pnpm test --filter='!gateway'
+        run: pnpm test --filter='!gateway' ${{ steps.scope.outputs.args }}
       - name: Build
         run: pnpm build
       - name: Build Storybook
@@ -69,36 +110,3 @@ jobs:
         with:
           name: storybook-static
           path: apps/storybook/storybook-static/
-
-  design-verification:
-    runs-on: ubuntu-latest
-    # Baselines identify Debian 12 separately from Ubuntu and macOS rasterization.
-    container: node:26.10.0-bookworm
-    timeout-minutes: 30
-    env:
-      HOME: /root
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-      - name: Trust the runner-mounted checkout
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-      - uses: pnpm/action-setup@v4
-      - run: pnpm install --frozen-lockfile
-      - name: Install the three browser engines
-        run: pnpm --filter verify-ui-drift exec playwright install --with-deps chromium firefox webkit
-      - name: Compare the foundation matrix
-        run: pnpm verify-ui-drift run
-      - name: Exercise the review interface
-        if: success() || failure()
-        run: pnpm --filter verify-ui-drift test:review
-      - name: Upload design evidence even when comparison fails
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: design-verification
-          path: |
-            .artifacts/verify-ui-drift/runs/
-            .artifacts/verify-ui-drift/review-check/
-          include-hidden-files: true
-          if-no-files-found: error

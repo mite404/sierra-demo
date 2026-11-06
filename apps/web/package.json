@@ -31,6 +31,7 @@
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "@typescript/native": "catalog:",
     "@yaklabs/config": "workspace:*",
     "fontkit": "^2.0.4",
     "tailwindcss": "catalog:",

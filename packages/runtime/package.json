@@ -17,6 +17,7 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "@typescript/native": "catalog:",
     "@yaklabs/config": "workspace:*",
     "typescript": "catalog:",
     "vitest": "catalog:"

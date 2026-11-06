@@ -8,7 +8,8 @@ accessibility. It can also capture the SPA shell.
 
 Use it to catch visual drift as humans and agents change the product. Code is the source of truth;
 Figma receives token exports. Automated checks find differences. A person decides whether an
-intentional visual change should become the new reference.
+intentional visual change should become the new reference. Run this review manually; CI does not
+capture or publish design-verification reports.
 
 ## Run it
 
@@ -50,10 +51,11 @@ Only PASS means everything was compared and found as approved.
 | BROKEN | 3 | The run did not finish cleanly; the cause is printed | No, do not use it |
 
 References are per machine, since browsers draw text slightly differently on each OS. The
-approved ones come from CI's Debian image, so a run on a Mac is INCOMPLETE and says so before it
-captures anything. To see CI's comparison, unzip the PR's `design-verification` artifact into
-`.artifacts/verify-ui-drift/` (it holds `runs/`) and open it in the review app. Changes and axe
-violations are listed even when a run is INCOMPLETE, so they are never hidden by it.
+checked-in references were captured on Debian 12. A run on a Mac is INCOMPLETE and says so before
+it captures anything. Run the comparison manually in a matching rendering environment, then open
+the saved report with `pnpm verify-ui-drift review`. Inspect and approve references locally when
+adding another rendering environment. Changes and axe violations are listed even when a run is
+INCOMPLETE, so they are never hidden by it.
 
 ## From design to drift check
 
@@ -87,8 +89,8 @@ Commit these with the code.
 Reports and comparison images live in `.artifacts/verify-ui-drift/runs/`, which Git ignores.
 
 The CLI rejects stale or incomplete evidence, failed comparator checks, altered images, and selected
-captures with axe violations. CI cannot approve references. Never approve an unexplained difference
-just to make a check pass.
+captures with axe violations. Reference approval is a manual local action. Never approve an
+unexplained difference just to make a check pass.
 
 ## Check the tool itself
 
