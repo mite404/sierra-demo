@@ -7,6 +7,7 @@ import {
   DialogDescription,
 } from "@yaklabs/ui/components/dialog";
 import { SidebarContent, SidebarHeader } from "@yaklabs/ui/components/sidebar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@yaklabs/ui/components/tooltip";
 import type { AcceptedWorkflow, SavedSimulationDefinition } from "gateway/simulation-contract";
 import { Monitor, Play, RotateCcw, Search, Settings, LockKeyhole } from "lucide-react";
 import { useState } from "react";
@@ -41,11 +42,10 @@ export function ScenarioInvitation({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Create your first test scenario</DialogTitle>
+          <DialogTitle>Create Test Scenario</DialogTitle>
           <DialogDescription>
-            Your agent is ready. Test an edge case, such as a spouse asking for someone else's
-            refund or an owner requesting the same refund twice. Nothing runs until you review and
-            save.
+            Test an edge case. For example: “Do not allow another account to gain access to the
+            account belonging to the order.” Nothing runs until you review and save.
           </DialogDescription>
         </DialogHeader>
         <div className="lab-invitation">
@@ -272,40 +272,18 @@ function LibraryContents({
   );
 }
 
-function AgentSettings({ config }: { config: AcceptedWorkflow["config"] | undefined }) {
-  return (
-    <section aria-label="Accepted agent settings" className="lab-muted">
-      <h3 className="lab-group-title">Agent settings</h3>
-      {config ? (
-        <p>
-          {config.tone === "warm" ? "Warm" : "Brief"} replies.{" "}
-          {config.approval === "confirm"
-            ? "Owner confirmation before refund."
-            : "Immediate eligible owner refund."}{" "}
-          Ownership and payment safeguards always apply.
-        </p>
-      ) : (
-        <p>Accept your agent before creating a simulation.</p>
-      )}
-    </section>
-  );
-}
-
 function LibraryToolbar({
   query,
   setQuery,
-  config,
   runFormId,
   runDisabled,
 }: {
   query: string;
   setQuery: (query: string) => void;
-  config: AcceptedWorkflow["config"] | undefined;
   runFormId: string;
   runDisabled: boolean;
 }) {
   const [searching, setSearching] = useState(false);
-  const [settings, setSettings] = useState(false);
   return (
     <>
       <div className="lab-library-toolbar" aria-label="Simulation tools">
@@ -321,17 +299,16 @@ function LibraryToolbar({
         >
           <Search size={16} />
         </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Agent settings"
-          aria-expanded={settings}
-          onClick={() => {
-            setSettings(!settings);
-          }}
-        >
-          <Settings size={16} />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button variant="ghost" size="icon" aria-label="Agent settings" aria-disabled />
+            }
+          >
+            <Settings size={16} />
+          </TooltipTrigger>
+          <TooltipContent>Out of scope</TooltipContent>
+        </Tooltip>
         <Button
           variant="ghost"
           size="icon"
@@ -366,14 +343,8 @@ function LibraryToolbar({
           }}
         />
       )}
-      {settings && <AgentSettings config={config} />}
     </>
   );
-}
-
-function selectedConfig({ library, selectedId, workflow }: LibraryProps) {
-  const selected = library.items?.find((item) => item.id === selectedId);
-  return selected ? selected.workflow.config : workflow?.config;
 }
 
 /** Saved-test reads and explicit reload remain available without live credentials. */
@@ -387,7 +358,6 @@ export function LibrarySidebar(props: LibraryProps) {
         <LibraryToolbar
           query={query}
           setQuery={setQuery}
-          config={selectedConfig(props)}
           runFormId={runFormId}
           runDisabled={!selectedId || locked || !workflow}
         />
@@ -399,7 +369,7 @@ export function LibrarySidebar(props: LibraryProps) {
       <SidebarContent className="lab-sidebar-content">
         <div className="lab-review-actions">
           <Button variant="outline" className="btn" disabled={!workflow || locked} onClick={start}>
-            Create another simulation
+            Create new test
           </Button>
           <Button
             variant="ghost"

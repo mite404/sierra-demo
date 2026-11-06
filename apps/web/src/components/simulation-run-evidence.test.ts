@@ -1,9 +1,9 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it } from "vitest";
-import type { SavedSimulationDefinition, SimulationRun } from "gateway/simulation-contract";
+import type { SavedSimulationDefinition } from "gateway/simulation-contract";
 import { runSimulation, toolProbe } from "../../../gateway/src/simulation";
-import { RunBusinessEvidence, RunMetadata } from "./simulation-run-evidence";
+import { RunBusinessEvidence } from "./simulation-run-evidence";
 import { SimulationRunView } from "./simulation-run-view";
 
 const saved: SavedSimulationDefinition = {
@@ -24,7 +24,7 @@ const saved: SavedSimulationDefinition = {
   savedAt: "2026-10-23T00:00:00.000Z",
 };
 
-it("a passing untouched-payment outcome never implies tool-boundary or wording coverage", async () => {
+it("highlights unchanged payment evidence without implying an unexercised tool boundary passed", async () => {
   const result = await runSimulation(
     { case: "spouse", version: "corrected", source: "probe", pressure: false },
     () => {},
@@ -32,42 +32,22 @@ it("a passing untouched-payment outcome never implies tool-boundary or wording c
     { simulation: saved },
   );
   const html = renderToStaticMarkup(createElement(RunBusinessEvidence, { result }));
-  expect(html).toContain("Selected business outcome: Passed");
-  expect(html).toContain("No tool calls. Authorization boundary not exercised");
-  expect(html).toContain("Expected:");
-  expect(html).toContain("Actual:");
-  expect(html).toContain("$42.00");
-  expect(html).toContain("$17.00");
-  expect(html).toContain("Refunded $0.00 → $0.00");
+  expect(html).toContain('data-proof-path="before.0"');
+  expect(html).toContain('data-proof-path="after.0"');
+  expect(html).not.toContain('data-proof-path="before.1"');
+  expect(html).not.toContain('data-proof-path="toolAttempts');
+  expect(result.trace).toEqual([]);
   expect(html).not.toContain("<details");
   const partial = renderToStaticMarkup(
     createElement(RunBusinessEvidence, {
       result: { ...result, status: "cancelled", verdict: null, checks: [] },
     }),
   );
-  expect(partial).toContain("no verdict or checks are assigned");
-  expect(partial).not.toContain("Selected business outcome");
-  const run: SimulationRun = {
-    id: saved.id,
-    active: false,
-    persistence: "unsaved",
-    evidence: {
-      id: saved.id,
-      result,
-      completedAt: saved.savedAt,
-      models: {
-        customer: { requested: "moonshotai/kimi-k3", reported: ["actual-customer"] },
-        support: { requested: "moonshotai/kimi-k3", reported: [] },
-      },
-    },
-    humanReview: { status: "pending", note: "" },
-  };
-  const metadata = renderToStaticMarkup(createElement(RunMetadata, { run }));
-  expect(metadata).toContain("Definition revision 2");
-  expect(metadata).toContain("actual-customer");
-  expect(metadata).toContain("not reported / not called");
-  expect(metadata).toContain("Unsaved completed evidence");
-  expect(metadata).toContain("Human wording review pending");
+  expect(partial).not.toContain("data-proof-path");
+  const stale = renderToStaticMarkup(
+    createElement(RunBusinessEvidence, { result: { ...result, status: "running" } }),
+  );
+  expect(stale).not.toContain("data-proof-path");
 });
 
 it("shows an actual vulnerable no-model probe failure as payment evidence, not a wording grade", async () => {
@@ -76,10 +56,25 @@ it("shows an actual vulnerable no-model probe failure as payment evidence, not a
     toolProbe,
   );
   const html = renderToStaticMarkup(createElement(RunBusinessEvidence, { result }));
-  expect(html).toContain("Selected business outcome: Failed");
-  expect(html).toContain("Refunded $0.00 → $42.00");
-  expect(html).toContain("Refunded $0.00 → $0.00");
-  expect(html).toContain("not a grade for the agent");
+  expect(result.verdict).toBe("fail");
+  expect(result.after[0]?.refundedCents).toBe(4200);
+  expect(html).not.toContain("data-proof-path");
+  expect(html).toContain("4200");
+});
+
+it("highlights a real owner refund's authorization, amount, destination and payment state", async () => {
+  const result = await runSimulation(
+    { case: "owner", source: "probe", version: "corrected", pressure: false },
+    toolProbe,
+    undefined,
+    { workflow: { tone: "brief", approval: "immediate" } },
+  );
+  expect(result.verdict).toBe("pass");
+  const html = renderToStaticMarkup(createElement(RunBusinessEvidence, { result }));
+  expect(html).toContain('data-proof-path="after.0"');
+  expect(html).toContain('data-proof-path="toolAttempts.0.authorization"');
+  expect(html).toContain('data-proof-path="toolAttempts.0.output"');
+  expect(html).not.toContain('data-proof-path="after.1"');
 });
 
 it("the selected saved test starts as read-only frozen evidence, not a new run or a grade", () => {

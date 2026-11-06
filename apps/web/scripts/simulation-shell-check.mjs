@@ -19,6 +19,7 @@ export async function verifyShell(page) {
     const lights = frame.querySelector('[data-slot="traffic-lights"]');
     const visible = (selector) =>
       [...frame.querySelectorAll(selector)].filter((node) => node.checkVisibility());
+    const author = visible(".lab-author-workspace")[0];
     return {
       frame: rect(frame),
       chrome: rect(chrome),
@@ -29,6 +30,12 @@ export async function verifyShell(page) {
         lights.getAttribute("aria-hidden") === "true" &&
         lights.querySelectorAll("button, a, [tabindex]").length === 0,
       regions: visible(".thread-panel, .lab-pinned-summary, .lab-run-scroll").map(rect),
+      author: author
+        ? {
+            chat: rect(author.querySelector(".lab-conversation")),
+            review: rect(author.querySelector(".lab-author-review")),
+          }
+        : null,
       scroll: { x: scrollX, y: scrollY, width: document.documentElement.scrollWidth },
       viewport: { width: innerWidth, height: innerHeight },
     };
@@ -63,6 +70,16 @@ export async function verifyShell(page) {
     );
   }
   assert.deepEqual(facts.scroll, { x: 0, y: 0, width }, "Focus cannot scroll the desk");
+  if (facts.author) {
+    const { chat, review } = facts.author;
+    if (width > 800) {
+      assert.equal(review.x, chat.right, "Review sits to the right of authoring chat");
+      assert.equal(review.y, chat.y, "Review aligns with the top of authoring chat");
+      assert.ok(review.bottom <= facts.frame.bottom, "Review scrolls inside the frame");
+    } else {
+      assert.ok(review.y >= chat.bottom, "Review stacks below authoring chat on narrow screens");
+    }
+  }
   if (desktop && width > 800) {
     for (const region of facts.regions) {
       assert.ok(

@@ -207,7 +207,7 @@ export function AuthorChat({ source, workflow, restored, onSaved, onLock }: Chat
           dictation={{ source: "microphone" }}
           width={undefined}
           headerActions={<span className="lab-role">Simulation author · not a customer</span>}
-          empty={<EmptyAuthor editing={"definitionId" in source} />}
+          empty={<EmptyAuthor editing={"definitionId" in source && !source.create} />}
           footnote="Live Kimi K3 authoring · proposals only · explicit save required"
         />
         <Examples thread={thread} disabled={state.kind !== "ready"} />

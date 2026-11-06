@@ -262,9 +262,15 @@ importers:
       '@yaklabs/config':
         specifier: workspace:*
         version: link:../../packages/config
+      ast-v8-to-istanbul:
+        specifier: ^1.0.7
+        version: 1.0.7
       fontkit:
         specifier: ^2.0.4
         version: 2.0.4
+      istanbul-lib-coverage:
+        specifier: ^3.2.2
+        version: 3.2.2
       tailwindcss:
         specifier: 'catalog:'
         version: 4.3.3

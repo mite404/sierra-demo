@@ -186,7 +186,7 @@ try {
     assert.equal(edited.draft.definition.name, "Casey's calm follow-up");
     const savedEdit = await save(2);
     assert.equal(savedEdit.id, savedSpouse.id);
-    await current().getByRole("button", { name: "Create another simulation", exact: true }).click();
+    await current().getByRole("button", { name: "Create new test", exact: true }).click();
     const ownerQuestion = await send(
       "I want an owner-confirmation test, but have not decided what Morgan should do after the refund. Ask me a focused question about that before proposing a test.",
     );

@@ -566,12 +566,25 @@ scroll internally so focus cannot move the desk.
 
 Saved scenarios are selected only in the left panel. When a run ends, its outcomes appear in the
 existing nonmodal shadcn dialog, with its inherited surface, border, shadow, corners and motion.
-Only the ended transcript receives 2px blur (`--space / 12`, Ethan). Dismissing results removes
-the blur and reveals the read-only conversation; View results reopens them. Selected expected
-goals, actual evidence and text status labels retain the inspector's icon-led rows. Incomplete
-execution never earns a passing grade. Dialog content uses 16px horizontal padding
+The entire saved-run panel behind the dialog receives 2px blur (`--space / 12`, Ethan).
+Dismissing results removes the blur and reveals the read-only conversation; View results reopens
+them. Selected expected goals, actual evidence and text status labels retain the inspector's
+icon-led rows. Incomplete execution never earns a passing grade. Dialog content uses 16px
+horizontal padding
 (`--space * 2 / 3`) and 8px row spacing (`--space / 3`), derived from existing sidebar spacing.
 Passed status text uses `--saved-ink`, the existing theme-aware positive status token (derived).
+
+The execution disclosure reuses Workflow goals from the results dialog and aligns its heading
+flush with the conversation (Ethan). Raw JSON remains selectable and keyboard-scrollable. Keys
+and values supporting passed selected goals use `--saved-ink`; other evidence stays `--ink`
+(Ethan; derived from the existing passed-status token). Partial runs and failed executor safety
+never receive green evidence highlights. Previous-run comparison, technical details and human
+wording review controls are absent from this view (Ethan).
+
+During authoring, the review panel sits to the right of the chat (Ethan). Its width reuses the
+scenario sidebar's 12 × `--space`, capped at 40% of the authoring workspace to preserve chat space
+(derived). The panel scrolls independently. At the existing 800px breakpoint it stacks below the
+chat, retaining the prior 45% height cap (css).
 
 ## Open questions
 

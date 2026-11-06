@@ -35,7 +35,7 @@ const toolLabel = (name: string) =>
     ? "Choosing workflow preferences"
     : name === "propose_refund_workflow"
       ? "Preparing workflow proposal"
-      : "Preparing simulation proposal";
+      : "Understanding your test";
 
 function readBuilderEvent(line: string, endpoint: BuilderOptions["endpoint"]): BuilderEvent {
   const event = builderEvent.parse(JSON.parse(line));
@@ -50,6 +50,7 @@ function readBuilderEvent(line: string, endpoint: BuilderOptions["endpoint"]): B
 function* finishTools(
   tools: { id: string; tool: string }[],
   error: string | null,
+  outcome: string,
 ): Generator<ReplyChunk> {
   if (error !== null) {
     yield failure(error);
@@ -62,7 +63,7 @@ function* finishTools(
         id: tool.id,
         label: toolLabel(tool.tool),
         status: "done",
-        outcome: "Ready for employee review",
+        outcome,
       },
     };
 }
@@ -104,7 +105,15 @@ async function* readBuilderReply(
         case "author-end":
           yield* closeMarkdown(emitter);
           emitter = newEmitter;
-          yield* finishTools(tools, event.error);
+          yield* finishTools(
+            tools,
+            event.error,
+            event.kind === "author-end"
+              ? event.draft
+                ? "Ready to review and save"
+                : "Waiting for your answer"
+              : "Ready for employee review",
+          );
           return;
         default: {
           const unhandled: never = event;

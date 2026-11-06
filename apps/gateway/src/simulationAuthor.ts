@@ -51,7 +51,7 @@ async function readSource(options: AuthorOptions, source: SimulationAuthorSource
   const saved = savedSimulationDefinition.parse(await response.json());
   if (saved.revision !== source.expectedRevision)
     return Response.json({ error: "Reopen the latest revision before editing." }, { status: 409 });
-  return { workflow: saved.workflow, original: saved.definition };
+  return { workflow: saved.workflow, original: source.create ? null : saved.definition };
 }
 
 async function start(state: State, id: string, source: SimulationAuthorSource, env: AuthorEnv) {

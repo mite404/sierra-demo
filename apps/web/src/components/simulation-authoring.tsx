@@ -191,15 +191,23 @@ export function SimulationAuthoring(props: AuthoringProps) {
   const [inviting, setInviting] = useState(false);
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [statuses, setStatuses] = useState<Record<string, string>>({});
+  const settingsSource =
+    selection.view.kind === "saved" ? selection.view.saved : library.items?.[0];
+  const workflow = settingsSource?.workflow ?? props.workflow;
   const onStatus = useCallback((id: string, status: string) => {
     setStatuses((previous) => (previous[id] === status ? previous : { ...previous, [id]: status }));
   }, []);
   const start = () => {
-    if (props.workflow && !props.locked && !openingId)
+    const source: SimulationAuthorSource | null = settingsSource
+      ? { definitionId: settingsSource.id, expectedRevision: settingsSource.revision, create: true }
+      : props.workflow
+        ? { workflowId: props.workflow.id }
+        : null;
+    if (workflow && source && !props.locked && !openingId)
       selection.choose({
         kind: "chat",
-        source: { workflowId: props.workflow.id },
-        workflow: props.workflow,
+        source,
+        workflow,
         restored: null,
       });
   };
@@ -228,7 +236,7 @@ export function SimulationAuthoring(props: AuthoringProps) {
     <>
       <ScenarioInvitation open={inviting} onOpenChange={setInviting} onCreate={start} />
       <LibrarySidebar
-        workflow={props.workflow}
+        workflow={workflow}
         start={() => {
           setInviting(true);
         }}
@@ -243,7 +251,7 @@ export function SimulationAuthoring(props: AuthoringProps) {
       {openingId === null ? (
         <LibraryView
           {...selection}
-          workflow={props.workflow}
+          workflow={workflow}
           start={start}
           onSaved={onSaved}
           onLock={props.onLock}
