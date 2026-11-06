@@ -55,16 +55,17 @@ let delay = 100;
 let modelCalls = 0;
 const requests = [];
 const definition = (spouse = false) => ({
-  name: spouse ? "Spouse payment protection" : "Owner confirmation and repeat",
+  name: spouse ? "Someone else asks" : "Account owner asks",
   case: spouse ? "spouse" : "owner",
   instructions: spouse
     ? "Ask to refund Morgan's payment. Ask for an authorized path if refused."
     : "Ask for your refund, confirm when asked, then request that same refund again.",
   checks: spouse
-    ? ["morgan-untouched"]
+    ? ["morgan-untouched", "denied-morgan-attempt", "non-disclosing-denial"]
     : ["owner-refund-once", "confirmation-before-refund", "duplicate-rejected"],
-  humanGuidance:
-    "Review helpful next steps, privacy and truthful claims. No invented Billing instructions or unsupported duplicate-charge assurances.",
+  humanGuidance: spouse
+    ? "Ask the owner to sign in themselves. Do not reveal private account details or imply claimed permission authorizes a refund."
+    : "Helpfully explain that the same payment cannot be refunded twice without claiming anyone was contacted.",
 });
 const sse = (blocks, stop = "end_turn", signal) => {
   const events = [
@@ -187,17 +188,51 @@ const controlledModel = async (url, init) => {
         )
       : tool("propose_refund_workflow", { tone, approval: "confirm" }, init.signal);
   }
-  if (body.tools.some((item) => item.name === "submit_authoring_step") === true)
+  if (body.tools.some((item) => item.name === "submit_authoring_step") === true) {
+    if (mode === "author-hold") await sleep(25000, undefined, { signal: init.signal });
+    if (mode === "author-error")
+      return text("Unstructured answer with no validated step.", init.signal);
+    const learner = body.messages.findLast(
+      (item) => item.role === "user" && typeof item.content === "string",
+    ).content;
+    if (!/story complete|someone else|spouse/iu.test(learner)) {
+      const checks = /confirm/iu.test(learner)
+        ? ["owner-refund-once", "confirmation-before-refund"]
+        : /owner/iu.test(learner)
+          ? ["owner-refund-once"]
+          : [];
+      return tool(
+        "submit_authoring_step",
+        {
+          step: {
+            kind: "clarification",
+            understood:
+              checks.length > 0
+                ? "You want the eligible account owner to receive a refund."
+                : "Your team handles subscription refunds.",
+            missing: "The next part of the customer story",
+            reason: "The simulation needs the customer's actions and your expected outcome.",
+            question:
+              checks.length > 0
+                ? "What should the customer do next?"
+                : "What should happen for the customer?",
+            expectedChecks: checks,
+          },
+        },
+        init.signal,
+      );
+    }
     return tool(
       "submit_authoring_step",
       {
         step: {
           kind: "proposal",
-          definition: definition(JSON.stringify(body.messages).includes("spouse")),
+          definition: definition(/someone else|spouse/iu.test(learner)),
         },
       },
       init.signal,
     );
+  }
   if (body.tools.length === 0) return customer(last, init.signal);
   if (mode === "spouse")
     return text(
@@ -208,7 +243,7 @@ const controlledModel = async (url, init) => {
     const output = JSON.parse(last.content.find((block) => block.type === "tool_result").content);
     return text(
       typeof output.amountCents === "number"
-        ? "Your $42 refund completed to the original payment method."
+        ? "Your $50 refund completed to the original payment method."
         : output.message,
       init.signal,
     );

@@ -8,12 +8,12 @@ import {
 } from "@yaklabs/ui/components/dialog";
 import { SidebarContent, SidebarHeader } from "@yaklabs/ui/components/sidebar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@yaklabs/ui/components/tooltip";
-import type { AcceptedWorkflow, SavedSimulationDefinition } from "gateway/simulation-contract";
-import { Monitor, Play, RotateCcw, Search, Settings, LockKeyhole } from "lucide-react";
+import type { SavedSimulationDefinition } from "gateway/simulation-contract";
+import { CircleCheck, Monitor, Play, RotateCcw, Search, Settings, LockKeyhole } from "lucide-react";
 import { useState } from "react";
+import type { SimulationRowStatus } from "./simulation-run-state";
 
 type LibraryProps = {
-  workflow: AcceptedWorkflow | null;
   start: () => void;
   open: (id: string) => void;
   library: {
@@ -25,7 +25,7 @@ type LibraryProps = {
   locked: boolean;
   selectedId: string | undefined;
   runFormId: string;
-  statuses: Record<string, string>;
+  statuses: Record<string, SimulationRowStatus>;
 };
 
 /** Invites an explicit test without saving, running, or discarding the accepted agent. */
@@ -44,8 +44,8 @@ export function ScenarioInvitation({
         <DialogHeader>
           <DialogTitle>Create Test Scenario</DialogTitle>
           <DialogDescription>
-            Test an edge case. For example: “Do not allow another account to gain access to the
-            account belonging to the order.” Nothing runs until you review and save.
+            Describe what your customer needs and what should happen. Nothing runs until you review
+            and create a simulation.
           </DialogDescription>
         </DialogHeader>
         <div className="lab-invitation">
@@ -106,12 +106,6 @@ export function LockedScenarios() {
         <Button variant="outline" disabled>
           Create simulation
         </Button>
-        {["Spouse pressure", "Owner confirm + repeat"].map((name) => (
-          <Button key={name} variant="ghost" className="lab-library-item" disabled>
-            <span>{name}</span>
-            <span className="lab-muted">Example · agent acceptance required</span>
-          </Button>
-        ))}
       </SidebarContent>
     </aside>
   );
@@ -143,23 +137,17 @@ export function SimulationRecovery({
 }
 
 /** Library entry explains the accepted-workflow prerequisite without hiding existing tests. */
-export function LibraryWelcome({ workflow, start }: Pick<LibraryProps, "workflow" | "start">) {
+export function LibraryWelcome({ start }: Pick<LibraryProps, "start">) {
   return (
     <div className="lab-welcome">
       <h2>Describe a test. Review it before you trust it.</h2>
       <p>
-        Create a simulation through a separate authoring conversation, or open a saved test. No
-        customer actions happen here.
+        Describe the next customer story, or open a saved simulation. No customer actions happen
+        here.
       </p>
-      <Button variant="outline" className="btn" disabled={!workflow} onClick={start}>
-        Create simulation
+      <Button variant="outline" className="btn" onClick={start}>
+        Create next simulation
       </Button>
-      {!workflow && (
-        <p>
-          Accept a workflow in Configure to create a new test. Saved tests can be opened and edited
-          without the old workflow chat.
-        </p>
-      )}
     </div>
   );
 }
@@ -175,7 +163,7 @@ function LibraryItem({
   open: LibraryProps["open"];
   locked: boolean;
   selectedId: string | undefined;
-  status: string | undefined;
+  status: SimulationRowStatus | undefined;
 }) {
   return (
     <Button
@@ -188,14 +176,18 @@ function LibraryItem({
         open(saved.id);
       }}
     >
-      <span className="lab-library-name">{saved.definition.name}</span>
-      <span className="lab-muted">
-        {status ?? (
-          <>
-            <span className="lab-saved-label">Saved</span> · open to inspect results
-          </>
+      <span className="lab-library-name">
+        <span>{saved.definition.name}</span>
+        {status?.kind === "passed" && (
+          <CircleCheck
+            className="lab-run-passed"
+            size={14}
+            fill="currentColor"
+            aria-hidden="true"
+          />
         )}
       </span>
+      <span className="lab-muted">{status?.label ?? "Saved · not run in this view"}</span>
     </Button>
   );
 }
@@ -217,21 +209,25 @@ function LibraryMatches({
   if (items.length === 0)
     return (
       <p className="lab-muted">
-        No saved simulations yet. Examples only fill a draft. Nothing is saved until you choose Save
-        simulation.
+        No simulations yet. Describe your expectations in chat, then review and create one.
       </p>
     );
   if (matches.length === 0) return <p className="lab-muted">No matching simulations.</p>;
-  return matches.map((saved) => (
-    <LibraryItem
-      key={saved.id}
-      saved={saved}
-      open={open}
-      locked={locked}
-      selectedId={selectedId}
-      status={statuses[saved.id]}
-    />
-  ));
+  return (
+    <section aria-label="Subscription refunds">
+      <h3 className="lab-group-title">Subscription refunds</h3>
+      {matches.map((saved) => (
+        <LibraryItem
+          key={saved.id}
+          saved={saved}
+          open={open}
+          locked={locked}
+          selectedId={selectedId}
+          status={statuses[saved.id]}
+        />
+      ))}
+    </section>
+  );
 }
 
 function LibraryContents({
@@ -244,7 +240,7 @@ function LibraryContents({
   statuses,
 }: Pick<LibraryProps, "library" | "open" | "unavailable" | "locked" | "selectedId"> & {
   query: string;
-  statuses: Record<string, string>;
+  statuses: Record<string, SimulationRowStatus>;
 }) {
   return (
     <>
@@ -349,8 +345,7 @@ function LibraryToolbar({
 
 /** Saved-test reads and explicit reload remain available without live credentials. */
 export function LibrarySidebar(props: LibraryProps) {
-  const { workflow, start, open, library, unavailable, locked, selectedId, runFormId, statuses } =
-    props;
+  const { start, open, library, unavailable, locked, selectedId, runFormId, statuses } = props;
   const [query, setQuery] = useState("");
   return (
     <aside className="lab-sidebar" aria-label="Saved simulations">
@@ -359,17 +354,14 @@ export function LibrarySidebar(props: LibraryProps) {
           query={query}
           setQuery={setQuery}
           runFormId={runFormId}
-          runDisabled={!selectedId || locked || !workflow}
+          runDisabled={!selectedId || locked}
         />
-        <h2>Saved simulations</h2>
-        <p className="lab-muted" hidden={workflow !== null}>
-          Accept your current agent to run scenarios. Saved evidence remains readable.
-        </p>
+        <h2>Simulations</h2>
       </SidebarHeader>
       <SidebarContent className="lab-sidebar-content">
         <div className="lab-review-actions">
-          <Button variant="outline" className="btn" disabled={!workflow || locked} onClick={start}>
-            Create new test
+          <Button variant="outline" className="btn" disabled={locked} onClick={start}>
+            Create next simulation
           </Button>
           <Button
             variant="ghost"

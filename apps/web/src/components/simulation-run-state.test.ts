@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import type { SimulationRun } from "gateway/simulation-contract";
-import { runSimulation } from "../../../gateway/src/simulation";
-import { runProgress } from "./simulation-run-state";
+import { runSimulation, toolProbe } from "../../../gateway/src/simulation";
+import { runProgress, simulationRowStatus } from "./simulation-run-state";
 
 const run: SimulationRun = {
   id: "2d470d88-53b3-43fe-ab64-02639081c371",
@@ -10,6 +10,62 @@ const run: SimulationRun = {
   evidence: null,
   humanReview: { status: "pending", note: "" },
 };
+
+it("awards a passing row only to real completed evidence, never active or incomplete results", async () => {
+  const result = await runSimulation(
+    { case: "owner", version: "corrected", source: "probe", pressure: false },
+    toolProbe,
+  );
+  const evidence: NonNullable<SimulationRun["evidence"]> = {
+    id: run.id,
+    completedAt: new Date().toISOString(),
+    result,
+    models: {
+      customer: { requested: "moonshotai/kimi-k3", reported: [] },
+      support: { requested: "moonshotai/kimi-k3", reported: [] },
+    },
+  };
+  const completed: SimulationRun = {
+    ...run,
+    active: false,
+    persistence: "saved",
+    evidence,
+  };
+  expect(simulationRowStatus(completed)).toMatchObject({
+    kind: "passed",
+    label: "Business checks passed",
+  });
+  for (const pending of [
+    undefined,
+    run,
+    { ...completed, active: true },
+    { ...completed, evidence: { ...evidence, completedAt: null } },
+  ]) {
+    expect(simulationRowStatus(pending).kind).not.toBe("passed");
+  }
+  for (const [status, label] of [
+    ["running", "Running. No grade yet."],
+    ["errored", "Execution error. No grade."],
+    ["cancelled", "Stopped. No grade."],
+    ["timed-out", "Time limit reached. No grade."],
+    ["limit-exhausted", "Run limit reached. No grade."],
+  ] as const) {
+    expect(
+      simulationRowStatus({
+        ...completed,
+        evidence: { ...evidence, completedAt: null, result: { ...result, status } },
+      }),
+    ).toEqual({ kind: "ungraded", label });
+  }
+  for (const verdict of [null, "fail", "not-exercised"] as const) {
+    expect(
+      simulationRowStatus({
+        ...completed,
+        evidence: { ...evidence, result: { ...result, verdict } },
+      }).kind,
+    ).not.toBe("passed");
+  }
+});
 
 it("only validated customer messages enter chat, never raw actor JSON", () => {
   const initial = { run, messages: [], activity: "Starting" };
