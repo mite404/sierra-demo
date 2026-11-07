@@ -20,7 +20,8 @@ export const saved: SavedSimulationDefinition = {
     case: "owner",
     instructions: "Request your refund, confirm when asked, then ask for the same refund again.",
     checks: ["owner-refund-once", "confirmation-before-refund", "duplicate-rejected"],
-    humanGuidance: "Private reviewer canary. Review accurate, helpful advice.",
+    humanGuidance:
+      "Private reviewer canary. If already refunded, refer the conversation to a customer experience representative and generate a support ticket.",
   },
   workflow: { id: crypto.randomUUID(), config: { tone: "warm", approval: "confirm" } },
   createdAt: "2026-10-23T00:00:00.000Z",

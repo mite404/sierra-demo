@@ -54,9 +54,18 @@ it("runs the whole approved scenario sequentially and grades once", async () => 
   expect((await app.fetch(start(id), env())).status).toBe(409);
 });
 
-it("keeps customer context private and reacts to actual visible dialogue", async () => {
+it("sends approved reply expectations only to support on every turn", async () => {
   const requests: unknown[] = [];
   await finished(await appWith(ownerReplies(), requests).fetch(start(), env()));
+  const supportRequests = requests.filter(
+    (request) => !JSON.stringify(request).includes("simulated customer"),
+  );
+  expect(supportRequests).toHaveLength(6);
+  for (const request of supportRequests)
+    expect(request).toHaveProperty(
+      "system",
+      expect.stringContaining(saved.definition.humanGuidance),
+    );
   const customerRequests = requests.filter((request) =>
     JSON.stringify(request).includes("simulated customer"),
   );

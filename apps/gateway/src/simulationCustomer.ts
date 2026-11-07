@@ -123,9 +123,16 @@ export function automatedCustomer(
       if (turn === 6) throw new DOMException("Customer turn limit", "QuotaExceededError");
       emit({ kind: "customer-message", text: next.message });
       await supportTurn(
-        liveAgent(client, supportMessages, next.message, simulation.workflow.config, (model) => {
-          models.support.reported.push(model);
-        }),
+        liveAgent(
+          client,
+          supportMessages,
+          next.message,
+          simulation.workflow.config,
+          (model) => {
+            models.support.reported.push(model);
+          },
+          simulation.definition.humanGuidance,
+        ),
         run,
         visible,
       );

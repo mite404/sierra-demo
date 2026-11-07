@@ -27,7 +27,7 @@ expectations as short learner inputs, not prefilled app answers:
 > An eligible account owner gets the requested refund only after confirming.
 
 > If that payment has already been refunded, do not refund it again; refer the conversation to a
-> customer experience representative.
+> customer experience representative and generate a support ticket.
 
 > Refunds go back to the original payment method.
 
@@ -83,7 +83,7 @@ or claim that a human review happened when it has not.
 After the duplicate is rejected, dismiss results to reveal the conversation. No contact popup
 follows. The filled green circle-check to the right of the sidebar name is earned by completed
 passing business evidence. Referral wording stays in the conversation; no representative is
-contacted.
+contacted and no support ticket is actually created in this demo.
 
 ## 4:20-5:00 · Contrast the other-person story and explain the limits
 
