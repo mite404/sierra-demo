@@ -606,6 +606,10 @@ Once complete, the summary opens in the existing shadcn dialog over the grayed a
 Create simulation is the explicit approval action; Revise in chat returns to that conversation.
 Keep the dialog's inherited surface, spacing, keyboard behavior, and motion. This replaces the
 earlier permanent full-review panel beside a separate authoring chat.
+On desktop above 800px, centre this review on the viewport at 692px (Ethan), rounded up from a
+20% reduction of the initial 864px review. Bound it by 16px side gutters (`--space * 2 / 3`,
+derived).
+Blur the expectations panel's contents, not its boundary, so its divider stays sharp (Ethan).
 
 ## Open questions
 

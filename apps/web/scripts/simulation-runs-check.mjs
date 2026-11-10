@@ -215,6 +215,13 @@ try {
     await page.locator(".lab-conversation").evaluate((element) => getComputedStyle(element).filter),
     "blur(2px)",
   );
+  assert.equal(
+    await page
+      .locator(".lab-author-review")
+      .evaluate((element) => getComputedStyle(element).filter),
+    "none",
+    "Summary keeps the expectations panel divider sharp",
+  );
   assert.equal(await rows().count(), 0);
   assert.deepEqual(await read("simulation-definitions"), []);
   await capture("03-complete-summary-before-create");
@@ -227,6 +234,10 @@ try {
     await page.emulateMedia({ colorScheme });
     for (const width of [390, 800, 801, 1024, 1280]) {
       await page.setViewportSize({ width, height: 720 });
+      const summary = await proposal().boundingBox();
+      assert.ok(summary.x >= 16 && summary.x + summary.width <= width - 16);
+      if (width >= 1024)
+        assert.ok(summary.width >= 640, "Desktop summary provides room for readable instructions");
       for (const name of ["Create simulation", "Revise in chat"]) {
         const action = proposal().getByRole("button", { name, exact: true });
         await action.scrollIntoViewIfNeeded();

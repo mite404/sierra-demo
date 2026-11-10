@@ -386,7 +386,7 @@
   stroke: var(--paper);
 }
 .lab-author-workspace[data-author-summary] > .lab-conversation,
-.lab-author-workspace[data-author-summary] > .lab-author-review {
+.lab-author-workspace[data-author-summary] > .lab-author-review > * {
   filter: blur(calc(var(--space) / 12));
   user-select: none;
 }
@@ -568,6 +568,10 @@
   .lab-results-popover {
     /* Half the 12 --space sidebar keeps the results centred over the conversation. */
     left: calc(50% + var(--space) * 6);
+  }
+  .lab-proposal-popover {
+    left: 50%;
+    width: min(692px, calc(100vw - var(--space) * 4 / 3));
   }
 }
 .lab-run-message {
