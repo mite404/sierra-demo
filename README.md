@@ -91,6 +91,40 @@ pnpm --filter gateway exec wrangler deploy --config wrangler.deployment.jsonc
 Use `wrangler.deployment.jsonc` for this site and `wrangler.simulation.jsonc` locally, not the
 inherited `wrangler.jsonc`.
 
+### Enable automatic deployment
+
+The `Deploy Cloudflare` workflow waits for a successful `CI` run from a push to `main` in this
+repository. It checks out that exact tested commit, builds with `VITE_AUTH=none`, applies pending
+D1 migrations, and deploys with `wrangler.deployment.jsonc`. PR, scheduled, and manually dispatched
+CI runs cannot deploy. Releases are serialized, and superseded revisions are skipped before any
+remote write. It does not download PR artifacts or restore PR caches.
+
+Before merging the deployment workflow, configure the repository's
+[Actions secrets and variables](https://github.com/mite404/sierra-demo/settings/secrets/actions):
+
+1. In Cloudflare, create an account-owned API token for the account that owns `sierra-demo`.
+   Grant [Workers Editor access](https://developers.cloudflare.com/workers/authorization/workers/)
+   only to the existing `sierra-demo` Worker, plus D1 Edit for migrations in that account. Do not
+   select other accounts or add zone, DNS, Pages, or unrelated service permissions. D1 permissions
+   may cover other databases in the selected account, so treat the token as sensitive.
+2. Add the token as the repository secret `CLOUDFLARE_API_TOKEN`. Never copy a local Wrangler OAuth
+   session into GitHub. Do not paste the token into an issue, PR, or chat.
+3. Add the owning account's ID as the repository variable `CLOUDFLARE_ACCOUNT_ID` under
+   **Variables**. Keep `OPENROUTER_API_KEY` in the existing Worker secret, not GitHub or the web
+   build. No additional D1 database, Durable Object, or visitor login is needed.
+
+Missing credentials fail the workflow explicitly. The workflow becomes active only after it is
+merged into `main` and a main-push CI run succeeds. To retry a failed release, rerun that commit's
+CI push run. A newer `main` revision makes an older retry skip deployment.
+
+Review SQL migrations before merging: they run against `sierra-demo-simulations` before the Worker
+update, must remain compatible with the currently deployed code, and are not undone by a code
+rollback. Deployments can interrupt in-memory chats and active runs.
+Review the **Deploy Cloudflare** run in GitHub Actions, then check the
+[live demo](https://sierra-demo.ethana2008.workers.dev).
+
+Check the deployment guards locally with `node --test scripts/deploy-cloudflare.test.js`.
+
 ## Verify
 
 Run the executor and HTTP regressions with controlled external model transport:
