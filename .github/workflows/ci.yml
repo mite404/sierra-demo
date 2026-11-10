@@ -28,7 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          # fallow audit diffs against the PR's base branch, so it needs history.
+          # Fallow compares PRs with their base and main pushes with the previous commit.
           fetch-depth: 0
           filter: blob:none
       # Reads the pnpm version from package.json's packageManager field.
@@ -95,17 +95,19 @@ jobs:
           node apps/web/scripts/simulation-runs-check.mjs \
             --out .amp/tmp/ci-journey/screenshots --logs .amp/tmp/ci-journey/logs \
             --coverage coverage/coverage-final.json
-      - name: Fallow audit (findings this PR introduces)
-        if: github.event_name == 'pull_request'
+      - name: Fallow audit (introduced findings)
+        if: github.event_name == 'pull_request' || github.event_name == 'push'
         env:
-          BASE_REF: ${{ github.base_ref }}
+          FALLOW_AUDIT_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: >-
-          pnpm fallow audit --base "origin/$BASE_REF"
+          pnpm fallow audit --base "$FALLOW_AUDIT_BASE"
           --coverage coverage/coverage-final.json --format github-annotations
       - name: Unit and story tests
         run: pnpm test --filter='!gateway' ${{ steps.scope.outputs.args }}
       - name: Build
         run: pnpm build
+      - name: Bundle the demo Worker without deploying
+        run: pnpm --filter gateway exec wrangler deploy --config wrangler.deployment.jsonc --dry-run
       - name: Build Storybook
         run: pnpm build-storybook
 
