@@ -22,8 +22,8 @@ Outside an orb, use this foreground command instead:
 VITE_AUTH=none pnpm --filter web build && pnpm --filter gateway dev:simulation
 ```
 
-Open the loopback address Wrangler prints. Keep this training Worker local. Public deployment,
-public model access, and changes to YakLabs infrastructure are outside this sample's scope.
+Open the loopback address Wrangler prints. This configuration stays local. The separately authorized
+public deployment below uses its own Worker and database, never YakLabs infrastructure.
 
 Start in the authoring chat. Describe your business expectations and customer situation; the agent
 asks only for missing details. Expected behaviors appear progressively as configured green bullets.
@@ -80,6 +80,35 @@ The fixture represents a trusted session, not a login implementation. Casey has 
 access to Morgan's account. Morgan owns an eligible $50.00 invoice; Casey's unrelated invoice is
 $17.00. The executor chooses the full invoice amount and original payment method, not the model.
 Corrected authorization happens before account lookup or disclosure. A second refund is a no-op.
+
+## Public Cloudflare deployment
+
+`apps/gateway/wrangler.deployment.jsonc` serves the same real agent loop as the orb, not a static
+replay. Like YakLabs, one Worker serves the website and API. Like Garage's turn owners, a Durable
+Object gives related requests one owner. A dedicated D1 database retains saved simulations and
+completed evidence. No existing YakLabs or Garage resources are reused.
+
+The `sierra-demo` workspace is public and shared: visitors can run simulations, see saved records,
+and use Reset demo. There is no sign-in gate, by explicit request. Use synthetic data only. The
+OpenRouter key stays server-side; its account spending cap and the lesson's per-run limits still
+apply. Cloudflare usage is billed separately from OpenRouter.
+
+Unfinished authoring chats and active runs remain in memory. Object eviction or a deployment can
+interrupt them, just as restarting the orb service does. The UI requires an explicit fresh start;
+it never replays interrupted work. Saved simulations and completed evidence remain in D1.
+
+Authenticate Wrangler to the intended Cloudflare account before provisioning the dedicated
+`sierra-demo-simulations` database. Bind its ID in the deployment config and apply the existing
+`simulation-migrations` to that database only. Set `OPENROUTER_API_KEY` as a Worker secret, never a
+browser build variable. Build and deploy with:
+
+```sh
+VITE_AUTH=none pnpm --filter web build
+pnpm --filter gateway exec wrangler deploy --config wrangler.deployment.jsonc
+```
+
+The deployment config deliberately differs from the inherited `wrangler.jsonc`, which is not the
+lesson entry point. The local `wrangler.simulation.jsonc` remains unchanged for orb previews.
 
 ## Verify and record
 

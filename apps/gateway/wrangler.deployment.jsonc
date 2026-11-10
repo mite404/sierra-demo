@@ -1,0 +1,50 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "sierra-demo",
+  "main": "src/simulationDeployment.ts",
+  // Match the tested lesson runtime and the project's installed workerd version.
+  "compatibility_date": "2026-09-25",
+  "compatibility_flags": ["nodejs_compat"],
+  "keep_vars": true,
+  "assets": {
+    "directory": "../web/build/client",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"],
+  },
+  "d1_databases": [
+    {
+      "binding": "SIMULATION_DB",
+      "database_name": "sierra-demo-simulations",
+      "migrations_dir": "simulation-migrations",
+      "database_id": "644737fe-781b-4bb8-ac5a-72316282a5ac",
+    },
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "LESSON",
+        "class_name": "RefundLesson",
+      },
+    ],
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["RefundLesson"],
+    },
+  ],
+  "secrets": {
+    "required": ["OPENROUTER_API_KEY"],
+  },
+  "observability": {
+    "enabled": true,
+    "redact_query_string": true,
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 0.05,
+    },
+  },
+  "limits": {
+    "cpu_ms": 30000,
+  },
+}
