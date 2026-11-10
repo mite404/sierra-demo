@@ -440,7 +440,7 @@ try {
   const search = current().getByLabel("Search saved simulation names");
   await search.fill("not-a-scenario");
   assert.equal(await rows().count(), 0);
-  await search.fill("owner");
+  await search.fill("customer requests");
   assert.equal(await rows().count(), 1);
   assert.equal(await button("Agent settings").getAttribute("aria-disabled"), "true");
   await button("Agent settings").hover();
