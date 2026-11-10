@@ -30,6 +30,7 @@ export async function verifyShell(page) {
         lights.getAttribute("aria-hidden") === "true" &&
         lights.querySelectorAll("button, a, [tabindex]").length === 0,
       regions: visible(".thread-panel, .lab-pinned-summary, .lab-run-scroll").map(rect),
+      welcome: visible(".lab-conversation .lab-welcome > *").map(rect),
       author: author
         ? {
             chat: rect(author.querySelector(".lab-conversation")),
@@ -72,6 +73,12 @@ export async function verifyShell(page) {
   assert.deepEqual(facts.scroll, { x: 0, y: 0, width }, "Focus cannot scroll the desk");
   if (facts.author) {
     const { chat, review } = facts.author;
+    for (const content of facts.welcome) {
+      assert.ok(
+        content.x >= chat.x + 24 && content.right <= chat.right - 24,
+        "Welcome text and actions keep 24px clear of both chat edges",
+      );
+    }
     if (width > 800) {
       assert.equal(review.x, chat.right, "Review sits to the right of authoring chat");
       assert.equal(review.y, chat.y, "Review aligns with the top of authoring chat");

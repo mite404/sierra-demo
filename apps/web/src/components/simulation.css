@@ -79,7 +79,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space);
-  padding: calc(var(--space) / 2) var(--space);
+  padding: calc(var(--space) / 2) 0;
   border-bottom: 1px solid var(--hairline);
 }
 .lab-header span {
@@ -89,8 +89,9 @@
 .lab-demo-footer {
   display: flex;
   flex-shrink: 0;
-  justify-content: flex-end;
-  padding: calc(var(--space) / 3) var(--space);
+  justify-content: flex-start;
+  padding-top: calc(var(--space) / 2);
+  margin-top: calc(var(--space) / 2);
   border-top: 1px solid var(--hairline);
 }
 .lab-header-actions {
@@ -128,13 +129,19 @@
 .lab-conversation .dictation-header {
   flex-wrap: wrap;
 }
+.lab-review-summary {
+  align-self: flex-start;
+  flex-shrink: 0;
+  margin: calc(var(--space) / 2) var(--space);
+  max-width: calc(100% - var(--space) * 2);
+}
 .lab-role {
   font: 12px/20px var(--font-text);
   color: var(--soft-ink);
 }
 .lab-welcome {
   max-width: 60ch;
-  padding: calc(var(--space) * 2) 0;
+  padding: calc(var(--space) * 2) var(--space);
   margin: auto;
   color: var(--soft-ink);
 }
@@ -631,7 +638,7 @@
     align-items: start;
     flex-direction: column;
     gap: calc(var(--space) / 3);
-    padding: calc(var(--space) * 2 / 3);
+    padding: calc(var(--space) * 2 / 3) 0;
   }
   .lab-header-actions {
     flex-wrap: wrap;
@@ -662,7 +669,7 @@
     border-top: 1px solid var(--hairline);
   }
   .lab-welcome {
-    padding: var(--space) 0;
+    padding: var(--space);
   }
   .lab-welcome h2 {
     font-size: 24px;

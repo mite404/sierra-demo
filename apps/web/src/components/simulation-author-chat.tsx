@@ -202,6 +202,7 @@ export function AuthorChat({ source, restored, onSaved, onLock }: ChatProps) {
         {state.draft && !summaryOpen && (
           <Button
             variant="outline"
+            className="lab-review-summary"
             onClick={() => {
               setDismissed(null);
             }}

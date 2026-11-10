@@ -623,7 +623,8 @@ html[data-dragging="sidebar"] * {
      loop so its blinking when not in play state"): the olive flash a focused lane gives, round
      the button's own corners, then a beat of rest, every 2s. Under reduced motion the ring holds
      still instead. */
-  [data-slot="demo-controls"] [data-callout] {
+  [data-slot="demo-controls"] [data-callout],
+  .lab-library-toolbar [data-callout] {
     animation: play-callout 2s ease-out infinite;
   }
   @keyframes play-callout {
@@ -636,7 +637,8 @@ html[data-dragging="sidebar"] * {
     }
   }
   @media (prefers-reduced-motion: reduce) {
-    [data-slot="demo-controls"] [data-callout] {
+    [data-slot="demo-controls"] [data-callout],
+    .lab-library-toolbar [data-callout] {
       animation: none;
       box-shadow: 0 0 0 3px var(--olive);
     }

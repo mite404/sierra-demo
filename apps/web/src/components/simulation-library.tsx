@@ -12,6 +12,7 @@ import type { SavedSimulationDefinition } from "gateway/simulation-contract";
 import { CircleCheck, Monitor, Play, RotateCcw, Search, Settings } from "lucide-react";
 import { useState } from "react";
 import type { SimulationRowStatus } from "./simulation-run-state";
+import { resetDemo } from "./simulation-persistence";
 
 type LibraryProps = {
   start: () => void;
@@ -211,16 +212,91 @@ function LibraryContents({
   );
 }
 
+function DemoReset({ disabled }: { disabled: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState(false);
+  const reset = async () => {
+    setPending(true);
+    setError(false);
+    try {
+      await resetDemo();
+      window.location.reload();
+    } catch {
+      setError(true);
+      setPending(false);
+    }
+  };
+  return (
+    <footer className="lab-demo-footer">
+      <Button
+        variant="outline"
+        disabled={disabled}
+        onClick={() => {
+          setError(false);
+          setOpen(true);
+        }}
+      >
+        Reset demo
+      </Button>
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          if (!pending) setOpen(next);
+        }}
+      >
+        <DialogContent showCloseButton={!pending}>
+          <DialogHeader>
+            <DialogTitle>Reset demo?</DialogTitle>
+            <DialogDescription>
+              Delete all saved simulations, run results and chats from this demo. This cannot be
+              undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="lab-invitation">
+            {error && (
+              <p role="alert">
+                Reset was not confirmed. Check the library and finish any active work before trying
+                again.
+              </p>
+            )}
+            <Button
+              variant="ghost"
+              disabled={pending}
+              onClick={() => {
+                setOpen(false);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="outline"
+              disabled={pending}
+              onClick={() => {
+                void reset();
+              }}
+            >
+              {pending ? "Resetting…" : "Reset demo"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </footer>
+  );
+}
+
 function LibraryToolbar({
   query,
   setQuery,
   runFormId,
   runDisabled,
+  runCallout,
 }: {
   query: string;
   setQuery: (query: string) => void;
   runFormId: string;
   runDisabled: boolean;
+  runCallout: boolean;
 }) {
   const [searching, setSearching] = useState(false);
   return (
@@ -264,6 +340,7 @@ function LibraryToolbar({
           size="icon"
           aria-label="Run selected simulation"
           title="Run selected simulation"
+          data-callout={runCallout && !runDisabled ? "" : undefined}
           type="submit"
           form={runFormId}
           disabled={runDisabled}
@@ -298,6 +375,7 @@ export function LibrarySidebar(props: LibraryProps) {
           setQuery={setQuery}
           runFormId={runFormId}
           runDisabled={!selectedId || locked}
+          runCallout={selectedId !== undefined && statuses[selectedId]?.kind === "not-run"}
         />
         <h2>Simulations</h2>
       </SidebarHeader>
@@ -324,6 +402,7 @@ export function LibrarySidebar(props: LibraryProps) {
           query={query}
           statuses={statuses}
         />
+        {library.items !== null && library.items.length > 0 && <DemoReset disabled={locked} />}
       </SidebarContent>
     </aside>
   );
