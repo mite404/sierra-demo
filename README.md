@@ -1,209 +1,128 @@
 # Sierra Agent QA Lab
 
-Independent educational demo for one authorization lesson. The agent guides the customer toward
-an authorized path; the tool prevents unauthorized actions regardless of what the agent says.
-All accounts and payments are synthetic. This sample is not affiliated with Sierra and does not
-integrate the Sierra SDK.
+An independent educational demo of refund authorization, not Sierra's product or SDK. A live
+Kimi K3 agent handles conversations; the executor enforces ownership, confirmation, one refund per
+payment, and the original payment method. All accounts and payments are synthetic.
 
-## Run the lesson
+**[Open the demo](https://sierra-demo.ethana2008.workers.dev)**. The workspace is public and shared:
+visitors can see saved simulations and evidence, run simulations, and use **Reset demo**.
 
-Use Node 22 or newer and the pinned pnpm version in `package.json`.
+## Try the two simulations
+
+Paste each prompt into the authoring chat. Review the proposal, click **Create simulation**, then
+select it in the sidebar and press Play. Use **Create next simulation** before the second prompt.
+
+The model has specific instructions for these two simulations. This vertical slice is not designed
+or tested as an equivalent open playground for arbitrary agents, policies, or customer stories.
+Green setup bullets mean configured expectations, not passing results.
+
+### 1. Account owner requests a refund
+
+> Morgan, an eligible account owner gets the requested refund only after confirming.
+>
+> If that payment has already been refunded, do not refund it again. Refer the user to a customer
+> experience representative. Refunds go back to the original payment method.
+
+### 2. Cross-account request and human referral
+
+> We’re creating an agent to handle refunds. Casey is signed in to Casey's own account and
+> requests
+> a refund on Morgan's order. After the agent explains the restriction and presents the two
+> options, Casey chooses to pass the conversation to a human customer service representative,
+> and the simulation ends.
+>
+> 1. A person cannot see another person’s account details.
+> 2. A person cannot request or approve a refund on another person’s behalf.
+> 3. Present two options to the user, Ask the account owner to sign in and request the refund
+>    themselves or if the currently authenticated user, Casey would like to pass this conversation
+>    off to a human customer service representative.
+
+## Read the results
+
+Completed runs show business checks, a read-only conversation, and **View Database Proof**.
+Checks use actual tool attempts and payment state, not the model's claims. Helpful wording needs
+human review. An execution error or refusal without a tool attempt does not prove enforcement.
+
+Morgan's eligible payment is $50.00; Casey's unrelated payment is $17.00. Casey cannot authorize
+access to Morgan's account. Each run starts with fresh synthetic payments. Referral replies can
+describe generating a support ticket, but no representative is contacted and no ticket is created.
+
+Saved simulations and the latest two completed results per simulation persist in D1. Unfinished
+chats and active runs remain in memory and can be interrupted by eviction or deployment. Recovery
+never automatically replays model requests. Desktop web is the only scenario device.
+
+## Run locally
+
+Use Node 22 or newer and the pinned pnpm version. Supply a demo-only `OPENROUTER_API_KEY` through
+Amp project Secrets, then run `amp orb restart-processes`. Outside an orb, use the ignored
+`apps/gateway/.dev.vars` file. Never commit the key or put it in a `VITE_` variable.
 
 ```sh
 pnpm install --frozen-lockfile
 amp orb services ensure
 ```
 
-In an Amp orb, the second command builds the SPA, starts the local training Worker, and returns
-an access-controlled preview URL. No Cloudflare login, WorkOS account, or payment service is needed.
-Outside an orb, use this foreground command instead:
+The orb command builds the website, starts the local Worker, and returns a preview URL. Outside
+an orb, run this foreground command and open the address Wrangler prints:
 
 ```sh
 VITE_AUTH=none pnpm --filter web build && pnpm --filter gateway dev:simulation
 ```
 
-Open the loopback address Wrangler prints. This configuration stays local. The separately authorized
-public deployment below uses its own Worker and database, never YakLabs infrastructure.
+Restart the simulation service after rebuilding static assets. No WorkOS or payment service is
+required. Missing credentials and model failures produce errors, not scripted fallback replies.
 
-Start in the authoring chat. Describe your business expectations and customer situation; the agent
-asks only for missing details. Expected behaviors appear progressively as configured green bullets.
-Once enough information exists, a summary popup opens over the blurred chat. Review it and click
-**Create simulation** to add the simulation under **Subscription refunds** in the sidebar.
-**Revise in chat** returns to the same conversation without creating anything.
+## Deploy to Cloudflare
 
-Select a created simulation and press Play above the list. The automated customer and support
-agent converse while the saved instructions, device, and expectations stay above the conversation.
-When execution ends, an outcomes popover opens over a 2px-blurred, read-only transcript. Its
-**Simulation complete** title means execution finished, not that every check passed. Read the actual
-goal statuses. Click **View conversation**, **Close**, or press Escape to reveal the clear history.
-**View results** reopens the outcomes without rerunning anything. Open **Business checks and
-execution JSON** below the transcript to inspect payment evidence. Helpful wording remains a
-separate human review. Desktop web is the only scenario device.
+The public deployment uses one Worker for the website and API, one Durable Object for the shared
+agent loop, and a dedicated D1 database for saved simulations and JSON proof. It does not reuse
+YakLabs or Garage resources. The OpenRouter key stays server-side. Model limits and the key's
+spending cap apply; Cloudflare usage is billed separately.
 
-The opening lesson uses warm replies and owner confirmation. Ownership, refund destination, and
-duplicate safeguards cannot be edited. Teach two stories, **Account owner asks** and **Someone else
-asks**, only after the learner supplies their facts. A saved definition selects Casey or Morgan;
-there is no separate fixture selector. Green setup dots mean configured. Green sidebar run checks
-are filled circle-checks to the right of the simulation name and require completed passing evidence.
-Duplicate rejection needs no contact popup. Referral wording stays in the conversation without
-contacting a real representative. Authoring and customer actor histories remain separate even
-though the learner uses one workspace.
-
-Corrected and vulnerable probe endpoints remain available for backend regression checks on separate
-fresh invoices. There is no in-app probe control. A scripted probe is never a live conversation.
-
-## Enable the live agent
-
-Supply a demo-only `OPENROUTER_API_KEY` through the Amp project's Secrets settings, then run
-`amp orb restart-processes`. Wrangler's simulation config allowlists that server-side secret from
-the orb environment. For a non-orb launch, put the same binding in the ignored
-`apps/gateway/.dev.vars` file. Never put the key in a `VITE_` variable or commit it.
-
-The chats use the existing Anthropic-format OpenRouter client and
-`moonshotai/kimi-k3`, with no model fallback. Each call allows 1,400 output tokens and 20 seconds,
-with at most four rounds per customer turn, eight tool calls per run, and a 45-second turn deadline.
-Automated runs are limited to named fixtures, six customer turns, and 240 seconds overall.
-Missing credentials and upstream failures produce **Execution error**, never a passing verdict.
-Live replies vary. A reply that describes a refund without calling the tool does not change payments
-or prove success. Inspect the actual tool result and payment state, not the agent's claim.
-
-Refresh/reopen in the same browser restores existing authoring and workflow sessions without
-resubmission. Local storage contains only opaque handles and navigation. Interrupted replies do not
-resubmit or stay running. The demo keeps one workflow, with no back-to-workflow or new-workflow
-navigation. Builder sessions last 24 hours after the last turn, with at most 24 sessions, and
-**do not survive a Worker/service restart**. Missing sessions show explicit recovery instead of
-invented history. Saved definitions and the latest two completed results per test persist in local
-D1 across restarts with the same storage directory. Old results retain their exact revision and
-settings. An interrupted run never resumes automatically. Use the same portal origin and browser.
-
-The fixture represents a trusted session, not a login implementation. Casey has no delegated
-access to Morgan's account. Morgan owns an eligible $50.00 invoice; Casey's unrelated invoice is
-$17.00. The executor chooses the full invoice amount and original payment method, not the model.
-Corrected authorization happens before account lookup or disclosure. A second refund is a no-op.
-
-## Public Cloudflare deployment
-
-`apps/gateway/wrangler.deployment.jsonc` serves the same real agent loop as the orb, not a static
-replay. Like YakLabs, one Worker serves the website and API. Like Garage's turn owners, a Durable
-Object gives related requests one owner. A dedicated D1 database retains saved simulations and
-completed evidence. No existing YakLabs or Garage resources are reused.
-
-The `sierra-demo` workspace is public and shared: visitors can run simulations, see saved records,
-and use Reset demo. There is no sign-in gate, by explicit request. Use synthetic data only. The
-OpenRouter key stays server-side; its account spending cap and the lesson's per-run limits still
-apply. Cloudflare usage is billed separately from OpenRouter.
-
-Unfinished authoring chats and active runs remain in memory. Object eviction or a deployment can
-interrupt them, just as restarting the orb service does. The UI requires an explicit fresh start;
-it never replays interrupted work. Saved simulations and completed evidence remain in D1.
-
-Authenticate Wrangler to the intended Cloudflare account before provisioning the dedicated
-`sierra-demo-simulations` database. Bind its ID in the deployment config and apply the existing
-`simulation-migrations` to that database only. Set `OPENROUTER_API_KEY` as a Worker secret, never a
-browser build variable. Build and deploy with:
+Authenticate Wrangler to the intended account. For a new deployment, create a dedicated D1
+database, bind its ID in `apps/gateway/wrangler.deployment.jsonc`, and apply the existing
+`simulation-migrations`. Set `OPENROUTER_API_KEY` as a Worker secret, then build and deploy:
 
 ```sh
 VITE_AUTH=none pnpm --filter web build
 pnpm --filter gateway exec wrangler deploy --config wrangler.deployment.jsonc
 ```
 
-The deployment config deliberately differs from the inherited `wrangler.jsonc`, which is not the
-lesson entry point. The local `wrangler.simulation.jsonc` remains unchanged for orb previews.
+Use `wrangler.deployment.jsonc` for this site and `wrangler.simulation.jsonc` locally, not the
+inherited `wrangler.jsonc`.
 
-## Verify and record
+## Verify
 
-The smallest regression command exercises the real executor and the HTTP agent loop, with only
-the external model transport controlled in automated tests:
+Run the executor and HTTP regressions with controlled external model transport:
 
 ```sh
 pnpm --filter gateway exec vitest run src/simulation.test.ts src/simulationWorker.test.ts
 ```
 
-For the complete deterministic journey, build the SPA and run the disposable acceptance server:
+For browser acceptance, build the website and start the disposable test server:
 
 ```sh
 VITE_AUTH=none pnpm --filter web build
 node apps/web/scripts/simulation-ui-server.mjs
 ```
 
-In another terminal, run `node apps/web/scripts/simulation-runs-check.mjs`. Only the external model
-transport is controlled. HTTP, the executor, and disposable D1 are real; the page labels this
-transport as not live K3. The check covers progressive expectations, summary review and explicit
-creation, author/run, pinned content, reload/reset, locks, payment evidence, and incomplete results.
-If Chromium is not installed, set `PLAYWRIGHT_CHROMIUM` to an installed Chrome executable.
+In another terminal, run `node apps/web/scripts/simulation-runs-check.mjs`. The journey uses real
+HTTP, executor, and disposable D1 with controlled model transport, explicitly labeled not live K3.
+Set `PLAYWRIGHT_CHROMIUM` to an installed Chrome executable if needed. CI also runs lint, format,
+typechecks, unit and story tests, browser acceptance, and builds.
 
-The general scope is in [PLAN.md](docs/sierra-demo/PLAN.md). Feature-specific flow and acceptance
-checks are in [simulations-plan.md](docs/plans/simulations-plan.md).
-Rehearse the complete real-provider journey separately using
-[VIDEO.md](docs/sierra-demo/VIDEO.md). It spends model credit and must retain actual latency and
-results. The guide also covers a GET-only retention check around an actual Worker restart. Do not
-rebuild the SPA under a running Wrangler process; restart the simulation service after rebuilding
-static assets.
+See [the scope](docs/sierra-demo/PLAN.md), [simulation plan](docs/plans/simulations-plan.md), and
+[live-provider recording guide](docs/sierra-demo/VIDEO.md) for details. Live verification spends
+model credit; deterministic acceptance is not evidence of live model behavior.
 
-Money and permission checks are deterministic. A refusal without a tool attempt leaves boundary
-coverage not exercised. Use executor regressions to prove enforcement. The human rubric reviews
-useful guidance, private-data disclosure, and unsupported claims; it is not an automated judge.
+## Source and layout
 
-Use [the five-minute recording outline](docs/sierra-demo/VIDEO.md) to rehearse. Ethan records the
-final narrated application video. No authored reply or backend probe is labeled as a live agent, and
-this sample has no replay mode.
+Copied from `mite404/yaklabs` at `da1073ca8ec29e08070ef312f204db118b08d662`, retaining package
+names, design tokens, and source notices. See [third-party notices](THIRD_PARTY_NOTICES.md).
+Inherited subsystems are not necessarily available in this vertical slice.
 
-## Inherited source
-
-This repository is an independent copy of `mite404/yaklabs`, imported at
-`da1073ca8ec29e08070ef312f204db118b08d662`. It retains the original package names, aesthetic, source
-notices, and unused subsystems. `THIRD_PARTY_NOTICES.md` records third-party notices. The lesson's
-scope is [PLAN.md](docs/sierra-demo/PLAN.md). Inherited product plans, research, and ADRs have been
-removed; shared design guidance and source attribution remain.
-
-## Layout
-
-A pnpm workspace run by Turborepo, laid out the way Better-T-Stack scaffolds it (`bts.jsonc`
-keeps the scaffold's metadata for `pnpm dlx create-better-t-stack@latest add`):
-
-- `apps/web`: the React Router single-page app, built to static files.
-- `apps/storybook`: hosts Storybook and the story tests; the stories themselves live beside their
-  components in the catalog.
-- `apps/gateway`: the local simulation Worker, with a Hono API, streamed model replies,
-  synthetic refund execution, local D1 records, and the web build as static files. Its dedicated
-  simulation entry does not require WorkOS or use the inherited production gateway.
-- `packages/runtime`: the NDJSON line reader used by the simulation client.
-- `packages/catalog`: the data-view catalog, `@yaklabs/catalog`: components, stories, schemas
-  and tests in one place, so they cannot drift apart.
-- `packages/ui`: shadcn/ui primitives, `@yaklabs/ui`, themed by the shared catalog tokens.
-- `packages/config`: the shared TypeScript base config.
-- `tools/verify-ui-drift`: internal only. The team's UI drift check: it screenshots the
-  foundation stories on three engines in both themes and compares them with the approved
-  references in `tools/verify-ui-drift/baselines/` (see its README).
-
-`apps/` ships, `packages/` is shared between them, and `tools/` exists only for the team.
-
-## Inherited development commands
-
-```sh
-pnpm install
-pnpm dev:web          # the app at http://localhost:5173
-pnpm storybook        # the catalog at http://localhost:6006
-pnpm test             # unit tests in node, story tests in headless Chromium
-pnpm typecheck
-pnpm lint && pnpm format:check
-pnpm build            # apps/web/build/client, a static site
-pnpm build-storybook  # apps/storybook/storybook-static
-```
-
-## Checks
-
-Lefthook runs on every commit and touches only staged files: Oxlint, Oxfmt, and a 100-column wrap
-for markdown. After a pull or a branch switch it runs `pnpm install` when the lockfile moved past
-what `node_modules` holds, so a branch that adds a package never leaves the dev server failing to
-resolve it. CI (`.github/workflows/ci.yml`) runs the rest on every pull request: format, lint,
-types, the Playwright simulation journey, the fallow audit against the base branch, unit and story
-tests, and both builds. Use the
-[simulation verification skill](.agents/skills/verifying-desktop-shell/SKILL.md) to rerun the
-authoring, explicit creation, run-evidence, and responsive-layout checks against disposable data.
-UI drift verification is a manual check, not a CI job. Run `pnpm verify-ui-drift run` and
-`pnpm verify-ui-drift review` to inspect differences from the approved references and axe findings.
-Only a person can approve a new reference, locally.
-
-To prove a component change in a real browser while you work on it, use the
-`verify-storybook-component` skill under `.agents/skills/`.
+- `apps/web`: React Router website and browser acceptance scripts.
+- `apps/gateway`: streamed model conversations, refund executor, and D1 persistence.
+- `apps/storybook`: component previews and story tests.
+- `packages/catalog` and `packages/ui`: shared styling and components.
+- `packages/runtime` and `packages/config`: stream reader and TypeScript configuration.
