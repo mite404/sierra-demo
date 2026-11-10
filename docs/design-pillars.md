@@ -255,34 +255,6 @@ the vendored shadcn tooltip. P23 reads the rail's pills in both themes.
 | Motion | in over 125ms, `cubic-bezier(0.23, 1, 0.32, 1)`, scale 0.97 and fade; out in 100ms | derived |
 | Reduced motion | fades only, no scale | derived |
 
-### 33. The design tooling seal is a gold medal with an ink ribbon
-
-The welcome's link to the design tooling page (ADR-160) is a seal: a serrated gold disc with
-"Yaklabs" over the top of its ring and "Seal of quality" under the bottom, and an ink ribbon
-across its middle carrying the link's words, which runs past the seal on either side.
-Gold is a metal, so the seal keeps one colour in either theme; only the ribbon turns over with
-the ink. The words are on the ribbon, never on the gold, since they run off the seal onto the
-paper, where the brown ink fails in the dark theme.
-The seal is drawn (`design-tooling-seal.tsx`), never a picture, so it scales to any size and
-takes its colours from tokens. On the welcome the medal, the ribbon and its words are one SVG,
-so they grow and settle as one piece (Ethan): an HTML ribbon beside the SVG medal snapped its
-words to whole font sizes and its edges to whole pixels on every frame of the hover, each part
-landing at its own time.
-
-| Property | Value | Source |
-| --- | --- | --- |
-| Face | `--seal-gold` (`--yak-orange`, `#d19456`), lit from the top left to `--seal-gold-glint` | derived (Ethan's example seal) |
-| Edge | `--seal-gold-deep` (`--rust`, `#a86f36`): 3.5:1 on the light paper, 3.76:1 dark, so the silhouette clears 3:1 | derived |
-| Ring words | `--on-seal` (`--yak-brown-ink`, `#3b2612`): 5.5:1 on the face, the orange pill's pair | derived (rule 13) |
-| Ribbon | `--ink` with `--on-ink`, 230px × 27px across the 112px medal, notched 8px at both ends; 11px 600 upper case, "NOW WITH DESIGN TOOLING!", set to the 186px the 0.1em tracking gives, drawn as Inter outlines (`seal-words.ts`, from `scripts/seal-words.mjs`) rather than live text, so the words never shift against the ribbon when Chrome redraws the grown seal | derived (rule 28's pill), Ethan |
-| Ribbon hover | fills `--moss` with `--on-accent` over 150ms `ease`, as the outline button | css (rule 8) |
-| Size | 112px on the welcome, 200px on the page's hero; 36 teeth, 5 units deep in a 120-unit box | derived |
-| Place on the welcome | pinned above the greeting at the column's right, aligned optically: the ribbon's far tip in line with the ink of the projects' "+", 8px inside the column, and its lowest corner 4px below the mark's circle; worked out in CSS from the tilt, the size and the ribbon's corners, so it holds when either changes; tilted 25° with the left side up, as a medal on a lapel; in the column's flow under 641px | Ethan (mockup) |
-| Focus | the site's ring, 2px `--focus` 3px off, on the link's 4px corners | derived |
-| Size on the welcome | 73.5% of the drawn 112px, by `scale`, so the words stay crisp; 5% up from 70% so the ring's "Seal of quality" reads | Ethan |
-| Hop | every 4s: 6px up and back over 480ms, a 2px second hop, then still; on `transform` under the tilt, so it hops along its lean; none under reduced motion (rule 24) | Ethan |
-| Hover and focus | grows 10% (`scale` 0.735 to 0.8085) over 150ms `ease`, the button's timing (rule 8), the hop held meanwhile; no growth under reduced motion | Ethan |
-
 ## Inputs
 
 ### 14. A place to type is outlined, and its prompt is greyer
@@ -475,23 +447,6 @@ no tool names unless the tool is the object, no theatre ("Analyzing your request
 on a label. A child's placeholder is "Working", a reply's before any words "Thinking". The
 disclosure's header (rule 30) and the recap's items are held to this; the technical lines one
 fold down may be as technical as they like.
-
-## Verification workbench exceptions
-
-The Pixels workbench uses neon green (`#39ff14`) for changed pixels. Comparator proof uses red
-(`#ff0000`) for its deliberately introduced mistakes (Ethan). These diagnostic colors are not
-product status colors. Their roles live in `tools/verify-ui-drift/src/diff-palette.ts`; grayscale
-supplies
-unchanged context. Older evidence keeps its original overlay color rather than rewriting artifacts.
-
-Workbench density uses five-sixths of `--space` for its primary spacing, about 17% less than the
-24px token (derived from Ethan's request for roughly 15% more room). The viewer height is 17 times
-`--space`, or 408px. Typography keeps the existing 12px annotations and 13px compact controls;
-display sizes use 28px for the heading and 24px for the selected component. Image zoom and the 4×
-inspector are not scaled with the surrounding interface (derived).
-The Pixels results list displays up to ten complete rows before scrolling (Ethan). Its height
-follows
-the rendered rows so source-path wrapping and font changes do not hide entries (derived).
 
 ### 29. Quiet prose: one reading treatment, streaming or finished
 

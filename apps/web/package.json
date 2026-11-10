@@ -34,12 +34,10 @@
     "@typescript/native": "catalog:",
     "@yaklabs/config": "workspace:*",
     "ast-v8-to-istanbul": "^1.0.7",
-    "fontkit": "^2.0.4",
     "istanbul-lib-coverage": "^3.2.2",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
-    "vitest": "catalog:",
-    "wawoff2": "^2.0.1"
+    "vitest": "catalog:"
   }
 }

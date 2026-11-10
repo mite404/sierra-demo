@@ -174,15 +174,6 @@
   /* the construction lines behind Atlas, the ink at 12%: 1.26:1 off the paper, so they read as
      pencil under the figure and never as ground */
   --splash-line: color-mix(in srgb, var(--ink) 12%, transparent);
-  /* The design tooling seal (ADR-160), a gold medal that links the welcome to the tooling page:
-     a metal, so it keeps one colour in either theme. derived: the caution orange is the face,
-     the rust is the edge (3.5:1 on the light paper, so the silhouette clears 3:1 as a mark),
-     and the glint is the orange lifted to the bright paper. The words on the face take the
-     brown ink the orange pill already carries (5.5:1). */
-  --seal-gold: var(--yak-orange);
-  --seal-gold-deep: var(--rust);
-  --seal-gold-glint: color-mix(in srgb, var(--yak-orange) 55%, var(--yak-paper-bright));
-  --on-seal: var(--yak-brown-ink);
 
   --btn-radius: 4px; /* every button's corners (.btn, Done, Skip, Submit); tokens.test.ts guards it */
   --radius-card: 14px; /* the catalog card and the thread panel; shadcn owns --radius (ADR-082) */
