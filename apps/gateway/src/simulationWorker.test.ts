@@ -741,7 +741,10 @@ describe("approved simulation definitions with real local D1", () => {
       expect(created.status).toBe(201);
       const saved = savedSimulationDefinition.parse(await created.json());
       expect(saved.workflow).toEqual(end.draft.workflow);
-      expect(saved.definition).toEqual(definition);
+      expect(saved.definition).toEqual({
+        ...definition,
+        name: "Prevent cross account access & escalate to a human rep",
+      });
       const tampered = await app.fetch(
         libraryRequest("simulation-drafts", {
           ...definition,

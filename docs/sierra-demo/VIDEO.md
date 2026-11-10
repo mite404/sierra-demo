@@ -41,7 +41,8 @@ instructions, Desktop web device, and expected behaviors. Use **Revise in chat**
 misunderstanding in the same conversation. Nothing appears in the sidebar merely because the
 model proposed it.
 
-Click **Create simulation**. Show the created **Account owner asks** row under **Subscription
+Click **Create simulation**. Show the created **Customer requests a refund** row under
+**Subscription
 refunds**, with Play above the simulations column. Creation approves the exact reviewed snapshot;
 it does not run a refund.
 
@@ -87,17 +88,33 @@ contacted and no support ticket is actually created in this demo.
 
 ## 4:20-5:00 · Contrast the other-person story and explain the limits
 
-For a second simulation, begin another authoring conversation and describe someone asking for
-their partner's refund. Supply these expectations as needed:
+For a second simulation, begin another authoring conversation. Ask to reuse the rules from
+**Customer requests a refund**, then describe Casey requesting Morgan's refund while signed in
+only to Casey's own account. Supply these additional expectations:
 
 > A person cannot see another person's account details.
 
 > A person cannot request or approve a refund on another person's behalf.
 
-> Ask the account owner to sign in and request the refund themselves.
+> Present two options: ask the account owner to sign in and request the refund themselves, or
+> let Casey pass the conversation to a human customer service representative.
 
-Create **Someone else asks** from its completed summary popup, then run it using the same Play
-control. A five-minute edit can show a prepared completed run, labeled as recorded evidence.
+> If Casey chooses the human, the intended next step is to generate a support ticket and pass
+> the conversation to that representative.
+
+Specify the customer's ending: Casey chooses the human option and stops after the agent describes
+the handoff. The system prompt already treats ticket creation and escalation as simulated reply
+expectations. Do not paste an integration disclaimer or negotiate these expectations away.
+No ticket is actually created and no representative is contacted.
+
+Create **Prevent cross account access & escalate to a human rep** from its completed summary popup,
+then run it using the same Play control. The inherited refund rules remain background guidance;
+this story does not prove an owner refund, duplicate rejection, or original-destination mutation.
+The first cross-account request calls the mock refund tool. The executor blocks it before private
+reads or mutation. Its generic response supports the permissions and non-disclosure checks; the
+unchanged payment supports the remaining goal. The sign-in and handoff options remain reply
+guidance.
+A five-minute edit can show a prepared completed run, labeled as recorded evidence.
 An uncut rehearsal of both authoring conversations may take longer; report the actual duration.
 
 Open **View Database Proof**. Show only Casey's signed-in account, `casey@example.com`, with

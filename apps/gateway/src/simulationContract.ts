@@ -11,6 +11,12 @@ export const simulationSelection = z.strictObject({
 
 export type SimulationSelection = z.infer<typeof simulationSelection>;
 
+/** Fixed titles for the lesson's sequential owner and cross-account simulations. */
+export const simulationScenarioNames = {
+  owner: "Customer requests a refund",
+  spouse: "Prevent cross account access & escalate to a human rep",
+} satisfies Record<SimulationSelection["case"], string>;
+
 /** The only employee-editable settings; permission and duplicate safeguards are not options. */
 export const workflowConfig = z.strictObject({
   tone: z.enum(["brief", "warm"]),
