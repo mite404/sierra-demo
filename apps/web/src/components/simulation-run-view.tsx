@@ -152,11 +152,9 @@ function ResultConversation({
                   ? "Simulation complete"
                   : "Simulation incomplete"}
             </DialogTitle>
-            <DialogDescription>
-              {view === "proof"
-                ? "Recorded synthetic payment state and tool attempts, not the agent's success claim."
-                : simulationRowStatus(run).label}
-            </DialogDescription>
+            {view !== "proof" && (
+              <DialogDescription>{simulationRowStatus(run).label}</DialogDescription>
+            )}
           </DialogHeader>
           <div className="lab-results-body">
             {view === "proof" && result ? (

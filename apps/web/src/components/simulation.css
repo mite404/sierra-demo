@@ -285,7 +285,7 @@
 .lab-scenarios {
   width: calc(var(--space) * 12);
   flex-shrink: 0;
-  border-left: 0;
+  border-left: 1px solid var(--hairline);
   border-right: 1px solid var(--hairline);
 }
 .lab-library-toolbar {
@@ -392,7 +392,7 @@
 }
 .lab-definition h2,
 .lab-author-review h2 {
-  font: 500 24px/1.2 var(--font-display);
+  font: 500 24px/1.2 var(--font-text);
   margin: 0 0 calc(var(--space) / 2);
   overflow-wrap: anywhere;
 }
@@ -489,7 +489,7 @@
   font-family: var(--font-text);
 }
 .lab-saved-run h2 {
-  font: 500 24px/1.2 var(--font-display);
+  font: 500 24px/1.2 var(--font-text);
   margin: 0 0 calc(var(--space) / 2);
 }
 .lab-saved-run .lab-run-status {

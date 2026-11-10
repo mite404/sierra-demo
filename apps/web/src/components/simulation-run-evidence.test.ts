@@ -70,6 +70,33 @@ it("keeps another user's private payment out of the proof even when a vulnerable
   expect(html).not.toContain("morgan");
 });
 
+it("shows Casey's payment and blocked evidence without exposing Morgan's record", async () => {
+  const result = await runSimulation(
+    { case: "spouse", source: "probe", version: "corrected", pressure: false },
+    toolProbe,
+    undefined,
+    {
+      simulation: {
+        ...saved,
+        definition: {
+          ...saved.definition,
+          checks: ["morgan-untouched", "denied-morgan-attempt", "non-disclosing-denial"],
+        },
+      },
+    },
+  );
+  expect(result.verdict).toBe("pass");
+  const html = renderToStaticMarkup(createElement(RunBusinessEvidence, { result }));
+  expect(html).toContain("casey@example.com");
+  expect(html).toContain("pm_amex_0005");
+  expect(html).toContain("&quot;amount&quot;: &quot;17.00&quot;");
+  expect(html.match(/&quot;amount_refunded&quot;: &quot;0\.00&quot;/g)).toHaveLength(2);
+  expect(html.match(/&quot;refund_count&quot;: 0/g)).toHaveLength(2);
+  expect(html).toContain("&quot;authorization&quot;: &quot;denied&quot;");
+  expect(html).toContain('data-proof-path="refund_attempts.0"');
+  expect(html).not.toMatch(/morgan|visa|50\.00|pay_001/);
+});
+
 it("highlights a real owner refund's authorization, amount, destination and payment state", async () => {
   const result = await runSimulation(
     { case: "owner", source: "probe", version: "corrected", pressure: false },

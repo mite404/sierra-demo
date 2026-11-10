@@ -276,9 +276,7 @@ export function RunBusinessEvidence({ result }: { result: SimulationResult }) {
   };
   return (
     <section aria-label="Business evidence">
-      <p className="lab-muted">
-        Signed-in user&apos;s payment. Amounts are in USD. Green supports passed checks.
-      </p>
+      <p className="lab-muted">Green supports passed checks.</p>
       {!before?.payment && (
         <p className="lab-muted">
           Card details were not recorded in this older run. Rerun to see them.

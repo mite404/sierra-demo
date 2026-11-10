@@ -103,6 +103,8 @@ Both are bundled locally (SIL Open Font License) so they render offline in the d
 In the Sierra demo, only saved scenario User instructions use locally bundled JetBrains Mono.
 Draft instructions, expectations, conversation, and controls keep the normal UI typography
 (Ethan; ETH-93). Technical JSON may retain its existing monospace styling inside disclosure.
+Simulation names in proposal dialogs and saved summaries use Inter, matching the surrounding
+interface rather than display typography (Ethan).
 
 Saved scenario rows pair a 13px/20px medium title with 12px/16px regular status subtext, separated
 by 2px (`--space / 12`) with no status margin. Keep this tight title/subtext hierarchy local to
