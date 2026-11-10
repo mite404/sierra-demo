@@ -154,6 +154,11 @@ try {
   assert.equal(await rows().count(), 0);
   assert.equal(await configured().count(), 0);
   assert.equal(await button("Run selected simulation").isDisabled(), true);
+  assert.equal(await button("Run selected simulation").getAttribute("data-callout"), null);
+  assert.equal(await button("Reset demo").count(), 0, "An empty library has nothing to reset");
+  const headerLeft = await current().locator(".lab-header span").boundingBox();
+  const sidebarLeft = await current().locator(".lab-sidebar").boundingBox();
+  assert.equal(headerLeft.x, sidebarLeft.x, "Demo notice aligns with the sidebar border");
   await button("Start with a refund workflow").click();
   assert.equal(
     await current().getByRole("textbox", { name: "Message", exact: true }).inputValue(),
@@ -257,6 +262,10 @@ try {
   await page.keyboard.press("Escape");
   await proposal().waitFor({ state: "hidden" });
   assert.deepEqual(await read("simulation-definitions"), []);
+  const reviewButton = await button("Review simulation summary").boundingBox();
+  const conversationBounds = await current().locator(".lab-conversation").boundingBox();
+  assert.ok(reviewButton.width < conversationBounds.width * 0.8, "Summary action fits its label");
+  await capture("03-summary-dismissed");
   await button("Review simulation summary").click();
   const proposalCalls = (await qa()).modelCalls;
   await proposal().getByRole("button", { name: "Revise in chat", exact: true }).click();
@@ -293,9 +302,39 @@ try {
     /JetBrains Mono/u,
   );
   assert.equal(await page.locator('.lab-goal[data-status="not-run"]').count(), 3);
+  await page.locator(".lab-library-toolbar [data-callout]").waitFor();
+  assert.equal(await button("Reset demo").count(), 1);
+  assert.equal(
+    await current()
+      .locator(".lab-sidebar button")
+      .filter({ hasText: /^Reset demo$/u })
+      .count(),
+    1,
+  );
+  const resetBounds = await button("Reset demo").boundingBox();
+  const savedBounds = await rows().first().boundingBox();
+  assert.ok(resetBounds.y >= savedBounds.y + savedBounds.height, "Reset follows saved simulations");
+  for (const colorScheme of ["light", "dark"]) {
+    await page.emulateMedia({ colorScheme, reducedMotion: "reduce" });
+    const ring = await button("Run selected simulation").evaluate((element) => ({
+      animation: getComputedStyle(element).animationName,
+      shadow: getComputedStyle(element).boxShadow,
+    }));
+    assert.equal(ring.animation, "none");
+    assert.match(ring.shadow, /0px 0px 0px 3px/u, "Reduced motion retains a static readiness ring");
+    await capture(`04-ready-${colorScheme}`);
+  }
+  await page.emulateMedia({ colorScheme: "light", reducedMotion: "no-preference" });
+  assert.equal(
+    await button("Run selected simulation").evaluate(
+      (element) => getComputedStyle(element).animationName,
+    ),
+    "play-callout",
+  );
   await capture("04-created-not-run");
   await qa({ delay: 80 });
   const firstId = await start("Run selected simulation", owner.id);
+  assert.equal(await button("Run selected simulation").getAttribute("data-callout"), null);
   assert.equal(await button("Rerun selected simulation").isDisabled(), true);
   assert.equal(await button("Create next simulation").isDisabled(), true);
   assert.equal(await button("Edit in chat").isDisabled(), true);
@@ -309,6 +348,7 @@ try {
   assert.deepEqual(await summary.boundingBox(), pinned);
   await capture("05-running");
   await finished();
+  assert.equal(await button("Run selected simulation").getAttribute("data-callout"), null);
   const first = await read(`simulation-runs/${firstId}`);
   assert.equal(first.evidence.result.verdict, "pass");
   assert.deepEqual(
@@ -576,6 +616,14 @@ try {
   await capture("12-reset-confirmation");
   await resetDialog.getByRole("button", { name: "Cancel", exact: true }).click();
   assert.deepEqual(await read("simulation-definitions"), definitionsBeforeReset);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ colorScheme: "dark" });
+  await reset.click();
+  await resetDialog.waitFor();
+  await capture("12-reset-confirmation-dark-narrow");
+  await resetDialog.getByRole("button", { name: "Cancel", exact: true }).click();
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.emulateMedia({ colorScheme: "light" });
   await reset.click();
   await page.route("**/api/simulation-reset", (route) => route.fulfill({ status: 503 }));
   await resetDialog.getByRole("button", { name: "Reset demo", exact: true }).click();
@@ -596,15 +644,8 @@ try {
     null,
   );
   assert.equal((await qa()).modelCalls, callsBeforeReset, "Reset calls no model");
+  assert.equal(await reset.count(), 0, "Reset disappears when the library is cleared");
   await capture("12-reset-clean-workspace");
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.emulateMedia({ colorScheme: "dark" });
-  await reset.click();
-  await resetDialog.waitFor();
-  await capture("12-reset-confirmation-dark-narrow");
-  await resetDialog.getByRole("button", { name: "Cancel", exact: true }).click();
-  await page.setViewportSize({ width: 1280, height: 720 });
-  await page.emulateMedia({ colorScheme: "light" });
   await qa({ restart: true });
   await reload();
   await button("Start with a refund workflow").waitFor();

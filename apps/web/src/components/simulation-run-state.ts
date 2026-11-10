@@ -15,7 +15,7 @@ const pendingModels: NonNullable<SimulationRun["evidence"]>["models"] = {
   support: { requested: "moonshotai/kimi-k3", reported: [] },
 };
 
-export type SimulationRowStatus = { kind: "passed" | "ungraded"; label: string };
+export type SimulationRowStatus = { kind: "not-run" | "passed" | "ungraded"; label: string };
 const statusLabels = {
   running: "Running. No grade yet.",
   completed: "No completed evidence",
@@ -27,7 +27,7 @@ const statusLabels = {
 
 /** Only a terminal, completed result can earn the library's passing icon. */
 export function simulationRowStatus(run: SimulationRun | undefined): SimulationRowStatus {
-  if (!run) return { kind: "ungraded", label: "Not run yet" };
+  if (!run) return { kind: "not-run", label: "Not run yet" };
   if (run.active) return { kind: "ungraded", label: statusLabels.running };
   const evidence = run.evidence;
   if (!evidence) return { kind: "ungraded", label: "No completed evidence" };
