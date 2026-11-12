@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // oxlint-disable no-console -- a build step reports on stdout
 // Writes `_headers` next to the prerendered site: the static security headers, with a
-// Content-Security-Policy that names every inline script the build emitted (the theme and
-// chrome boots, React Router's hydration) by its SHA-256. A static SPA gets no per-response
+// Content-Security-Policy that names every inline script the build emitted (the chrome boot
+// and React Router's hydration) by its SHA-256. A static SPA gets no per-response
 // nonce, so the hash is the only way to keep inline boots under a policy that allows nothing
 // else inline; regenerating on every build means a changed boot changes the header rather
 // than silently breaking, and a new inline script is silent for no one.
@@ -16,9 +16,9 @@ import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-// Both boots must be among the hashed scripts, or the policy is lying about the page: a
-// build without them (wrong directory, a React Router change) fails here, not in production.
-const BOOT_MARKS = ["dataset.theme", "searchParams.delete"];
+// The chrome boot must be among the hashed scripts. A build without it (wrong directory,
+// a React Router change) fails here, not in production.
+const BOOT_MARKS = ["searchParams.delete"];
 
 // The contents of every inline `<script>` in `html` (a `src` script needs no hash).
 /** @param {string} html */

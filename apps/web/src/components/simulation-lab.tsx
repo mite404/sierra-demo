@@ -13,9 +13,6 @@ function LessonWorkspace() {
   }, [saved]);
   return (
     <main className="simulation-lab lab-library">
-      <header className="lab-header">
-        <span>Independent educational demo · synthetic accounts and payments</span>
-      </header>
       <SidebarProvider className="lab-workspace">
         <div className="lab-stage">
           {restored ? (
@@ -46,7 +43,7 @@ export function SimulationLab() {
               <span key={light} style={{ background: `var(--traffic-${light})` }} />
             ))}
           </div>
-          <h1>Sierra Agent QA Lab</h1>
+          <h1>Sierra Agent QA Demo</h1>
         </header>
         <div className="lab-window-body">
           <LessonWorkspace />

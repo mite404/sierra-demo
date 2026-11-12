@@ -29,8 +29,7 @@ const current = () => page.locator(".simulation-lab:visible");
 const button = (name) => current().getByRole("button", { name, exact: true });
 const rows = () => current().locator(".lab-library-item");
 const configured = () => current().locator(".lab-author-review [data-check-id]");
-const proposal = () =>
-  page.getByRole("dialog", { name: "Ready to create your simulation", exact: true });
+const proposal = () => page.getByRole("dialog", { name: "Review simulation", exact: true });
 const contact = () =>
   page.getByRole("dialog", {
     name: "Confirm to contact a customer experience representative",
@@ -142,7 +141,25 @@ const ownerStory =
 try {
   await qa({ mode: "owner", delay: 5, failSave: false });
   await page.goto(base);
+  await page.evaluate(() => {
+    localStorage.setItem("theme", "dark");
+  });
+  await page.reload();
   await button("Start with a refund workflow").waitFor();
+  assert.equal(
+    await button("Start with a refund workflow").evaluate(
+      (element) => getComputedStyle(element).animationName,
+    ),
+    "play-callout",
+  );
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const starterRing = await button("Start with a refund workflow").evaluate((element) => ({
+    animation: getComputedStyle(element).animationName,
+    shadow: getComputedStyle(element).boxShadow,
+  }));
+  assert.equal(starterRing.animation, "none");
+  assert.match(starterRing.shadow, /0px 0px 0px 3px/u);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
   await verifyShellSizes(page);
   for (const name of [
     "Accept workflow",
@@ -156,9 +173,6 @@ try {
   assert.equal(await button("Run selected simulation").isDisabled(), true);
   assert.equal(await button("Run selected simulation").getAttribute("data-callout"), null);
   assert.equal(await button("Reset demo").count(), 0, "An empty library has nothing to reset");
-  const headerLeft = await current().locator(".lab-header span").boundingBox();
-  const sidebarLeft = await current().locator(".lab-sidebar").boundingBox();
-  assert.equal(headerLeft.x, sidebarLeft.x, "Demo notice aligns with the sidebar border");
   await button("Start with a refund workflow").click();
   assert.equal(
     await current().getByRole("textbox", { name: "Message", exact: true }).inputValue(),
@@ -217,6 +231,11 @@ try {
   assert.match(await proposal().innerText(), /Desktop web/u);
   assert.equal(await page.locator(".lab-conversation").evaluate((element) => element.inert), true);
   assert.equal(
+    await page.locator(".lab-sidebar").evaluate((element) => getComputedStyle(element).filter),
+    "blur(2px)",
+    "The proposal also blurs the simulations panel",
+  );
+  assert.equal(
     await page.locator(".lab-conversation").evaluate((element) => getComputedStyle(element).filter),
     "blur(2px)",
   );
@@ -241,8 +260,17 @@ try {
       await page.setViewportSize({ width, height: 720 });
       const summary = await proposal().boundingBox();
       assert.ok(summary.x >= 16 && summary.x + summary.width <= width - 16);
-      if (width >= 1024)
-        assert.ok(summary.width >= 640, "Desktop summary provides room for readable instructions");
+      const textMeasure = await proposal().evaluate((element) => {
+        const canvas = document.createElement("canvas");
+        const drawing = canvas.getContext("2d");
+        const style = getComputedStyle(element);
+        drawing.font = `${style.fontSize} ${style.fontFamily}`;
+        return drawing.measureText("0").width * 50;
+      });
+      assert.ok(
+        summary.width <= textMeasure + 54,
+        "Summary caps text at 50ch plus content padding",
+      );
       for (const name of ["Create simulation", "Revise in chat"]) {
         const action = proposal().getByRole("button", { name, exact: true });
         await action.scrollIntoViewIfNeeded();

@@ -151,7 +151,7 @@ function EmptyAuthor({ editing, onStart }: { editing: boolean; onStart: () => vo
         <p>Frozen settings stay the same. Describe your changes; the old revision remains saved.</p>
       )}
       {!editing && (
-        <Button variant="outline" className="btn" onClick={onStart}>
+        <Button variant="outline" className="btn" data-callout="" onClick={onStart}>
           Start with a refund workflow
         </Button>
       )}
@@ -190,14 +190,13 @@ export function AuthorChat({ source, restored, onSaved, onLock }: ChatProps) {
           attachmentsEnabled={false}
           dictation={{ source: "microphone" }}
           width={undefined}
-          headerActions={<span className="lab-role">Your agent</span>}
           empty={
             <EmptyAuthor
               editing={"definitionId" in source && !source.create}
               onStart={() => thread.current?.setDraft("Help our team handle subscription refunds.")}
             />
           }
-          footnote="Live Kimi K3 authoring · synthetic payments · explicit creation required"
+          footnote="Live Kimi K3 authoring · synthetic payments"
         />
         {state.draft && !summaryOpen && (
           <Button

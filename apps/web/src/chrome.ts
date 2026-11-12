@@ -11,7 +11,7 @@ const SEED = "chromeSeed"; // → <html data-chrome-seed>
 const STYLES: readonly ChromeStyle[] = ["solid", "painting"];
 
 /**
- * Runs from the prerendered shell before React and the router load, as THEME_BOOT does: a
+ * Runs from the prerendered shell before React and the router load: a
  * `?chrome=` in the address is handed to the page as `data-chrome-seed` and taken out of the
  * address, so the router never sees it and no link or history entry carries it on.
  */

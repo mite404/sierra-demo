@@ -80,6 +80,6 @@ does not explain whether a test checked the intended behavior or merely sounded 
 
 Risk is MEDIUM. Depends on U5, ticket `005-automated-customer.md`. Follow the parent plan. One Amp
 Medium thread in a Small orb uses `poteto-mode` and vanilla Git. Start from verified `origin/main`.
-Meet every goal and integrate its PR before U7. Read `docs/design-pillars.md` before visual edits.
+Meet every goal and integrate its PR before U7.
 Use existing tokens/components and new-component shadcn rules; do not invent another design
 language.
