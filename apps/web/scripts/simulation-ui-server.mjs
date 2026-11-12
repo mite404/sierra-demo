@@ -314,15 +314,6 @@ const asset = async (outgoing, url) => {
     file = join(assets, "index.html");
     content = await readFile(file);
   }
-  if (extname(file) === ".html")
-    content = Buffer.from(
-      content
-        .toString()
-        .replace(
-          "<body>",
-          '<body><div style="position:fixed;top:24px;right:24px;z-index:9999;pointer-events:none;background:#fff;color:#222;padding:0 4px;font:10px/16px sans-serif">Deterministic QA · not live K3</div>',
-        ),
-    );
   outgoing.setHeader("Content-Type", mime[extname(file)] ?? "text/html");
   outgoing.end(content);
 };

@@ -290,7 +290,7 @@ html[data-dragging="sidebar"] * {
   }
 
   /* A thread still opening says so only once the wait is long enough to notice: around 100ms
-     reads as instant (design-pillars.md rule 9, derived), so a quicker open goes from the bare
+     reads as instant, so a quicker open goes from the bare
      frame to its turns with no line flashing past. The line is in the tree from the first
      frame, hidden, and steps in with no fade; a hold, not motion, so reduced motion keeps it. */
   [data-pending-line] {
@@ -624,6 +624,7 @@ html[data-dragging="sidebar"] * {
      the button's own corners, then a beat of rest, every 2s. Under reduced motion the ring holds
      still instead. */
   [data-slot="demo-controls"] [data-callout],
+  .lab-welcome [data-callout],
   .lab-library-toolbar [data-callout] {
     animation: play-callout 2s ease-out infinite;
   }
@@ -638,6 +639,7 @@ html[data-dragging="sidebar"] * {
   }
   @media (prefers-reduced-motion: reduce) {
     [data-slot="demo-controls"] [data-callout],
+    .lab-welcome [data-callout],
     .lab-library-toolbar [data-callout] {
       animation: none;
       box-shadow: 0 0 0 3px var(--olive);

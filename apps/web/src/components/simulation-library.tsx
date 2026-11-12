@@ -377,7 +377,6 @@ export function LibrarySidebar(props: LibraryProps) {
           runDisabled={!selectedId || locked}
           runCallout={selectedId !== undefined && statuses[selectedId]?.kind === "not-run"}
         />
-        <h2>Simulations</h2>
       </SidebarHeader>
       <SidebarContent className="lab-sidebar-content">
         <div className="lab-review-actions">

@@ -20,9 +20,17 @@ export async function verifyShell(page) {
     const visible = (selector) =>
       [...frame.querySelectorAll(selector)].filter((node) => node.checkVisibility());
     const author = visible(".lab-author-workspace")[0];
+    const title = chrome.querySelector("h1");
+    const titleStyle = getComputedStyle(title);
     return {
       frame: rect(frame),
       chrome: rect(chrome),
+      stage: rect(frame.querySelector(".lab-stage")),
+      title: { text: title.textContent, size: titleStyle.fontSize, weight: titleStyle.fontWeight },
+      appearance: {
+        paper: getComputedStyle(frame).backgroundColor,
+        scheme: getComputedStyle(document.documentElement).colorScheme,
+      },
       mains: main.map(rect),
       lights: lights.checkVisibility(),
       lightCount: lights.children.length,
@@ -35,6 +43,8 @@ export async function verifyShell(page) {
         ? {
             chat: rect(author.querySelector(".lab-conversation")),
             review: rect(author.querySelector(".lab-author-review")),
+            heading: rect(author.querySelector(".thread-header h2")),
+            toolbar: rect(frame.querySelector(".lab-library-toolbar")),
           }
         : null,
       scroll: { x: scrollX, y: scrollY, width: document.documentElement.scrollWidth },
@@ -58,6 +68,17 @@ export async function verifyShell(page) {
     `Frame geometry at ${width}×${height}`,
   );
   assert.equal(facts.chrome.height, 44, "Title bar does not shrink");
+  assert.deepEqual(
+    facts.appearance,
+    { paper: "rgb(240, 239, 234)", scheme: "light" },
+    "The demo keeps its paper appearance regardless of system or stored theme",
+  );
+  assert.equal(facts.title.text, "Sierra Agent QA Demo");
+  assert.equal(facts.title.weight, "700");
+  assert.ok(Math.abs(Number.parseFloat(facts.title.size) - (13 + (2 * 4) / 3)) < 0.01);
+  assert.equal(facts.stage.x, facts.chrome.x, "Panels start at the shell's inner left edge");
+  assert.equal(facts.stage.right, facts.chrome.right, "Panels reach the shell's inner right edge");
+  assert.equal(facts.stage.y, facts.chrome.bottom, "Panels sit flush below the title bar");
   assert.equal(facts.lights, desktop, "Traffic lights appear only on the desktop frame");
   assert.equal(facts.lightCount, 3);
   assert.equal(facts.decorative, true, "Traffic lights have no actions or focus stops");
@@ -72,7 +93,7 @@ export async function verifyShell(page) {
   }
   assert.deepEqual(facts.scroll, { x: 0, y: 0, width }, "Focus cannot scroll the desk");
   if (facts.author) {
-    const { chat, review } = facts.author;
+    const { chat, review, heading, toolbar } = facts.author;
     for (const content of facts.welcome) {
       assert.ok(
         content.x >= chat.x + 24 && content.right <= chat.right - 24,
@@ -80,6 +101,10 @@ export async function verifyShell(page) {
       );
     }
     if (width > 800) {
+      assert.ok(
+        Math.abs(toolbar.y + toolbar.height / 2 - (heading.y + heading.height / 2)) < 1,
+        "Sidebar controls align with the conversation title's vertical center",
+      );
       assert.equal(review.x, chat.right, "Review sits to the right of authoring chat");
       assert.equal(review.y, chat.y, "Review aligns with the top of authoring chat");
       assert.ok(review.bottom <= facts.frame.bottom, "Review scrolls inside the frame");
@@ -98,7 +123,7 @@ export async function verifyShell(page) {
 }
 
 /**
- * Sweeps both themes and both sides of layout breakpoints, then restores the screen.
+ * Sweeps both system preferences and layout breakpoints, then restores the screen.
  * @throws When any generated viewport violates the shell contract.
  */
 export async function verifyShellSizes(page) {

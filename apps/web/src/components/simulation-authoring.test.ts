@@ -49,7 +49,7 @@ it("keeps an empty library truly empty and groups only saved definitions", () =>
       statuses: {},
     }),
   );
-  expect(html).toContain("Simulations");
+  expect(html).toContain('aria-label="Saved simulations"');
   expect(html).not.toContain("Subscription refunds");
   expect(html).not.toContain("lab-library-item");
   expect(html).not.toContain("Examples");

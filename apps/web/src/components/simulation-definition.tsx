@@ -63,9 +63,11 @@ function DefinitionSummary({
         <span>Device type</span> <Monitor size={14} aria-hidden="true" /> Desktop web
       </p>
       <ExpectedBehavior checks={definition.checks} />
-      <Section title="Helpful wording (not automatically checked)">
-        <p>{definition.humanGuidance}</p>
-      </Section>
+      {saved && (
+        <Section title="Helpful wording (not automatically checked)">
+          <p>{definition.humanGuidance}</p>
+        </Section>
+      )}
     </section>
   );
 }
@@ -126,11 +128,8 @@ export function ProposalReview({
     >
       <DialogContent className="lab-results-popover lab-proposal-popover" initialFocus>
         <DialogHeader>
-          <DialogTitle>Ready to create your simulation</DialogTitle>
-          <DialogDescription>
-            There is enough information to test this customer story. Review the summary. Nothing has
-            been saved or run.
-          </DialogDescription>
+          <DialogTitle>Review simulation</DialogTitle>
+          <DialogDescription>Nothing has been saved or run.</DialogDescription>
         </DialogHeader>
         <div className="lab-results-body">
           <DefinitionSummary definition={draft.definition} />
@@ -138,7 +137,7 @@ export function ProposalReview({
             <Button variant="outline" disabled={saving} onClick={onCreate}>
               {saving ? "Creating simulation" : "Create simulation"}
             </Button>
-            <Button variant="ghost" disabled={saving} onClick={onRevise}>
+            <Button variant="outline" disabled={saving} onClick={onRevise}>
               Revise in chat
             </Button>
           </div>

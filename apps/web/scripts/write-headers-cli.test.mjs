@@ -52,7 +52,7 @@ it.each(buildCases)(
   ({ build, client: relativeClient }) => {
     const client = path.join(directory, relativeClient);
     mkdirSync(path.join(client, "nested"), { recursive: true });
-    writeFileSync(path.join(client, "index.html"), "<script>dataset.theme = 'light';</script>");
+    writeFileSync(path.join(client, "index.html"), '<html data-theme="light"></html>');
     writeFileSync(
       path.join(client, "nested", "page.html"),
       "<script>searchParams.delete('x');</script><script>alert(1)</script>",
