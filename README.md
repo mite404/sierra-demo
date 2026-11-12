@@ -91,6 +91,32 @@ pnpm --filter gateway exec wrangler deploy --config wrangler.deployment.jsonc
 Use `wrangler.deployment.jsonc` for this site and `wrangler.simulation.jsonc` locally, not the
 inherited `wrangler.jsonc`.
 
+### Enable automatic deployment
+
+Use Cloudflare Workers Builds, the same native Git integration used by YakLabs. In the
+`sierra-demo` Worker's **Settings > Build**, connect `mite404/sierra-demo` with these settings:
+
+- Production branch: `main`; automatic builds enabled; previews disabled.
+- Root directory: `/`.
+- Build command: `VITE_AUTH=none pnpm --filter web build`.
+- Deploy command: `pnpm --filter gateway exec wrangler deploy --config wrangler.deployment.jsonc`.
+- Build variable: `NODE_VERSION=26`.
+- Build token: a dedicated Sierra deployment token, not a YakLabs credential.
+
+Each merge or push to `main` starts a Cloudflare build. A successful build deploys the Worker;
+failed builds leave the previous deployment running. GitHub CI runs separately. To require green
+CI before merging, configure required checks and pull requests in GitHub branch protection.
+Do not add a second deployment workflow in GitHub Actions.
+
+Keep `OPENROUTER_API_KEY` in the existing Worker secret, not in the web build. GitHub Actions
+deployment secrets are not used by this integration. Review builds and retry failures in the
+Cloudflare dashboard, then check the [live demo](https://sierra-demo.ethana2008.workers.dev).
+
+The native deploy command does not apply D1 SQL migrations. Before merging schema changes, arrange
+a reviewed migration of `sierra-demo-simulations` that remains compatible with the running code.
+A Worker rollback does not undo database changes. Deployments can interrupt in-memory chats and
+active runs.
+
 ## Verify
 
 Run the executor and HTTP regressions with controlled external model transport:
