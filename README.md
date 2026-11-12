@@ -109,9 +109,9 @@ Before merging the deployment workflow, configure the repository's
    may cover other databases in the selected account, so treat the token as sensitive.
 2. Add the token as the repository secret `CLOUDFLARE_API_TOKEN`. Never copy a local Wrangler OAuth
    session into GitHub. Do not paste the token into an issue, PR, or chat.
-3. Add the owning account's ID as the repository variable `CLOUDFLARE_ACCOUNT_ID` under
-   **Variables**. Keep `OPENROUTER_API_KEY` in the existing Worker secret, not GitHub or the web
-   build. No additional D1 database, Durable Object, or visitor login is needed.
+3. Add the owning account's ID as the repository secret `CLOUDFLARE_ACCOUNT_ID`. Keep
+   `OPENROUTER_API_KEY` in the existing Worker secret, not GitHub or the web build. No additional
+   D1 database, Durable Object, or visitor login is needed.
 
 Missing credentials fail the workflow explicitly. The workflow becomes active only after it is
 merged into `main` and a main-push CI run succeeds. To retry a failed release, rerun that commit's
