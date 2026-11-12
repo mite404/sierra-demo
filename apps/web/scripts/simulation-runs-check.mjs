@@ -161,6 +161,20 @@ try {
   assert.match(starterRing.shadow, /0px 0px 0px 3px/u);
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await verifyShellSizes(page);
+  await current().getByRole("region", { name: "Expected agent behavior" }).waitFor();
+  assert.equal(await current().locator(".lab-sidebar:visible").count(), 1);
+  assert.match(await current().locator(".lab-sidebar").innerText(), /No simulations yet/u);
+  assert.equal(await current().locator(".lab-conversation:visible").count(), 1);
+  assert.equal(await current().locator(".lab-author-review:visible").count(), 1);
+  assert.ok(
+    (await current()
+      .locator(".lab-conversation")
+      .evaluate((element) => element.clientWidth)) >
+      (await current()
+        .locator(".lab-author-review")
+        .evaluate((element) => element.clientWidth)),
+    "The empty lesson keeps the library beside authoring chat and expectations",
+  );
   for (const name of [
     "Accept workflow",
     "Save simulation",
