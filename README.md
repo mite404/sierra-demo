@@ -133,12 +133,12 @@ node apps/web/scripts/simulation-ui-server.mjs
 ```
 
 In another terminal, run `node apps/web/scripts/simulation-runs-check.mjs`. The journey uses real
-HTTP, executor, and disposable D1 with controlled model transport, explicitly labeled not live K3.
+HTTP, executor, and disposable D1 with controlled model transport, not live K3.
 Set `PLAYWRIGHT_CHROMIUM` to an installed Chrome executable if needed. CI also runs lint, format,
 typechecks, unit and story tests, browser acceptance, and builds.
 
-See [the scope](docs/sierra-demo/PLAN.md), [simulation plan](docs/plans/simulations-plan.md), and
-[live-provider recording guide](docs/sierra-demo/VIDEO.md) for details. Live verification spends
+See [the scope](docs/sierra-demo/PLAN.md) and [simulation plan](docs/plans/simulations-plan.md)
+for details. Live verification spends
 model credit; deterministic acceptance is not evidence of live model behavior.
 
 ## Source and layout

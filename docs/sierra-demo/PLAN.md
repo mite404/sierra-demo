@@ -12,7 +12,6 @@ accounts, deployments, and credentials are not demo resources.
 This document owns the demo's general purpose, teaching approach, scope, and safety boundaries.
 The [simulations implementation plan](../plans/simulations-plan.md) owns feature-specific flows,
 UI states, contracts, implementation steps, and acceptance checks.
-[VIDEO.md](VIDEO.md) owns the operator's rehearsal and recording instructions.
 
 ## Teaching approach
 
@@ -48,8 +47,9 @@ dialogue. Keep deterministic code checks and human wording review separate. Save
 and completed evidence may persist locally. A repeated run starts with fresh synthetic state.
 
 Keep the existing visual language and components. Sierra's screenshot guides information layout,
-not a replacement brand palette. Follow [design-pillars.md](../design-pillars.md), catalog tokens,
-and the repository's component rules. Keep the independent-demo and synthetic-data labels visible.
+not a replacement brand palette. Follow catalog tokens and the repository's component rules.
+Keep the demo's independent status and synthetic-data scope documented; the Simulations sidebar
+does not display a disclaimer.
 
 ## Safety requirements
 

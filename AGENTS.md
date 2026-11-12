@@ -94,13 +94,8 @@ line will not fit in 50 characters, that is usually the commit doing two things 
 
 ## Design language
 
-- `docs/design-pillars.md` is the brand guide: colour, type, buttons, data visualisation,
-  surfaces, inputs and motion. Read the section that applies before choosing a colour, size,
-  spacing, corner, duration, easing or animation, and follow its rules.
-- Do not invent a value the guide does not cover. Derive it from a token in
-  `packages/catalog/src/tokens.css` and say which, or ask Ethan. A new rule goes into the guide
-  with its source marked (css, derived, Ethan).
-- When the guide and the code disagree, flag the mismatch; do not silently pick one.
+- Use the existing components and `packages/catalog/src/tokens.css` for colour, type, spacing,
+  corners, and motion. Derive new values from those tokens and say which, or ask Ethan.
 
 ---
 

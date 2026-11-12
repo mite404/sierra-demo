@@ -65,7 +65,7 @@ without changing historical run snapshots.
 ## The sidebar contains stories, not individual checks
 
 Match the supplied Sierra screenshot's information layout using existing catalog and shadcn
-components, spacing, type, and semantic tokens. Follow [design-pillars.md](../design-pillars.md).
+components, spacing, type, and semantic tokens.
 
 * Put Play above the Simulations column. Reuse its existing saved-form submission path.
 * Group created simulations under Subscription refunds. No preseeded rows, disabled named examples,
