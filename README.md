@@ -93,37 +93,29 @@ inherited `wrangler.jsonc`.
 
 ### Enable automatic deployment
 
-The `Deploy Cloudflare` workflow waits for a successful `CI` run from a push to `main` in this
-repository. It checks out that exact tested commit, builds with `VITE_AUTH=none`, applies pending
-D1 migrations, and deploys with `wrangler.deployment.jsonc`. PR, scheduled, and manually dispatched
-CI runs cannot deploy. Releases are serialized, and superseded revisions are skipped before any
-remote write. It does not download PR artifacts or restore PR caches.
+Use Cloudflare Workers Builds, the same native Git integration used by YakLabs. In the
+`sierra-demo` Worker's **Settings > Build**, connect `mite404/sierra-demo` with these settings:
 
-Before merging the deployment workflow, configure the repository's
-[Actions secrets and variables](https://github.com/mite404/sierra-demo/settings/secrets/actions):
+- Production branch: `main`; automatic builds enabled; previews disabled.
+- Root directory: `/`.
+- Build command: `VITE_AUTH=none pnpm --filter web build`.
+- Deploy command: `pnpm --filter gateway exec wrangler deploy --config wrangler.deployment.jsonc`.
+- Build variable: `NODE_VERSION=26`.
+- Build token: a dedicated Sierra deployment token, not a YakLabs credential.
 
-1. In Cloudflare, create an account-owned API token for the account that owns `sierra-demo`.
-   Grant [Workers Editor access](https://developers.cloudflare.com/workers/authorization/workers/)
-   only to the existing `sierra-demo` Worker, plus D1 Edit for migrations in that account. Do not
-   select other accounts or add zone, DNS, Pages, or unrelated service permissions. D1 permissions
-   may cover other databases in the selected account, so treat the token as sensitive.
-2. Add the token as the repository secret `CLOUDFLARE_API_TOKEN`. Never copy a local Wrangler OAuth
-   session into GitHub. Do not paste the token into an issue, PR, or chat.
-3. Add the owning account's ID as the repository secret `CLOUDFLARE_ACCOUNT_ID`. Keep
-   `OPENROUTER_API_KEY` in the existing Worker secret, not GitHub or the web build. No additional
-   D1 database, Durable Object, or visitor login is needed.
+Each merge or push to `main` starts a Cloudflare build. A successful build deploys the Worker;
+failed builds leave the previous deployment running. GitHub CI runs separately. To require green
+CI before merging, configure required checks and pull requests in GitHub branch protection.
+Do not add a second deployment workflow in GitHub Actions.
 
-Missing credentials fail the workflow explicitly. The workflow becomes active only after it is
-merged into `main` and a main-push CI run succeeds. To retry a failed release, rerun that commit's
-CI push run. A newer `main` revision makes an older retry skip deployment.
+Keep `OPENROUTER_API_KEY` in the existing Worker secret, not in the web build. GitHub Actions
+deployment secrets are not used by this integration. Review builds and retry failures in the
+Cloudflare dashboard, then check the [live demo](https://sierra-demo.ethana2008.workers.dev).
 
-Review SQL migrations before merging: they run against `sierra-demo-simulations` before the Worker
-update, must remain compatible with the currently deployed code, and are not undone by a code
-rollback. Deployments can interrupt in-memory chats and active runs.
-Review the **Deploy Cloudflare** run in GitHub Actions, then check the
-[live demo](https://sierra-demo.ethana2008.workers.dev).
-
-Check the deployment guards locally with `node --test scripts/deploy-cloudflare.test.js`.
+The native deploy command does not apply D1 SQL migrations. Before merging schema changes, arrange
+a reviewed migration of `sierra-demo-simulations` that remains compatible with the running code.
+A Worker rollback does not undo database changes. Deployments can interrupt in-memory chats and
+active runs.
 
 ## Verify
 
